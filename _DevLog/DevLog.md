@@ -3,7 +3,7 @@
 **Assessment:** IT Specialist (AI) · 26-DO-12891471-DH  
 **Candidate:** Matthew Gabriel Sizemore  
 **Assessment Received:** June 9, 2026, 1458 hrs  
-**Deadline:** June 16, 2026, 1458 hrs
+**Deadline:** June 16, 2026, 1458 hrs  
 **Repository:** https://github.com/gratefulgabe5000/ttb-label-verifier  
 **Submission Form:** https://forms.osi.office365.us/r/xWrQGduMw7
 
@@ -13,7 +13,7 @@
 
 1. [Assessment Overview](#1-assessment-overview)
 2. [Requirements Analysis](#2-requirements-analysis)
-3. [Technical Approach](#3-technical-approach)
+3. [System Design](#3-system-design)
 4. [Tools & Technology Rationale](#4-tools--technology-rationale)
 5. [Assumptions](#5-assumptions)
 6. [Engineering Log](#6-engineering-log)
@@ -25,61 +25,67 @@
 
 **Organization:** US Department of the Treasury, Departmental Offices — Treasury Common Services Center, Office of the Deputy Administrator for Technology Services
 
-**Context:** The TTB (Alcohol and Tobacco Tax and Trade Bureau) processes approximately 150,000 COLA (Certificate of Label Approval) applications per year with a team of 47 compliance agents. A significant portion of each review is routine data-entry verification — confirming that what appears on a label image matches what was submitted in the application form. This process has been largely unchanged since the COLA system went online in 2003.
+**Context:** The TTB (Alcohol and Tobacco Tax and Trade Bureau) processes approximately 150,000 COLA (Certificate of Label Approval) applications per year using TTB Form F 5100.31. A team of 47 compliance agents manually reviews each application by comparing the submitted form data against affixed label artwork. This verification is largely routine data-entry matching that consumes agent capacity that could otherwise be directed at judgment-intensive cases.
 
-**Objective:** Design and build a working AI-powered prototype that assists TTB compliance agents by automating label field extraction and comparison against application-submitted data, surfacing mismatches so agents can focus on judgment-intensive cases rather than mechanical verification.
+**Objective:** Build a working AI-powered prototype that automates the extraction, comparison, and determination workflow for COLA applications — allowing agents to review AI recommendations rather than perform the comparisons manually. The system ingests the application form (TTB F 5100.31 as PDF) and companion label artwork (images), extracts structured parameters from both, compares them, and issues per-parameter and overall determinations (Approve / Deny / Recommend Exemption Review) which agents can override.
 
 ### Source Documents
 
 | File | Description |
 |------|-------------|
-| `1.Notification - IT Specialist (AI) - 26-DO-12891471-DH.pdf` | Email from USA Staffing Office — assessment delivery notification, deliverable requirements |
-| `2.TreasuryTakeHomeTest.pdf` | Microsoft Forms submission page — confirms two deliverables: Source Code Repository + Deployed Application URL |
-| `3.Assessment_README.txt` | Primary assessment brief — four stakeholder interview transcripts and TTB technical context |
-
-> **Evaluator note:** These files are in the repository root. They are the primary requirements source and are referenced throughout this DevLog.
+| `1.Notification - IT Specialist (AI) - 26-DO-12891471-DH.pdf` | USA Staffing Office notification — assessment delivery and deliverable requirements |
+| `2.TreasuryTakeHomeTest.pdf` | Microsoft Forms submission page — confirms two required deliverables |
+| `3.Assessment_README.txt` | Primary assessment brief — four stakeholder interviews + TTB technical context |
+| `f510031.pdf` | Official TTB Form F 5100.31 (04/2023) — application form agents process; primary data source |
 
 ---
 
 ## 2. Requirements Analysis
 
-Requirements were extracted from all three source documents. Each requirement is tagged with its verbatim source to demonstrate attention to the brief.
-
 ### 2.1 Functional Requirements
+
+Requirements extracted from stakeholder interviews and the assessment brief. Each requirement is tagged with its verbatim source.
 
 | ID | Requirement | Source | Priority |
 |----|-------------|--------|----------|
-| FR-01 | Accept label image upload for analysis | Assessment README — Deliverables section | **MUST** |
-| FR-02 | Extract brand name from label image | Assessment README — TTB Label Requirements; Sarah Chen: "Brand name matches? Check." | **MUST** |
-| FR-03 | Extract class/type designation from label | Assessment README — TTB Label Requirements | **MUST** |
-| FR-04 | Extract alcohol content (ABV) from label | Assessment README; Sarah Chen: "ABV is correct? Check." | **MUST** |
-| FR-05 | Extract net contents from label | Assessment README — TTB Label Requirements | **MUST** |
-| FR-06 | Extract bottler/producer name and address | Assessment README — TTB Label Requirements | **MUST** |
-| FR-07 | Extract country of origin (imports) | Assessment README — TTB Label Requirements | **MUST** |
-| FR-08 | Verify Government Health Warning Statement — exact text, "GOVERNMENT WARNING:" in all-caps bold | Jenny Park: "It has to be exact. Like, word-for-word, and the 'GOVERNMENT WARNING:' part has to be in all caps and bold." | **MUST** |
-| FR-09 | Accept expected application data from user for comparison | Sarah Chen: "An agent pulls up an application, looks at the label artwork, and checks that what's on the label matches what's in the application." | **MUST** |
-| FR-10 | Return per-field pass/fail/mismatch results with explanations | Assessment README — Evaluation Criteria ("Correctness and completeness of core requirements") | **MUST** |
-| FR-11 | Apply case/formatting tolerance to brand name matching | Dave Morrison: "'STONE'S THROW' on the label but 'Stone's Throw' in the application. Technically a mismatch? Sure. But it's obviously the same thing." | **SHOULD** |
-| FR-12 | Support batch upload of multiple label images | Sarah Chen: "During peak season, we get these big importers who dump 200, 300 label applications on us at once... Janet from our Seattle office has been asking about this for years." | **NICE-TO-HAVE** |
-| FR-13 | Handle degraded image quality (angle, glare, bad lighting) | Jenny Park: "It would be amazing if the tool could handle images that aren't perfectly shot... labels photographed at weird angles, or the lighting is bad, or there's glare on the bottle." | **NICE-TO-HAVE** |
+| FR-01 | Ingest application form (TTB F 5100.31 PDF) and log in workingfiles DB | Design session | **MUST** |
+| FR-02 | Ingest companion label artwork image(s) and pair with application in DB | Design session | **MUST** |
+| FR-03 | Extract all structured parameters from the application form | Design session; Sarah Chen: "checks that what's on the label matches what's in the application" | **MUST** |
+| FR-04 | Extract all structured parameters from the label image via AI vision | Design session; Sarah Chen: "ABV is correct? Check. Government warning is there? Check." | **MUST** |
+| FR-05 | Compare form parameters vs label parameters, per field | Design session | **MUST** |
+| FR-06 | Issue per-parameter determination: Match / Mismatch | Design session | **MUST** |
+| FR-07 | Issue overall determination: Approve / Deny / Recommend Exemption Review | Design session | **MUST** |
+| FR-08 | Verify Government Warning Statement — exact statutory text; "GOVERNMENT WARNING:" in all-caps bold | Jenny Park: "It has to be exact. Like, word-for-word, and the 'GOVERNMENT WARNING:' part has to be in all caps and bold." | **MUST** |
+| FR-09 | Apply case/punctuation tolerance to brand name matching | Dave Morrison: "'STONE'S THROW' on the label but 'Stone's Throw' in the application. Technically a mismatch? Sure. But it's obviously the same thing." | **MUST** |
+| FR-10 | Flag mismatches that fall within Allowable Revisions (F 5100.31 Section V) as "Recommend Exemption Review" rather than hard denial | Design session | **MUST** |
+| FR-11 | Agent dashboard: list pending applications assigned to agent | Design session | **MUST** |
+| FR-12 | Batch selection: checkboxes on dashboard to select multiple applications | Design session; Sarah Chen: "If there was some way to handle batch uploads, that would be huge." | **MUST** |
+| FR-13 | Batch processing: process all selected applications in a single action | Design session | **MUST** |
+| FR-14 | Batch summary report: header count of Approvals / Denials / Exemption Reviews, plus per-application result | Design session | **MUST** |
+| FR-15 | Application detail view: split view — form PDF (left) + label image (right) | Design session | **MUST** |
+| FR-16 | Visual annotations: red ellipses on mismatched elements in both form and label views | Design session | **SHOULD** |
+| FR-17 | Mouse-over on annotation: highlight corresponding element on opposite document | Design session | **SHOULD** |
+| FR-18 | Agent override: right-click any parameter to override AI determination with reason | Design session | **MUST** |
+| FR-19 | Agent override: override overall determination | Design session | **MUST** |
+| FR-20 | Support batch upload of forms and label images | Design session | **NICE-TO-HAVE** |
+| FR-21 | Handle degraded label image quality (angle, glare, bad lighting) | Jenny Park: "It would be amazing if the tool could handle images that aren't perfectly shot." | **NICE-TO-HAVE** |
 
 ### 2.2 Non-Functional Requirements
 
 | ID | Requirement | Source | Priority |
 |----|-------------|--------|----------|
-| NFR-01 | Response time ≤ 5 seconds per label | Sarah Chen: "If we can't get results back in about 5 seconds, nobody's going to use it. We learned that the hard way." (prior vendor failed at 30–40s per label) | **HARD CONSTRAINT** |
+| NFR-01 | Response time ≤ 5 seconds per label (AI extraction + comparison) | Sarah Chen: "If we can't get results back in about 5 seconds, nobody's going to use it. We learned that the hard way." | **HARD CONSTRAINT** |
 | NFR-02 | UI accessible to non-technical users | Sarah Chen: "We need something my mother could figure out—she's 73 and just learned to video call her grandkids last year... Half our team is over 50." | **MUST** |
-| NFR-03 | Clean interface, no hidden controls | Sarah Chen: "Clean, obvious, no hunting for buttons." Dave Morrison: past modernization projects failed due to poor UX. | **MUST** |
-| NFR-04 | No persistent storage of sensitive data | Marcus Williams: "There's PII considerations, document retention policies, the usual federal compliance stuff. But for a prototype? Just don't do anything crazy. We're not storing anything sensitive for this exercise." | **MUST** |
-| NFR-05 | Standalone POC — no COLA integration | Marcus Williams: "Think of this as a standalone proof-of-concept... For a prototype? [COLA integration is] years away, realistically." | **MUST** |
-| NFR-06 | Publicly accessible deployed URL | Assessment README — Deliverables; Email — Deliverable #2 | **MUST** |
-| NFR-07 | Minimize dependency on blocked external domains | Marcus Williams: "Our network blocks outbound traffic to a lot of domains... During the scanning vendor pilot, half their features didn't work because our firewall blocked connections to their ML endpoints." Note: prototype exemption implied. | **SHOULD** (prototype) |
+| NFR-03 | Clean interface — no hunting for buttons | Sarah Chen: "Clean, obvious, no hunting for buttons." Dave Morrison: prior modernization failures cited. | **MUST** |
+| NFR-04 | No persistent storage of sensitive data beyond prototype scope | Marcus Williams: "We're not storing anything sensitive for this exercise." | **MUST** |
+| NFR-05 | Standalone POC — no COLA system integration | Marcus Williams: "Think of this as a standalone proof-of-concept... that's years away, realistically." | **MUST** |
+| NFR-06 | Publicly accessible deployed URL | Assessment README — Deliverables; Email notification | **MUST** |
 
 ### 2.3 Government Warning Statement — Critical Detail
 
-Per Jenny Park's interview, the Government Health Warning is a frequent rejection point with specific, non-negotiable requirements.
+Per Jenny Park's interview, the Government Health Warning is a frequent rejection point. The AI validator must check for both exact text and formatting.
 
-**Statutory text (27 CFR § 16.21):**
+**Statutory text per 27 CFR § 16.21:**
 ```
 GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink
 alcoholic beverages during pregnancy because of the risk of birth defects. (2)
@@ -87,24 +93,118 @@ Consumption of alcoholic beverages impairs your ability to drive a car or operat
 machinery, and may cause health problems.
 ```
 
-**Formatting rules extracted from Jenny Park's interview:**
-- "GOVERNMENT WARNING:" — must appear in ALL CAPS and BOLD
-- Text must be exact — no paraphrasing, no abbreviated wording
-- Not buried in disproportionately small font
-- Common violations caught: title case ("Government Warning"), modified wording, undersized font
+**Mandatory formatting:**
+- "GOVERNMENT WARNING:" — must be **ALL CAPS** and **BOLD**
+- Wording must be exact — no paraphrasing, abbreviation, or reordering
+- Must not be buried in disproportionately small font
 
-### 2.4 TTB Label Fields — Reference (from Assessment README)
+**Common violations (per Jenny Park):**
+- Title case: "Government Warning" (should be "GOVERNMENT WARNING:")
+- Missing colon after "WARNING"
+- Abbreviated or paraphrased text
+- Undersized font
 
-For distilled spirits (example provided in brief):
-- Brand Name: `"OLD TOM DISTILLERY"`
-- Class/Type: `"Kentucky Straight Bourbon Whiskey"`
-- Alcohol Content: `"45% Alc./Vol. (90 Proof)"`
-- Net Contents: `"750 mL"`
-- Government Warning: [statutory text above]
+### 2.4 Form F 5100.31 — Complete Field Reference
 
-Beverage types: beer, wine, distilled spirits each have variations. Prototype targets distilled spirits as the primary case; logic generalizes to all three.
+Source: `f510031.pdf` — TTB Form F 5100.31 (04/2023)
 
-### 2.5 Evaluation Criteria (verbatim from Assessment README)
+#### Part I — Application Fields
+
+| Item | Field Name | Required | Notes |
+|------|-----------|----------|-------|
+| 1 | Representative ID No. | Optional | Third-party filer ID |
+| 2 | Plant Registry / Basic Permit / Brewer's Notice No. | **Required** | BW-, TPWBH-, DSP-, or permit number; multiple locations possible |
+| 3 | Source of Product | **Required** | Domestic ☐ / Imported ☐ |
+| 4 | Serial Number | **Required** | Format: YY-N (last 2 digits of year + sequential, max 6 chars); e.g., 26-1 |
+| 5 | Type of Product | **Required** | Wine ☐ / Distilled Spirits ☐ / Malt Beverages ☐ |
+| 6 | Brand Name | **Required** | Name under which product is sold; if no brand name, use bottler/packer/importer name |
+| 7 | Fanciful Name | Optional | Required for some specialty products; further identifies product |
+| 8 | Name and Address of Applicant | **Required** | Exactly as on plant registry/permit; include DBA/tradename if used on label |
+| 8a | Mailing Address | Optional | If different from Item 8 |
+| 9 | Formula | Conditional | TTB Formula ID or lab number; required when product formula approval was needed |
+| 10 | Grape Varietal(s) | Wine only | List all varietals appearing on label |
+| 11 | Wine Appellation | Conditional | Fill in only if appellation of origin stated on label |
+| 12 | Phone Number | — | Person responsible for application |
+| 13 | Email Address | — | For TTB response |
+| 14 | Type of Application | **Required (a OR b)** | See Application Types below |
+| 15 | Embossed/Blown Container Info | Conditional | Info on container not on labels; foreign language translations |
+| 16 | Date of Application | — | Date prepared or submitted |
+| 17 | Signature | — | Applicant or authorized agent |
+| 18 | Print Name | — | Signer's printed name |
+
+#### Part III — TTB Certificate (TTB Use Only)
+
+| Item | Field Name | Notes |
+|------|-----------|-------|
+| 19 | Date Issued | TTB completion |
+| 20 | Authorized TTB Signature | TTB completion |
+| — | Qualifications | TTB notes/conditions |
+| — | Expiration Date | If any |
+| — | Label Affixing Area | Applicant affixes complete label set |
+
+### 2.5 Application Types and Determination Routing
+
+Item 14 determines the processing path:
+
+| Type | Description | Key Constraints | Processing Impact |
+|------|-------------|----------------|-------------------|
+| **14a** | Certificate of Label Approval | Standard path | Full comparison; Approve or Deny |
+| **14b** | Certificate of Exemption From Label Approval | Product sold ONLY within bottling state; NOT available for imports or malt beverages | If 14b checked: label MUST contain "For sale in [STATE] only"; flag if product is imported or malt |
+| **14c** | Distinctive Liquor Bottle Approval | Must include bottle capacity | Additional check: bottle capacity field |
+| **14d** | Resubmission After Rejection | Must include TTB ID of rejected application | Note prior rejection in report |
+
+**Three-Outcome Determination Logic:**
+
+| Outcome | Condition |
+|---------|-----------|
+| **APPROVE** | All mandatory parameters match; no hard failures |
+| **DENY** | One or more hard failures (mandatory field mismatch not in Allowable Revisions) |
+| **RECOMMEND EXEMPTION REVIEW** | Mismatches present, but all fall within Allowable Revisions (Section V of F 5100.31); OR application is Type 14b |
+
+### 2.6 Parameter Comparison Matrix
+
+The core of the verification engine. Each form field maps to a label element, with specific comparison rules. **Per FR-038, "label" below means the union of ALL of the application's label images** — every image is extracted independently (Stage 4), and a field is considered present if it appears on any one of them, with the source `label_image_id` retained for annotation placement.
+
+| Form Field (Item #) | Label Element | Comparison Rule | Failure Type |
+|--------------------|---------------|----------------|-------------|
+| Brand Name (6) | Brand Name on label | Normalized: case-insensitive, punctuation-tolerant; reject only if substantive difference | Hard failure if substantive; Allowable if case/punct only |
+| Fanciful Name (7) | Fanciful Name on label | If present on form, must appear on label (normalized match) | Hard failure |
+| Source: Imported (3) | Country of Origin on label | If "Imported" checked, label MUST show country of origin | Hard failure |
+| Product Type (5) | Class/Type Designation | Must be consistent with checked type | Hard failure |
+| Applicant Name/Address (8) | Bottler/Producer name/address on label | Normalized match; must include DBA if DBA used on label | Hard failure if name wrong; Allowable if address change in-state |
+| Grape Varietals (10) | Varietals on label (Wine) | All listed varietals must appear on label | Hard failure |
+| Wine Appellation (11) | Appellation on label (Wine) | If listed on form, must match label | Hard failure |
+| Type 14b checked | "For sale in [STATE] only" text | Must appear on label; state abbreviation must match | Hard failure |
+| *(all products)* | Government Warning Statement | Exact 27 CFR § 16.21 text; "GOVERNMENT WARNING:" in ALL CAPS BOLD | Hard failure |
+| *(all products)* | Alcohol by Volume (ABV) | Must be present on label; must be consistent with product type | Hard failure |
+| *(all products)* | Net Contents | Must be present on label | Allowable if change complies with standards (Section V, item 10) |
+
+### 2.7 Allowable Revisions — Exemption Criteria Reference
+
+Section V of TTB F 5100.31 lists 41 revision types that may be made to an approved label WITHOUT resubmission. When the AI identifies a mismatch, it cross-references this list to determine if the discrepancy is a **hard failure** (requires denial) or an **allowable revision** (triggers Recommend Exemption Review).
+
+**Key allowable revision categories that affect comparison logic:**
+
+| Section V Item | Revision Type | Applies To |
+|----------------|---------------|-----------|
+| 1 | Delete any non-mandatory information | All |
+| 2 | Reposition any label information | All |
+| 3a | Change colors, shape, proportionate size of labels | All |
+| 3b | Change type size, font, spelling/case/punctuation | All — "mandatory info must remain legible and on contrasting background" |
+| 3c | Change from adhesive to etched/printed or vice versa | All |
+| 3d/3e | Divide or combine approved labels | All |
+| 10 | Change net contents statement | All (must comply with standards of fill) |
+| 11 | Change mandatory ABV (if consistent with class/type) | All |
+| 14 | Change/delete age statement | Distilled Spirits |
+| 17 | Add/change Serving Facts / average analysis statement | All |
+| 18 | Add/change bottling date, production date, freshness info | All |
+| 19 | Change name/trade name (already approved); address change within same state | All |
+| 20 | Change foreign producer/bottler/shipper name & address | All (same country) |
+| 22–41 | UPC barcodes, web addresses, awards, logos, seasonal graphics, etc. | Varies |
+
+> **Implementation note:** The AI cannot evaluate all 41 revision types from image inspection alone. The engine will flag any mismatch as one of: `HARD_FAILURE`, `POSSIBLE_ALLOWABLE` (cross-reference Section V), or `MATCH`. The determination engine upgrades `POSSIBLE_ALLOWABLE` applications to "Recommend Exemption Review" rather than "Deny."
+
+### 2.8 Evaluation Criteria (verbatim from Assessment README)
 
 1. Correctness and completeness of core requirements
 2. Code quality and organization
@@ -113,133 +213,585 @@ Beverage types: beer, wine, distilled spirits each have variations. Prototype ta
 5. **Attention to requirements**
 6. Creative problem-solving
 
-> **Note on criterion 5:** Requirements are embedded in narrative interview transcripts rather than a structured spec sheet. Identifying, extracting, and prioritizing them from the stakeholder context is itself part of the evaluation.
+> **Note on criterion 5:** Requirements are embedded in narrative interview transcripts rather than a structured spec sheet. Extracting all requirements from the stakeholder context — including the 5-second constraint, the Government Warning formatting rules, and the case-tolerance requirement — is itself part of the evaluation. This DevLog demonstrates that all requirements have been identified and traced to their source.
 
-### 2.6 Deliverables Checklist
+### 2.9 Deliverables Checklist
 
 | Deliverable | Status | Location |
 |-------------|--------|----------|
 | Source Code Repository (GitHub, public) | ✅ Created | https://github.com/gratefulgabe5000/ttb-label-verifier |
-| All source code | ☐ In progress | `app/` |
-| README with setup and run instructions | ✅ Done | `README.md` |
-| Documentation of approach, tools, assumptions | ✅ Done | `_DevLog/DevLog.md` (this file) |
-| Deployed Application URL | ☐ Pending deployment | TBD |
+| All source code | ☐ In progress | `app/` (backend), `web/` (frontend) |
+| README with setup and run instructions | ✅ | `README.md` |
+| Documentation of approach, tools, assumptions | ✅ | `_DevLog/DevLog.md` (this file) |
+| Deployed Application URL | ☐ Pending | TBD — Railway (API) + Netlify (web) |
 
 ---
 
-## 3. Technical Approach
+## 3. System Design
 
-### 3.1 Problem Decomposition
-
-The core task decomposes into three stages:
+### 3.1 Six-Stage Processing Pipeline
 
 ```
-[1] IMAGE → FIELDS            [2] FIELDS ↔ APPLICATION         [3] RESULTS → USER
-─────────────────────         ────────────────────────         ─────────────────────
-Label image upload            Compare extracted fields          Display per-field
-→ Claude Vision API     →     against user-entered        →    pass / review / fail
-→ structured JSON             application data                  with explanation
+┌─────────────────────────────────────────────────────────────────────┐
+│                    AGENT DASHBOARD                                  │
+│  Application Queue → Batch Select → [Process] → Results View       │
+└──────────────────┬──────────────────────────────┬───────────────────┘
+                   │                              │
+         ┌─────────▼──────────┐        ┌─────────▼──────────┐
+         │   STAGE 1 & 2      │        │    STAGE 6         │
+         │   Ingestion        │        │    Reports         │
+         │  form PDF + image  │        │ Approve/Deny/Exempt │
+         │  → workingfiles DB │        │  batch summary     │
+         └─────────┬──────────┘        └─────────▲──────────┘
+                   │                              │
+         ┌─────────▼──────────┐        ┌─────────┴──────────┐
+         │   STAGE 3          │        │    STAGE 5         │
+         │   Form Assessment  │        │    Comparison      │
+         │  Claude Text API   │        │  form params vs    │
+         │  → form_parameters │        │  label params      │
+         └─────────┬──────────┘        └─────────▲──────────┘
+                   │                              │
+         ┌─────────▼──────────────────────────────┴──────────┐
+         │                    STAGE 4                         │
+         │              Label Assessment                      │
+         │         Claude Vision API (image)                  │
+         │              → label_parameters                    │
+         └────────────────────────────────────────────────────┘
 ```
 
-**Stage 1 — Image to Fields:** A vision-capable LLM extracts structured label data from the uploaded image. This approach handles varied image quality, non-standard fonts, and diverse label layouts far better than a traditional OCR + regex pipeline. The model is prompted to return a strict JSON schema.
+---
 
-**Stage 2 — Fields vs. Application:** Pure Python comparison logic with tolerance rules applied per field type:
-- Brand name: case-insensitive, punctuation-normalized (handles Dave Morrison's "STONE'S THROW" case)
-- ABV: numeric extraction and comparison (handles `"45%"` vs `"45% Alc./Vol. (90 Proof)"`)
-- Government Warning: exact text match after normalization; separate formatting flag for all-caps "GOVERNMENT WARNING:"
-- All other fields: normalized string comparison with whitespace/case tolerance
+#### Stage 1 — Ingest Application Form
 
-**Stage 3 — Results to User:** Clear, color-coded per-field output. ✅ green / ⚠️ yellow / ❌ red. Plain English explanations. No jargon. No hunting for information.
+- Accept TTB F 5100.31 PDF upload (single or batch)
+- Record in `applications` table: file path, upload timestamp, status = `PENDING`
+- Accept manual metadata override (serial number, applicant name) for dashboard display before extraction completes
 
-### 3.2 Design Decisions
+#### Stage 2 — Ingest Label Artwork
 
-**Decision 1: Streamlit over custom React/Next.js**
-- *Rationale:* Prototype scope; Streamlit delivers a functional, accessible, browser-based UI in significantly less code with no frontend build toolchain; deploys to a public URL in one command.
-- *Trade-off:* Less flexibility for future branding or COLA workflow integration. Not production architecture.
-- *Alternative considered:* FastAPI + React — adds build complexity with no prototype benefit.
+- Accept image upload(s), associated with an application by serial number or UI pairing
+- One application may have multiple label images (brand label, back label, neck label)
+- Store in `label_images` table: image path, application_id, upload timestamp
+- Status → `PENDING_ASSESSMENT`
 
-**Decision 2: Claude Vision (claude-sonnet-4-6) for field extraction**
-- *Rationale:* Typical response 1–3 seconds — well within the 5-second hard constraint. Handles degraded image quality (Jenny Park's concern) naturally. Returns structured JSON via tool use. Accurate on mixed-font label layouts without pre-training.
-- *Trade-off:* Requires an API key and internet access. Acceptable for a prototype; Marcus Williams acknowledged the firewall concern applies to production, not POC.
-- *Alternative considered:* Tesseract OCR — offline-friendly but struggles with varied label fonts, angles, and multi-column layouts.
+#### Stage 3 — Form Assessment
 
-**Decision 3: Stateless / no database**
-- *Rationale:* Marcus Williams explicitly stated no sensitive data storage is required for the prototype. Stateless design is simpler, avoids all PII compliance questions, and is appropriate for the POC scope.
-- *Trade-off:* No audit history or result persistence.
-- *Production note:* A real deployment would require audit logging per federal document retention policy.
+**Method:** Send the form PDF to Claude via the API (as base64 image or extracted text via pdfplumber). Prompt for structured JSON extraction of **every Part I field (Items 1–18, including 8a)** in a single pass — not just the fields used in comparison (FR-010). Fields blank on the form are extracted as `null`, never omitted (FR-011).
 
-**Decision 4: Sequential batch processing (for batch feature)**
-- *Rationale:* Process labels one at a time with a progress bar; simpler for prototype scope.
-- *Trade-off:* Not parallelized. For 200-label batches, total time would be 200 × ~3s = ~10 minutes. Acceptable as a first version; async worker queue is the production path.
+**Output schema (per application):**
+```json
+{
+  "representative_id": "...",
+  "plant_registry_number": "BW-...",
+  "source": "domestic|imported",
+  "serial_number": "26-1",
+  "product_type": "wine|distilled_spirits|malt_beverages",
+  "brand_name": "...",
+  "fanciful_name": "...",
+  "applicant_name": "...",
+  "applicant_address": "...",
+  "mailing_address": "...",
+  "formula_id": "...",
+  "grape_varietals": [...],
+  "wine_appellation": "...",
+  "phone_number": "...",
+  "email_address": "...",
+  "application_type": {
+    "checked": ["14a"],
+    "exemption_state": null,
+    "container_capacity": null,
+    "prior_ttb_id": null
+  },
+  "embossed_info": "...",
+  "foreign_translations": "...",
+  "date_of_application": "...",
+  "signature_present": true,
+  "applicant_printed_name": "...",
+  "confidence_scores": {
+    "plant_registry_number": 0.97,
+    "brand_name": 0.99,
+    "...": "one entry per field above (FR-016)"
+  }
+}
+```
+
+Store in `form_parameters`. Status → `FORM_ASSESSED`.
+
+#### Stage 4 — Label Assessment
+
+**Method:** For **every label image** associated with the application (FR-030) — brand, back, neck, or other — send the image to Claude Vision API independently. Prompt for structured JSON extraction of **everything visible on that image** in a single pass — all TTB-required mandatory elements (FR-031), all comparison-relevant secondary elements (FR-032), and any remaining text as a generic catch-all (FR-033) — not just the fields used in comparison. Vision model handles varied image quality (angle, glare, lighting). Per A-11, the per-image calls for one application are issued concurrently to stay within the PR-001 5-second budget.
+
+**Per-image output schema:**
+```json
+{
+  "label_image_id": 42,
+  "label_type": "brand|back|neck|other",
+  "brand_name": {"value": "...", "confidence": 0.98, "location_hint": "top-center"},
+  "fanciful_name": {"value": "...", "confidence": 0.95, "location_hint": "..."},
+  "class_type_designation": {"value": "...", "confidence": 0.97, "location_hint": "..."},
+  "alcohol_content": {"value": "...", "confidence": 0.99, "location_hint": "..."},
+  "net_contents": {"value": "...", "confidence": 0.99, "location_hint": "..."},
+  "bottler_name": {"value": "...", "confidence": 0.96, "location_hint": "..."},
+  "bottler_address": {"value": "...", "confidence": 0.94, "location_hint": "..."},
+  "country_of_origin": {"value": "...", "confidence": 0.97, "location_hint": "..."},
+  "government_warning": {
+    "text_present": true,
+    "header_caps_bold": true,
+    "text_exact_match": true,
+    "text_found": "GOVERNMENT WARNING: ...",
+    "confidence": 0.99,
+    "location_hint": "bottom"
+  },
+  "grape_varietals": {"value": [...], "confidence": 0.95, "location_hint": "..."},
+  "wine_appellation": {"value": "...", "confidence": 0.94, "location_hint": "..."},
+  "vintage_date": {"value": "...", "confidence": 0.93, "location_hint": "..."},
+  "age_statement": {"value": "...", "confidence": 0.92, "location_hint": "..."},
+  "for_sale_in_state": {"value": "...", "confidence": 0.98, "location_hint": "..."},
+  "other_text": [
+    {"value": "UPC: 012345678905", "confidence": 0.90, "location_hint": "bottom"},
+    {"value": "Drink Responsibly", "confidence": 0.92, "location_hint": "center"}
+  ]
+}
+```
+
+Fields with no corresponding element on this image are returned with `"value": null` rather than omitted, mirroring FR-011 on the form side. `other_text` may be an empty array. Every field is written to `label_parameters` as one row per `(label_image_id, field_name)`, so the same field may have multiple rows across images (FR-038).
+
+**Aggregation:** once all of an application's images have been extracted, Stage 5 queries `label_parameters` across all `label_image_id`s for the application — there is no separate merge step or table; "does the label set contain X" is simply "does any row for this application have `field_name = X` and a non-null value."
+
+Store in `label_parameters`. Status → `LABEL_ASSESSED` once all images for the application have been processed.
+
+#### Stage 5 — Comparison
+
+Apply comparison matrix (Section 2.6) to each field pair. For each form field, search `label_parameters` across **all** of the application's `label_image_id`s (FR-038) — a field is "on the label" if any image reports a non-null value for it.
+
+Per-field result:
+```
+MATCH            — a value agreeing with the form (within tolerance) is found on at least one label image
+HARD_FAILURE     — mandatory mismatch not in Allowable Revisions, on every image where the field appears (or absent from all)
+POSSIBLE_ALLOWABLE — mismatch present but falls within Section V revision types
+MISSING_FROM_LABEL — field required but not found on ANY of the application's label images
+MISSING_FROM_FORM  — field not present on form (N/A or optional)
+```
+
+**Multi-image resolution (A-10):** if any image's value matches the form → `MATCH`, with `label_image_id` set to that image (used for annotation placement). If the field appears on one or more images but none match → classify the mismatch (`HARD_FAILURE`/`POSSIBLE_ALLOWABLE`) using the highest-confidence non-null candidate, with `label_image_id` set accordingly. If no image reports the field at all → `MISSING_FROM_LABEL`.
+
+Government Warning check:
+1. Is the warning present on any label image? → if not: HARD_FAILURE
+2. On the image where it is found, is "GOVERNMENT WARNING:" in ALL CAPS and BOLD? → if not: HARD_FAILURE
+3. Does its text match statutory 27 CFR § 16.21 text? → if not: HARD_FAILURE
+
+Brand name check:
+1. Normalize: strip whitespace, lowercase, collapse punctuation
+2. If any image's normalized value matches the form → MATCH
+3. If no image matches → evaluate the closest candidate: is it a case/punctuation-only difference → POSSIBLE_ALLOWABLE; otherwise HARD_FAILURE
+
+Type 14b check:
+- If 14b checked and product_type is "malt_beverages" → HARD_FAILURE (exemptions not issued for malt)
+- If 14b checked and source is "imported" → HARD_FAILURE (exemptions not issued for imports)
+- If 14b checked → at least one label image must contain "For sale in [STATE] only"
+
+Store all results in `comparisons`. Status → `COMPARED`.
+
+#### Stage 6 — Determination Report
+
+**Logic:**
+```
+if any HARD_FAILURE → recommendation = DENY
+  → list all hard failures with field names and values
+else if any POSSIBLE_ALLOWABLE → recommendation = RECOMMEND_EXEMPTION_REVIEW
+  → list allowable-revision candidates with applicable Section V item numbers
+else → recommendation = APPROVE
+```
+
+**Report structure per application:**
+```json
+{
+  "application_id": "...",
+  "serial_number": "...",
+  "brand_name": "...",
+  "recommendation": "APPROVE|DENY|RECOMMEND_EXEMPTION_REVIEW",
+  "parameter_results": [
+    {
+      "field": "brand_name",
+      "form_value": "OLD TOM DISTILLERY",
+      "label_value": "Old Tom Distillery",
+      "result": "POSSIBLE_ALLOWABLE",
+      "section_v_reference": "3b",
+      "note": "Case difference only — Allowable Revision per F 5100.31 Section V item 3b"
+    },
+    ...
+  ],
+  "hard_failures": [...],
+  "allowable_revisions_flagged": [...],
+  "overall_confidence": 0.97,
+  "processed_at": "2026-06-09T14:58:00Z"
+}
+```
+
+**Batch summary report:**
+- Total processed, Approved count, Denied count, Exemption Review count
+- Sorted list of applications with individual results
+- Common failure types across batch (for pattern detection)
+
+Store in `determinations`. Status → `COMPLETE`.
+
+---
+
+### 3.2 UI Architecture
+
+#### Agent Dashboard
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  TTB Label Verification System           [Agent: Sarah Chen ▾]   │
+├──────────────────────────────────────────────────────────────────┤
+│  Pending Applications (47)                        [Upload New +] │
+├──────────────────────────────────────────────────────────────────┤
+│  ☐  Filter by applicant: [________________]  Sort: [Date ▾]     │
+├─────┬──────────────────┬──────────┬──────────┬──────────────────┤
+│  ☑  │ Old Tom Distillery│ 26-1    │ Spirits  │ ● Pending        │
+│  ☑  │ Old Tom Distillery│ 26-2    │ Spirits  │ ● Pending        │
+│  ☐  │ Blue Ridge Winery │ 26-14   │ Wine     │ ● Pending        │
+│  ☐  │ Blue Ridge Winery │ 26-15   │ Wine     │ ● Pending        │
+│  ☐  │ Metro Brewing Co  │ 26-8    │ Malt     │ ✅ Approved      │
+├─────┴──────────────────┴──────────┴──────────┴──────────────────┤
+│  [☑ Process Selected (2)]                                        │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+#### Batch Processing State
+
+While processing, a progress panel replaces the button:
+- Progress bar: "Processing 2 of 2..."
+- Individual application spinners
+- On completion: dashboard refreshes with result badges
+
+#### Application Detail View (Post-Processing)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  App 26-1 · Old Tom Distillery · Spirits   [ ❌ DENY ]  [< Back]│
+├────────────────────────────────┬─────────────────────────────────┤
+│  TTB FORM F 5100.31            │  LABEL ARTWORK                  │
+│  ┌──────────────────────────┐  │  ┌───────────────────────────┐  │
+│  │  Brand: OLD TOM DIST...  │  │  │                           │  │
+│  │  [red ellipse on field]  │  │  │   [image with red ellipse │  │
+│  │  Type: Distilled Spirits │  │  │    on brand name area]    │  │
+│  │  ABV: 45% Alc./Vol.      │  │  │                           │  │
+│  │  ...                     │  │  └───────────────────────────┘  │
+│  └──────────────────────────┘  │                                 │
+├────────────────────────────────┴─────────────────────────────────┤
+│  PARAMETER RESULTS                                               │
+│  ✅ Brand Name      MATCH       "Old Tom Distillery" (case ok)   │
+│  ✅ Product Type    MATCH       Distilled Spirits                │
+│  ✅ ABV             MATCH       45% Alc./Vol.                    │
+│  ❌ Govt Warning    HARD FAIL   Header not in ALL CAPS BOLD      │
+│  ✅ Net Contents    MATCH       750 mL                           │
+│  ✅ Bottler Address MATCH       123 Main St, Louisville KY       │
+├──────────────────────────────────────────────────────────────────┤
+│  SUMMARY: 1 hard failure · Recommendation: DENY                  │
+│  [Override Recommendation ▾]   [Finalize]                       │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Annotation behavior:**
+- Red ellipses rendered as SVG overlays on both the PDF renderer and the image viewer
+- SVG overlay coordinates derived from `location_hint` values in `label_parameters` (relative: top/bottom/left/center/etc.) and from form field bounding boxes
+- Mouse-over on a red ellipse: corresponding ellipse on opposite panel glows yellow (cross-document highlight)
+- Right-click on any parameter row: context menu → "Override this determination" → modal with reason field
+
+#### Batch Report View
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Batch Report · Processed 2026-06-09 14:58                       │
+│  ✅ Approved: 0  ❌ Denied: 2  ⚠️ Exemption Review: 0            │
+├──────────────────────────────────────────────────────────────────┤
+│  App 26-1 · Old Tom Distillery    ❌ DENY   [View Details]       │
+│  App 26-2 · Old Tom Distillery    ❌ DENY   [View Details]       │
+├──────────────────────────────────────────────────────────────────┤
+│  Common failures: Government Warning format (2 apps)             │
+│  [Export CSV]  [Export PDF Report]                               │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 3.3 Database Schema (SQLite — workingfiles DB)
+
+```sql
+-- Agents (simple auth for prototype)
+CREATE TABLE agents (
+    id          INTEGER PRIMARY KEY,
+    username    TEXT UNIQUE NOT NULL,
+    display_name TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Applications (one per TTB F 5100.31 form)
+CREATE TABLE applications (
+    id              INTEGER PRIMARY KEY,
+    serial_number   TEXT,
+    year            TEXT,
+    form_path       TEXT,
+    product_type    TEXT,   -- wine|distilled_spirits|malt_beverages
+    source          TEXT,   -- domestic|imported
+    brand_name      TEXT,
+    applicant_name  TEXT,
+    application_type TEXT,  -- 14a|14b|14c|14d
+    assigned_agent_id INTEGER REFERENCES agents(id),
+    status          TEXT DEFAULT 'PENDING',  -- PENDING|FORM_ASSESSED|LABEL_ASSESSED|COMPARED|COMPLETE
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processed_at    DATETIME
+);
+
+-- Label images (multiple per application)
+CREATE TABLE label_images (
+    id              INTEGER PRIMARY KEY,
+    application_id  INTEGER REFERENCES applications(id),
+    image_path      TEXT,
+    label_type      TEXT,   -- brand|back|neck|other
+    uploaded_at     DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Extracted form parameters
+CREATE TABLE form_parameters (
+    id              INTEGER PRIMARY KEY,
+    application_id  INTEGER REFERENCES applications(id),
+    field_name      TEXT,
+    field_value     TEXT,
+    confidence      REAL,
+    extracted_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Extracted label parameters
+CREATE TABLE label_parameters (
+    id              INTEGER PRIMARY KEY,
+    application_id  INTEGER REFERENCES applications(id),
+    label_image_id  INTEGER REFERENCES label_images(id),
+    field_name      TEXT,
+    field_value     TEXT,
+    confidence      REAL,
+    location_hint   TEXT,  -- relative position for annotation placement
+    extracted_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Per-field comparison results
+CREATE TABLE comparisons (
+    id              INTEGER PRIMARY KEY,
+    application_id  INTEGER REFERENCES applications(id),
+    field_name      TEXT,
+    form_value      TEXT,
+    label_value     TEXT,
+    result          TEXT,  -- MATCH|HARD_FAILURE|POSSIBLE_ALLOWABLE|MISSING_FROM_LABEL|MISSING_FROM_FORM
+    section_v_ref   TEXT,  -- e.g., "3b" if allowable revision applies
+    note            TEXT,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Overall determinations (one per application)
+CREATE TABLE determinations (
+    id                  INTEGER PRIMARY KEY,
+    application_id      INTEGER REFERENCES applications(id),
+    recommendation      TEXT,  -- APPROVE|DENY|RECOMMEND_EXEMPTION_REVIEW
+    hard_failures_json  TEXT,
+    allowable_json      TEXT,
+    agent_override      TEXT,  -- null|APPROVE|DENY|RECOMMEND_EXEMPTION_REVIEW
+    override_by         INTEGER REFERENCES agents(id),
+    override_reason     TEXT,
+    override_at         DATETIME,
+    finalized_at        DATETIME,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Batch processing runs
+CREATE TABLE batches (
+    id              INTEGER PRIMARY KEY,
+    name            TEXT,
+    application_ids TEXT,  -- JSON array
+    approved_count  INTEGER DEFAULT 0,
+    denied_count    INTEGER DEFAULT 0,
+    exemption_count INTEGER DEFAULT 0,
+    summary_json    TEXT,
+    created_by      INTEGER REFERENCES agents(id),
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at    DATETIME
+);
+```
+
+---
+
+### 3.4 API Surface (FastAPI)
+
+```
+POST   /auth/login                          → JWT token
+GET    /applications                         → paginated list (filtered by agent)
+POST   /applications/upload                  → upload form PDF + label images
+GET    /applications/{id}                    → full application detail
+GET    /applications/{id}/comparisons        → per-field results
+POST   /applications/{id}/process            → trigger single-app pipeline
+POST   /batch/process                        → { application_ids: [...] }
+GET    /batch/{id}/status                    → processing status + results
+GET    /batch/{id}/report                    → batch summary report
+POST   /determinations/{id}/override         → { field, override_value, reason }
+POST   /determinations/{id}/finalize         → save final agent determination
+```
 
 ---
 
 ## 4. Tools & Technology Rationale
 
-| Tool / Library | Version | Purpose | Rationale |
-|----------------|---------|---------|-----------|
-| Python | 3.11+ | Primary language | Mature AI/ML ecosystem; standard for rapid prototyping |
-| Streamlit | latest | Web UI | Minimal setup; browser-based; designed for data apps and prototypes; accessible to non-technical users |
-| Anthropic Python SDK | latest | Claude API client | Official SDK for claude-sonnet-4-6 vision access |
-| Claude Sonnet (claude-sonnet-4-6) | claude-sonnet-4-6 | Vision + NLP | Sub-3s response; handles degraded images; structured JSON output via tool use |
-| Pillow (PIL) | latest | Image preprocessing | Format normalization, resize before API submission |
-| python-dotenv | latest | Environment config | Secure API key management via `.env` |
-| pytest | latest | Unit testing | Tests for comparator and validator logic |
+### 4.1 Technology Stack
+
+| Layer | Tool / Library | Version | Purpose | Rationale |
+|-------|----------------|---------|---------|-----------|
+| **Backend** | Python | 3.11+ | Primary language | Mature AI/data ecosystem; fast to prototype |
+| **Backend** | FastAPI | latest | REST API server | Async, fast, auto-generates OpenAPI docs |
+| **Backend** | SQLAlchemy | 2.x | ORM | Clean DB access; easy migration to PostgreSQL |
+| **Backend** | SQLite | built-in | Database | Zero-setup for prototype; file-based persistence |
+| **Backend** | Anthropic Python SDK | latest | Claude API client | Official SDK |
+| **Backend** | Claude Sonnet (claude-sonnet-4-6) | claude-sonnet-4-6 | Form + label AI extraction | Sub-3s response; handles degraded images; structured JSON output via tool use |
+| **Backend** | pdfplumber | latest | PDF text extraction | Backup/complement to Claude for digitally-generated PDFs |
+| **Backend** | Pillow | latest | Image preprocessing | Format normalization before API submission |
+| **Backend** | python-jose + passlib | latest | JWT auth | Simple agent authentication |
+| **Backend** | pytest | latest | Unit tests | Comparator and validator logic |
+| **Frontend** | React + Vite | 18+ / 5+ | UI framework | Component model handles split-view, annotations, state; TypeScript support |
+| **Frontend** | TypeScript | 5+ | Type safety | Prevents runtime errors in complex UI state |
+| **Frontend** | Tailwind CSS | 4.x | Styling | Utility-first; fast to build clean government-appropriate UI |
+| **Frontend** | react-pdf | latest | PDF rendering | Render F 5100.31 form in-browser for split view |
+| **Frontend** | React Query | latest | API state management | Handles polling for batch job completion |
+| **Frontend** | SVG overlay | (custom) | Visual annotations | Red ellipses over PDF and image; cross-document hover highlighting |
+| **Frontend** | Vitest | latest | Frontend unit tests | Component and logic testing |
+| **Deployment** | Railway | — | Backend hosting | Free tier; FastAPI + SQLite file; auto-deploy from GitHub |
+| **Deployment** | Netlify | — | Frontend hosting | Free tier; static React SPA; auto-deploy from GitHub |
+
+### 4.2 Key Design Decisions
+
+**Decision 1: React + FastAPI over Streamlit**
+- *Original choice:* Streamlit (rapid prototype)
+- *Revised to:* React + FastAPI
+- *Rationale:* The required UI — split-view PDF/image rendering, SVG annotation overlays, mouse-over cross-document highlighting, right-click context menus — is not achievable in Streamlit. React's component model makes these features straightforward. FastAPI provides the async processing needed for batch operations.
+- *Trade-off:* More initial setup; mitigated by Vite scaffolding.
+
+**Decision 2: Claude Vision for both form and label extraction**
+- *Rationale:* F 5100.31 forms submitted as scanned PDFs may not have reliable machine-readable text. Claude Vision handles both digitally-generated and scanned PDFs as images, extracting structured data reliably. Label artwork requires vision regardless. Using one model for both simplifies the pipeline and keeps latency predictable.
+- *Fallback:* pdfplumber extracts text from digitally-generated PDFs as a faster, cheaper first pass; Claude is the fallback for scanned/unclear forms.
+- *Performance:* Claude typically returns in 1–3 seconds per document. Form + label extraction for one application: ~3–5 seconds total — within the hard constraint.
+
+**Decision 3: SQLite for prototype database**
+- *Rationale:* Zero setup, file-based, fully capable for prototype scale. SQLAlchemy ORM means migrating to PostgreSQL for production is a single config change.
+- *Trade-off:* Not suitable for concurrent write-heavy production use.
+
+**Decision 4: Location hints rather than pixel coordinates for annotations**
+- *Rationale:* Claude Vision returns semantic location descriptions ("top-center", "bottom-left", "center") rather than exact pixel coordinates. The frontend maps these to SVG overlay regions. Exact pixel mapping would require a secondary computer-vision pass and is out of scope for prototype.
+- *Production path:* Integrate a dedicated OCR engine (e.g., Azure Document Intelligence) to return exact bounding boxes.
+
+**Decision 5: Three-tier determination (Approve / Deny / Recommend Exemption Review)**
+- *Rationale:* The F 5100.31 form's Section V lists 41 types of allowable revisions. A binary Approve/Deny would over-deny legitimate applications with cosmetic differences. Mapping mismatches to Section V items enables the system to flag applications that might qualify for approval without resubmission, routing them to agent judgment rather than blanket denial.
 
 ---
 
 ## 5. Assumptions
 
-| ID | Assumption | Basis / Reasoning |
-|----|-----------|-------------------|
-| A-01 | Internet access is available for the deployed prototype | Marcus Williams' firewall concern is explicitly about production; prototype scope is exempt |
-| A-02 | Anthropic API key provisioned for deployment | Required for Claude Vision; cost is minimal for prototype-level usage |
-| A-03 | Application data (expected values) is manually entered by the agent, not pulled from COLA | Marcus Williams: "No COLA integration for this prototype." |
-| A-04 | Label images are standard photo formats: JPEG, PNG, WebP | Standard for digital label submissions; Assessment README sample uses this assumption |
-| A-05 | Government Warning text is the standard 27 CFR § 16.21 statement | TTB regulation; confirmed by Jenny Park's description of the exact text requirement |
-| A-06 | Case and minor punctuation differences in brand names are acceptable matches | Dave Morrison's example: "STONE'S THROW" vs "Stone's Throw" — human judgment call mapped to normalization rule |
-| A-07 | Font size of Government Warning cannot be measured programmatically from photos | Vision models describe relative appearance; pixel-level font measurement requires known image scale — flagged as visual observation, not hard measurement |
-| A-08 | Batch processing handles labels sequentially with a progress indicator | Prototype scope; parallelization is a production concern |
-| A-09 | The prototype does not need user accounts or session persistence | Standalone POC; no authentication infrastructure required |
-| A-10 | "Country of Origin" field check applies only when the label explicitly indicates import status | Domestic products are not always required to show country of origin; field is checked when present |
+| ID | Assumption | Basis |
+|----|-----------|-------|
+| A-01 | Internet access available for the deployed prototype | Marcus Williams: firewall concern is for production; prototype is standalone |
+| A-02 | Anthropic API key provisioned for deployment | Required for Claude Vision; cost negligible at prototype usage |
+| A-03 | No COLA system integration | Marcus Williams: explicitly out of scope for prototype |
+| A-04 | Label images are JPEG, PNG, or WebP | Standard format for digital label submissions |
+| A-05 | Government Warning text is 27 CFR § 16.21 statutory statement | TTB regulation; confirmed by Jenny Park |
+| A-06 | Case/punctuation brand name differences are POSSIBLE_ALLOWABLE, not hard failures | Dave Morrison's "STONE'S THROW" example; Section V item 3b |
+| A-07 | Font size of Government Warning is assessed qualitatively by AI (cannot measure px from photos) | Vision models describe relative appearance; pixel measurement requires known image scale |
+| A-08 | Application forms are submitted as PDF files in TTB F 5100.31 format | f510031.pdf provided as the source form |
+| A-09 | Label images are paired with application forms by manual association in the upload UI | No automatic barcode-based pairing in prototype |
+| A-10 | One application may have multiple label images (brand/back/neck) | Common in practice; per FR-030/FR-038, ALL images are extracted independently and a required field is satisfied if found on ANY image — there is no single "primary" comparison image |
+| A-11 | Agent authentication is username/password (no SSO/LDAP for prototype) | Marcus Williams: standalone POC; complex auth is production concern |
+| A-12 | Exemption logic is based on Section V Allowable Revisions and Type 14b applications | F 5100.31 form instructions |
+| A-13 | SVG annotation locations are approximate, derived from AI location hints (not exact pixel bounding boxes) | Production would use Azure Document Intelligence or similar for exact coordinates |
+| A-14 | Agent override is recorded with reason but does not re-run the AI pipeline | Override is a manual correction layer on top of AI output |
+| A-15 | Country of origin check applies only when Item 3 is checked "Imported" | Domestic products not required to show country of origin |
+| A-16 | The prototype handles Type 14a and 14b applications; 14c (distinctive bottle) and 14d (resubmission) are noted but not fully validated | Time-constraint prioritization; 14c/14d are edge cases |
+| A-17 | Batch processing is sequential (one application at a time) with a progress indicator | Prototype scope; production would use async task queue (Celery/RQ) |
+| A-18 | When a required field's value is found on multiple label images with differing values, any image whose value matches the form satisfies the requirement (MATCH); only when no image matches is a discrepancy reported, using the highest-confidence non-null candidate for the failure report and annotation | Real labels legitimately repeat (or vary) text across front/back/neck panels — penalizing an application because one panel differs while another matches would be a false failure |
+| A-19 | Within a single application, the per-image Stage 4 vision calls are issued concurrently (not sequentially) so total label-extraction time stays within the PR-001 5-second budget regardless of image count | Sequential per-image calls would multiply latency linearly with the number of label images submitted |
 
 ---
 
 ## 6. Engineering Log
 
-### 2026-06-09 — Session 1: Assessment Intake & Project Setup
+### 2026-06-09 — Session 1: Assessment Intake & Initial Setup
 
 **Completed:**
-- Read and analyzed all three assessment source documents
-- Extracted and prioritized requirements from four stakeholder interview narratives
-- Identified the 5-second response constraint as a hard design driver (informed model selection)
-- Identified the Government Warning format check as the highest-precision requirement
-- Decided on technical stack: Python + Streamlit + Claude claude-sonnet-4-6 Vision
-- Initialized git repository in `projects/1.Active/Treasury_Assessment/`
-- Created public GitHub repository: `gratefulgabe5000/ttb-label-verifier`
-- Authored `README.md` (setup + run instructions, architecture overview)
-- Authored `_DevLog/DevLog.md` (this file — requirements analysis, approach, assumptions)
-- Created `.gitignore` for Python/Streamlit project
+- Analyzed all three initial source documents (notification email, submission form, assessment README)
+- Extracted and prioritized requirements from four stakeholder interview transcripts
+- Decided initial tech stack: Python + Streamlit + Claude Vision (later revised)
+- Initialized git repository: `projects/1.Active/Treasury_Assessment/`
+- Created public GitHub repo: `gratefulgabe5000/ttb-label-verifier`
+- Authored initial `README.md` and `_DevLog/DevLog.md`
 
-**Open questions / next session:**
-- Confirm Streamlit Community Cloud as deployment target (vs. Railway, Render, HuggingFace Spaces)
-- Define the exact JSON schema the extraction prompt will return
-- Decide whether to use Claude tool use or structured output mode for extraction
-- Write `app/label_extractor.py` — core extraction module
-- Write `app/field_comparator.py` — comparison logic with tolerance rules
-- Write `app/warning_validator.py` — government warning exact-match validator
-- Write `app/main.py` — Streamlit UI
-- Create test labels for validation (AI-generated per assessment suggestion)
+---
+
+### 2026-06-09 — Session 2: Form Analysis & Full Architecture Design
+
+**New source analyzed:**
+- `f510031.pdf` — TTB Form F 5100.31 (04/2023): complete field reference, application types, conditions, instructions, and Allowable Revisions table (Section V, 41 items)
+
+**Architecture decisions made:**
+- Revised tech stack from Streamlit → React + Vite + FastAPI + SQLite
+  - Reason: split-view UI, SVG annotations, right-click overrides require full React frontend
+- Defined 6-stage processing pipeline (Ingest Form → Ingest Label → Form Assessment → Label Assessment → Compare → Determine)
+- Defined three-outcome determination logic (Approve / Deny / Recommend Exemption Review)
+- Mapped all Form F 5100.31 fields to label elements (comparison matrix)
+- Mapped Section V Allowable Revisions to `POSSIBLE_ALLOWABLE` classification
+- Designed database schema (8 tables)
+- Designed REST API surface (10 endpoints)
+- Designed all three UI views (Dashboard, Detail, Batch Report)
+- Updated DevLog and README to reflect revised design
+
+**Open items for next session:**
+- Scaffold React + Vite frontend project (`web/`)
+- Scaffold FastAPI backend project (`app/`)
+- Implement Stage 3: form assessment (Claude prompt + parser)
+- Implement Stage 4: label assessment (Claude vision prompt + parser)
+- Implement Stage 5: comparison engine
+- Create synthetic test data: sample F 5100.31 PDFs + label images
+- Write unit tests for comparison logic and government warning validator
+
+---
+
+### 2026-06-09 — Session 3: INCOSE PRD & Comprehensive Extraction Revision
+
+**Completed:**
+- Authored `_DevLog/PRD.md`, an INCOSE-style Product Requirements Document (Document ID `TTB-LVS-PRD-001`), covering product description, operational concept, stakeholder needs and user stories (US-001–003), system boundary, 68 SHALL requirements (FR/PR/IR/UR/SR/CR), traceability matrix, assumptions, and glossary
+- **Design correction (extraction scope):** initial draft of FR-010–020 (Form Assessment) and FR-030–040 (Label Assessment) only specified extraction of the subset of fields used directly in comparison — Items 12 (Phone) and 13 (Email) were absent entirely, and several other Part I items (1, 4, 8a, 9, 15–18) were not covered
+- Replaced FR-010–020 with FR-010–016: a single comprehensive-extraction requirement covering all 18 Part I items (FR-010), explicit null-handling for blank fields (FR-011), normalization/parsing requirements for fields needing structured handling (FR-012–015), and confidence scoring (FR-016)
+- Replaced FR-030–040 with FR-030–036 on the same principle: one extraction pass covering all mandatory label elements (FR-030), comparison-relevant secondary elements (FR-031), and a generic `other_text` catch-all for anything else visible on the label (FR-032), plus the existing government-warning formatting checks, location hints, and confidence scoring
+- Updated traceability matrix entries to `FR-010–016` and `FR-030–036`
+- Updated Stage 3 and Stage 4 output schemas (Section 3.1 above) to match: Stage 3 now lists all 18 Part I fields plus a `confidence_scores` map; Stage 4 adds `grape_varietals`, `wine_appellation`, `vintage_date`, `age_statement`, and `other_text`
+
+**Rationale:** a single comprehensive extraction pass per document — rather than re-querying for additional fields later — is both more efficient (fewer AI calls against the 5-second budget) and produces a complete digital record of each application for audit purposes, independent of which fields happen to be used in today's comparison logic.
+
+**Design correction (multi-image label processing):** the original design treated one label image as the "primary" comparison source per application (A-10, prior wording). Corrected so that:
+- FR-030–038 (Label Assessment) now require Stage 4 extraction to run independently for **every** label image associated with an application, with each extracted element tagged by its source `label_image_id`
+- A required form field is satisfied if a matching value is found on **any** of the application's label images — the other images exist precisely to satisfy requirements the primary/front label doesn't carry (e.g., Government Warning and bottler address are commonly back-label content)
+- FR-050, FR-053–056 (Comparison) reworded to search across the full image set rather than "the label" (singular)
+- Added A-18 (multi-image value-conflict resolution: any matching image satisfies the requirement) and A-19 (per-image Stage 4 calls run concurrently to preserve the PR-001 5-second budget)
+- Updated Stage 4/5 pipeline description (Section 3.1): Stage 4 now produces one extraction result per label image; Stage 5 queries across all of an application's `label_image_id`s rather than a single label dataset
+- Traceability matrix updated to `FR-030–038`
+
+**Open design question carried to Session 4 (systems engineering pass):** the Application Detail View (FR-080–090) was designed around a single form-panel/label-panel split view. With multiple label images per application, the UI needs a way to display/select among them (tabs, thumbnail strip, or stacked panels) so the agent can see which image a given annotation refers to. To be resolved during tomorrow's architecture review.
 
 ---
 
 ## 7. Chat Artifact Index
 
-This section indexes all development session transcripts exported as artifacts. Files are stored alongside this DevLog in `_DevLog/`.
+Development session transcripts are stored in `_DevLog/` alongside this DevLog.
 
-| File | Date | Session Description |
-|------|------|---------------------|
-| `2026-06-09_session-01_setup.md` | 2026-06-09 | Assessment intake, requirements analysis, project setup, repo initialization |
+| File | Date | Description |
+|------|------|-------------|
+| `2026-06-09_session-01_setup.md` | 2026-06-09 | Assessment intake, initial requirements extraction, repo initialization |
+| `2026-06-09_session-02_architecture.md` | 2026-06-09 | Form F 5100.31 analysis, full architecture design, DB schema, API design |
 | _(future sessions appended here)_ | | |
 
 ---

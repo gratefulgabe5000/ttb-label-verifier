@@ -1,4 +1,4 @@
-# TTB AI Label Verification Tool
+# TTB Label Verification System
 
 **US Department of Treasury — Take-Home Assessment**  
 *IT Specialist (AI) · Position 26-DO-12891471-DH*  
@@ -8,17 +8,18 @@
 
 ## Overview
 
-An AI-powered web application that assists TTB (Alcohol and Tobacco Tax and Trade Bureau) compliance agents in verifying alcohol beverage label applications. The tool uses computer vision to extract structured data from label images, compares it against application-submitted field values, and surfaces mismatches — reducing the manual verification burden on agents processing ~150,000 COLA applications per year.
+An AI-powered web application that automates the review of COLA (Certificate of Label Approval) applications for the TTB (Alcohol and Tobacco Tax and Trade Bureau). Agents upload TTB Form F 5100.31 (PDF) alongside companion label artwork images. The system extracts structured data from both, compares them parameter-by-parameter, and issues determinations — **Approve**, **Deny**, or **Recommend Exemption Review** — which agents can review, annotate, and override.
 
-**Target users:** TTB compliance agents  
-**Core problem solved:** Agents spend significant time on routine data-entry verification (confirming that what appears on a label matches what was submitted in the application). The tool automates this step.  
-**Hard performance constraint:** Results must return in ≤ 5 seconds per label.
+**Problem:** TTB agents process ~150,000 label applications per year. A significant portion of each review is routine data-entry verification — confirming that a label image matches its application form. The AI handles the comparison; agents handle the judgment.
+
+**Hard constraint:** AI analysis must complete in ≤ 5 seconds per label.
 
 ---
 
 ## Live Demo
 
-> **Deployed Application:** _(link added upon deployment)_
+> **Deployed Application:** _(link added upon deployment)_  
+> **Repository:** https://github.com/gratefulgabe5000/ttb-label-verifier
 
 ---
 
@@ -26,57 +27,93 @@ An AI-powered web application that assists TTB (Alcohol and Tobacco Tax and Trad
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- Python 3.11+ and Node.js 20+
 - An [Anthropic API key](https://console.anthropic.com)
 
-### Installation
+### Backend Setup
 
 ```bash
-git clone https://github.com/gratefulgabe5000/ttb-label-verifier.git
-cd ttb-label-verifier
+cd app
 pip install -r requirements.txt
+cp .env.example .env
+# Add your ANTHROPIC_API_KEY to .env
+uvicorn main:app --reload
+# API runs at http://localhost:8000
 ```
 
-### Configuration
-
-Create a `.env` file in the project root:
-
-```env
-ANTHROPIC_API_KEY=your_api_key_here
-```
-
-### Run Locally
+### Frontend Setup
 
 ```bash
-streamlit run app/main.py
+cd web
+npm install
+npm run dev
+# UI runs at http://localhost:5173
 ```
 
-Opens at `http://localhost:8501`.
+### First Run
+
+1. Open `http://localhost:5173`
+2. Log in as a test agent (credentials in `.env.example`)
+3. Upload a TTB F 5100.31 form PDF and a companion label image
+4. Click **Process** — results appear in ≤ 5 seconds
 
 ---
 
-## Usage
+## Features
 
-1. **Upload a label image** — drag-and-drop or click to browse (JPEG, PNG, WebP)
-2. **Enter application data** — fill in the expected values from the COLA application form
-3. **Verify** — click "Verify Label" to analyze
-4. **Review results** — each field shows ✅ Match, ⚠️ Review, or ❌ Mismatch
+### Core Pipeline
 
-For bulk processing, use the **Batch** tab to upload multiple labels at once.
+1. **Ingest** — Upload TTB Form F 5100.31 (PDF) and one or more companion label artwork images (brand, back, neck, etc.); paired and logged in a local database
+2. **Form Assessment** — AI extracts every field on the application form (all 18 Part I items) in one pass
+3. **Label Assessment** — Claude Vision independently extracts everything visible from **every** label image submitted — not just a single "primary" label — tagging each element with its source image
+4. **Comparison** — Per-field matching against the full set of label images: a required field is satisfied if it's found on *any* of them
+5. **Determination** — Issues Approve / Deny / Recommend Exemption Review with per-field breakdown
+6. **Override** — Agents can right-click any parameter to override the AI determination with a reason
+
+### Agent Dashboard
+
+- List of pending applications assigned to the agent
+- Filter and sort by applicant company name
+- Checkbox batch selection → single **Process** click
+- Result badges (✅ / ❌ / ⚠️) update automatically after processing
+- Batch summary header: X Approvals · Y Denials · Z Exemption Reviews
+
+### Application Detail View
+
+- **Split view:** Form PDF (left) · Label image(s) (right, with selector when multiple images are submitted)
+- **Red ellipses** mark mismatched fields on both documents, anchored to whichever label image the field was found on
+- **Mouse-over** on any annotation highlights the corresponding element on the opposite panel
+- Per-parameter results table with match status and notes
+- Right-click any parameter → **Override** with reason
+- Override overall recommendation before finalizing
 
 ---
 
 ## Verified Fields
 
-| Field | Requirement |
-|-------|-------------|
-| Brand Name | Must match application (case/punctuation tolerant) |
-| Class / Type Designation | Must match application |
-| Alcohol by Volume (ABV) | Must match application |
-| Net Contents | Must match application |
-| Bottler / Producer Name & Address | Must be present and match |
-| Country of Origin | Required for imports |
-| Government Health Warning | Exact statutory text; "GOVERNMENT WARNING:" in all-caps bold |
+| Field | Form Item | Comparison Rule |
+|-------|-----------|----------------|
+| Brand Name | Item 6 | Case/punctuation tolerant; substantive changes = hard failure |
+| Fanciful Name | Item 7 | Normalized match (if present on form) |
+| Source (Domestic/Imported) | Item 3 | Imported → country of origin required on label |
+| Product Type | Item 5 | Must be consistent with class/type on label |
+| Applicant Name & Address | Item 8 | Normalized; in-state address changes = allowable |
+| Grape Varietals | Item 10 | Wine only — all listed must appear on label |
+| Wine Appellation | Item 11 | Must match if stated on form |
+| Type 14b — For sale in STATE | Item 14 | "For sale in [STATE] only" must appear on label |
+| Government Health Warning | — | Exact 27 CFR § 16.21 text; "GOVERNMENT WARNING:" in ALL CAPS BOLD |
+| Alcohol by Volume (ABV) | — | Must be present; consistent with product type |
+| Net Contents | — | Must be present |
+
+> Each field above is satisfied if it appears on **any** of the application's submitted label images — e.g., the Government Warning and bottler address are commonly on the back label, not the front/brand label.
+
+### Determination Logic
+
+| Outcome | Condition |
+|---------|-----------|
+| ✅ **Approve** | All parameters match within tolerance |
+| ❌ **Deny** | One or more hard failures (mandatory mismatch not in Allowable Revisions) |
+| ⚠️ **Recommend Exemption Review** | Mismatches present but all fall within TTB F 5100.31 Section V Allowable Revisions |
 
 ---
 
@@ -84,33 +121,66 @@ For bulk processing, use the **Batch** tab to upload multiple labels at once.
 
 ```
 ┌─────────────────────────────────────┐
-│         Streamlit Web UI            │
-│  (upload · form input · results)    │
+│        React + Vite Frontend        │
+│  Dashboard · Split View · Overrides │
 └──────────────┬──────────────────────┘
-               │
+               │ REST API (JSON)
 ┌──────────────▼──────────────────────┐
-│         Verification Engine         │
-│  label_extractor.py                 │
-│  field_comparator.py                │
-│  warning_validator.py               │
+│         FastAPI Backend             │
+│  Ingestion · Pipeline · Reports     │
+├─────────────────────────────────────┤
+│         SQLite (workingfiles DB)    │
+│  applications · comparisons ·       │
+│  determinations · batches           │
 └──────────────┬──────────────────────┘
                │
 ┌──────────────▼──────────────────────┐
 │      Claude Sonnet Vision API       │
-│  (image → structured JSON fields)   │
+│  Form PDF extraction (Stage 3)      │
+│  Label image extraction (Stage 4)   │
 └─────────────────────────────────────┘
 ```
 
-**Key design decisions:**
-- **Streamlit** — minimal UI complexity, browser-based, accessible to non-technical users, rapid to develop and deploy
-- **Claude Vision** — handles varied image quality (angle, lighting, glare) better than traditional OCR; returns structured JSON; typical response is 1–3 seconds
-- **Stateless / no database** — images and data are processed in-memory and discarded; no PII stored
+**Stack:**
+- Backend: Python · FastAPI · SQLAlchemy · SQLite
+- AI: Claude claude-sonnet-4-6 (Anthropic) — vision + structured JSON extraction
+- Frontend: React · Vite · TypeScript · Tailwind CSS · react-pdf
+- Annotations: Custom SVG overlay for cross-document highlighting
+- Deployment: Railway (API) + Netlify (web)
 
 ---
 
-## Project Documentation
+## Project Structure
 
-- [DevLog — Engineering Notes, Requirements Analysis & Approach](_DevLog/DevLog.md)
+```
+ttb-label-verifier/
+├── app/                    # FastAPI backend
+│   ├── main.py             # App entrypoint
+│   ├── routers/            # API route handlers
+│   ├── services/           # Pipeline stages (extractor, comparator, reporter)
+│   ├── models/             # SQLAlchemy ORM models
+│   ├── schemas/            # Pydantic request/response schemas
+│   ├── db.py               # Database connection
+│   └── requirements.txt
+├── web/                    # React frontend
+│   ├── src/
+│   │   ├── pages/          # Dashboard, ApplicationDetail, BatchReport
+│   │   ├── components/     # SplitView, AnnotationOverlay, ParameterTable
+│   │   └── api/            # React Query hooks
+│   ├── package.json
+│   └── vite.config.ts
+├── _DevLog/
+│   └── DevLog.md           # Engineering log, requirements, architecture
+├── f510031.pdf             # TTB Form F 5100.31 (04/2023) reference
+├── README.md
+└── .gitignore
+```
+
+---
+
+## Documentation
+
+- [DevLog — Full Engineering Notes, Requirements Analysis & Architecture](_DevLog/DevLog.md)
 
 ---
 
