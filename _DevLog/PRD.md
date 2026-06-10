@@ -6,9 +6,9 @@
 | Field | Value |
 |-------|-------|
 | Document ID | TTB-LVS-PRD-001 |
-| Version | 1.0 |
+| Version | 1.1 |
 | Status | Draft |
-| Date | 2026-06-09 |
+| Date | 2026-06-10 |
 | Prepared By | Matthew Gabriel Sizemore |
 | Prepared For | US Department of the Treasury, TTB |
 | Assessment Reference | IT Specialist (AI) · 26-DO-12891471-DH |
@@ -18,6 +18,7 @@
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 1.0 | 2026-06-09 | M.G. Sizemore | Initial release — based on stakeholder interviews, TTB Form F 5100.31, and assessment brief |
+| 1.1 | 2026-06-10 | M.G. Sizemore | Systems engineering pass: added trade studies (DevLog §3.1) for tiered form-data extraction (FR-017) and OpenCV/OCR-assisted label extraction (FR-039, FR-040); added COLA Public Registry references (REF-07–09) and forward-compatible schema fields (FR-018) for future integration; resolved DevLog A-07/A-13 |
 
 ---
 
@@ -75,6 +76,9 @@ This document covers the TTB-LVS prototype submitted as a take-home assessment f
 | REF-04 | Assessment README — Take-Home Project: AI-Powered Alcohol Label Verification App |
 | REF-05 | USA Staffing Office Notification — IT Specialist (AI) · 26-DO-12891471-DH (2026-06-09) |
 | REF-06 | DevLog — TTB-LVS Engineering Log and Architecture Specification |
+| REF-07 | TTB COLA Public Registry overview — https://www.ttb.gov/regulated-commodities/labeling/cola-public-registry |
+| REF-08 | TTB COLAs Online — Public COLA Search (Basic) — https://www.ttbonline.gov/colasonline/publicSearchColasBasic.do |
+| REF-09 | Example COLA registry record (TTB ID 25211001000227) — https://ttbonline.gov/colasonline/viewColaDetails.do?action=publicDisplaySearchBasic&ttbid=25211001000227 |
 
 ---
 
@@ -264,6 +268,8 @@ The following interfaces are explicitly NOT part of the TTB-LVS system boundary:
 - External document storage (S3, SharePoint, etc.)
 - Email or notification systems
 
+**Forward-compatibility note (FR-018):** although no connection to the TTB COLA Public Registry / COLAs Online (ttbonline.gov, REF-07–09) exists or is planned for this prototype, the database schema captures the registry's data fields (TTB ID, Vendor Code, Class/Type Code, Origin Code, registry status, etc. — see DevLog §6) so that a future integration would not require a schema redesign. This is a schema-only accommodation and does not alter the system boundary defined above or assumption A-03.
+
 ---
 
 ## 6. Requirements
@@ -286,13 +292,15 @@ The following interfaces are explicitly NOT part of the TTB-LVS system boundary:
 
 | ID | Requirement | Verification Method |
 |----|-------------|-------------------|
-| FR-010 | The system SHALL extract the value of every field defined in TTB Form F 5100.31 Part I (Items 1 through 18, including Item 8a) in a single AI extraction pass per application, regardless of whether the field is used in downstream comparison logic. | Inspection: after extraction, verify `form_parameters` contains an entry for every Part I item, including items not otherwise referenced in this PRD (e.g., Items 1, 4, 9, 12, 13, 15, 16, 17, 18). |
+| FR-010 | The system SHALL extract the value of every field defined in TTB Form F 5100.31 Part I (Items 1 through 18, including Item 8a) for each application, regardless of whether the field is used in downstream comparison logic. Extraction method is unspecified at this requirement level — see FR-017 for the tiered extraction strategy. | Inspection: after extraction, verify `form_parameters` contains an entry for every Part I item, including items not otherwise referenced in this PRD (e.g., Items 1, 4, 9, 12, 13, 15, 16, 17, 18). |
 | FR-011 | The system SHALL record a field as explicitly empty/null when the corresponding form field is blank on the submitted form, rather than omitting the field from the extraction record. | Test: upload a form with Item 7 (Fanciful Name) blank; confirm `form_parameters` contains a "fanciful_name" entry with a null value. |
 | FR-012 | The system SHALL normalize the Item 3 (Source of Product) extraction to one of: "domestic" or "imported". | Test: upload form with Imported checked; confirm extracted value is "imported". |
 | FR-013 | The system SHALL normalize the Item 5 (Type of Product) extraction to one of: "wine", "distilled_spirits", or "malt_beverages". | Test: upload one form per product type; confirm correct normalized value extracted for each. |
 | FR-014 | The system SHALL parse Item 14 (Type of Application) into its constituent elements: which sub-box(es) (a/b/c/d) are checked; the state abbreviation entered for 14b, if checked; the bottle capacity entered for 14c, if checked; and the prior TTB ID entered for 14d, if checked. | Test: upload forms with each sub-box checked individually; confirm the associated value (state, capacity, or TTB ID) is correctly extracted when present. |
 | FR-015 | The system SHALL extract Item 10 (Grape Varietal(s)) as a list of individual varietal names, for Wine applications. | Test: upload Wine form listing 3 varietals; confirm all 3 extracted as separate list items. |
 | FR-016 | The system SHALL record an extraction confidence score (0.0–1.0) for each extracted form field. | Inspection: verify confidence scores present for every field in `form_parameters` after extraction. |
+| FR-017 | The system SHALL resolve each Part I field via a tiered extraction strategy — (1) AcroForm field read, (2) PDF text-layer extraction, (3) AI vision extraction as fallback — using the first tier that returns a non-null value, and SHALL record which tier resolved each field as its `extraction_method`. | Inspection: process a digitally-completed AcroForm PDF; confirm `form_parameters.extraction_method = "acroform"` for fields present in the form's fields and confidence = 1.0. Process a flattened/scanned PDF; confirm fields fall back to `"pdftext"` or `"ai_vision"` and the system still returns a complete record. |
+| FR-018 | The system SHALL persist, for each application, the COLA Public Registry fields TTB ID, Vendor Code, Class/Type Code, Origin Code, registry status, Total Bottle Capacity, For Sale In, and Qualifications when derivable from the submitted form or label, for forward-compatibility with a future COLAs Online integration (Section 5.3). | Inspection: confirm the `applications` table schema includes columns for each listed field, and that values are populated when present in the source documents. |
 
 #### 6.1.3 Label Assessment
 
@@ -304,9 +312,11 @@ The following interfaces are explicitly NOT part of the TTB-LVS system boundary:
 | FR-033 | The system SHALL record any other text block visible on a label image that does not correspond to a field in FR-031 or FR-032 as a generic "other_text" entry, preserving a complete digital record of that image's content. | Test: process a label image containing a UPC code and a "Drink Responsibly" statement; confirm both appear as `other_text` entries. |
 | FR-034 | The system SHALL determine whether "GOVERNMENT WARNING:" appears in all-capital letters on the label image where it is found. | Test: process a label image with a title-case header; confirm capitalization flag set to false. |
 | FR-035 | The system SHALL determine whether "GOVERNMENT WARNING:" appears in bold formatting on the label image where it is found. | Test: process a label image with a non-bold header; confirm bold flag set to false. |
-| FR-036 | The system SHALL record a relative location hint (e.g., top-center, bottom-left) for each extracted label element, for use in annotation placement. | Inspection: verify `location_hint` field populated for every entry in `label_parameters` after extraction. |
+| FR-036 | The system SHALL record a relative location hint (e.g., top-center, bottom-left) for each extracted label element, for use in annotation placement, and SHALL additionally record a pixel bounding box (`bbox`) for that element when one can be derived (FR-040). When no `bbox` is available, annotation placement SHALL fall back to `location_hint`. | Inspection: verify `location_hint` populated for every entry in `label_parameters` after extraction; verify `bbox` is populated where an OCR fuzzy-match succeeded and `null` otherwise. |
 | FR-037 | The system SHALL record an extraction confidence score (0.0–1.0) for each extracted label element. | Inspection: verify confidence scores present for every entry in `label_parameters` after extraction. |
 | FR-038 | The system SHALL record, for each extracted label element, the identifier of the source label image, and SHALL treat a form field as satisfied by the label set if a matching value is found on **any** of the application's label images, regardless of which image. | Test: upload an application where the brand name is absent from the front label but correctly printed on the back label; confirm the brand name comparison result is MATCH and the result references the back label's `label_image_id`. |
+| FR-039 | The system SHALL apply image preprocessing (deskew/perspective correction, contrast normalization, glare suppression) to each label image before AI vision extraction, to mitigate degraded image quality (angle, glare, lighting). | Test: process a label image photographed at an angle with glare; confirm the preprocessed image is deskewed and glare-suppressed prior to the AI vision call, and that extraction still succeeds for elements visible in the original. |
+| FR-040 | The system SHALL run OCR text and bounding-box detection on each preprocessed label image, and SHALL fuzzy-match each AI-extracted field's text value against the OCR results to derive a pixel `bbox` (FR-036) for that element when a confident match exists. For the Government Warning element, the system SHALL additionally compute the OCR-measured text-height ratio of "GOVERNMENT WARNING:" to surrounding body text as a corroborating signal for FR-035. | Test: process a label image with a "GOVERNMENT WARNING:" header twice the height of surrounding body text; confirm `header_height_ratio ≈ 2.0` and is recorded alongside the FR-035 `header_caps_bold` result. |
 
 #### 6.1.4 Parameter Comparison
 
@@ -448,12 +458,17 @@ Source codes:
 | 27CFR | 27 CFR Part 16 (REF-02) |
 | ASMNT | Assessment README (REF-04) |
 | EMAIL | USA Staffing notification (REF-05) |
+| TS | DevLog Trade Studies TS-01/TS-02 (DevLog §3.1) |
+| COLA | TTB COLA Public Registry (REF-07–09) |
 
 | Requirement ID | Source(s) | User Story |
 |---------------|-----------|-----------|
 | FR-001–007 | ASMNT, F5100 | US-001 |
 | FR-010–016 | F5100 | — |
+| FR-017 | TS, F5100 | — |
+| FR-018 | TS, COLA | — |
 | FR-030–038 | ASMNT, F5100, JP | US-003 |
+| FR-039–040 | TS, JP | US-003 |
 | FR-050–052 | DM | US-002 |
 | FR-053–055 | JP, 27CFR | US-003 |
 | FR-056 | F5100 | — |
@@ -479,13 +494,16 @@ Source codes:
 | A-02 | Assumption | Application forms submitted for prototype testing are in TTB Form F 5100.31 format (04/2023 or later edition). Earlier editions may differ in layout and are not guaranteed to extract correctly. |
 | A-03 | Assumption | The statutory Government Warning text is the 27 CFR § 16.21 standard statement. Specialized product warning text variants are out of scope for the prototype. |
 | A-04 | Assumption | "Exemption" in the context of the system's RECOMMEND EXEMPTION REVIEW outcome refers to mismatches classifiable as Allowable Revisions per F 5100.31 Section V, not to Certificate of Exemption applications (Type 14b) specifically — though Type 14b applications are handled as a special processing path. |
-| A-05 | Assumption | Annotation location hints (location_hint field) are derived from the AI model's semantic descriptions of element positions on the label image. Exact pixel-level bounding boxes are not available without a dedicated document OCR service; the prototype uses region-level approximations (top, bottom, center, left, right). |
+| A-05 | Assumption | Annotation locations use an OCR-derived pixel `bbox` (FR-040) when a confident fuzzy-match exists between an AI-extracted field's value and the OCR text on the preprocessed label image. When no such match exists (e.g., logos, stylized brand fonts), the prototype falls back to the AI model's `location_hint` region-level approximations (top, bottom, center, left, right). |
 | A-06 | Assumption | The prototype handles application types 14a and 14b. Types 14c (distinctive bottle) and 14d (resubmission) are recorded and noted in reports but do not receive specialized comparison logic in the prototype. |
 | A-07 | Assumption | Batch processing is sequential: applications are processed one at a time in queue order. Parallel processing is a production enhancement. |
 | A-08 | Dependency | The system depends on the Anthropic Claude API (claude-sonnet-4-6 model) for AI extraction. API availability and response times are external dependencies not controlled by the TTB-LVS. |
 | A-09 | Dependency | The deployment environment must support Python 3.11+ and Node.js 20+ runtimes. |
 | A-10 | Assumption | Per FR-038, a required field is satisfied if found on any one of an application's label images. If multiple images report differing non-null values for the same field, the system uses the value (and `label_image_id`) that matches the form, if any; otherwise it uses the highest-confidence non-null value for the comparison result and annotation placement. |
 | A-11 | Assumption | Within a single application, Stage 4 extraction calls for each label image may be issued concurrently to keep total per-application AI processing time within the PR-001 5-second target regardless of the number of label images submitted. This is independent of A-07's batch-level sequential processing, which governs ordering across applications, not within one. |
+| A-12 | Assumption | The `applications` table includes COLA Public Registry forward-compatibility fields (TTB ID, Vendor Code, Class/Type Code, Origin Code, registry status, Total Bottle Capacity, For Sale In, Qualifications — FR-018, DevLog §6) so that data captured by this prototype is structurally compatible with a future COLAs Online integration. No live connection to ttbonline.gov exists or is attempted; this is schema-only forward-compatibility, consistent with A-03 of the system boundary (Section 5.3) and CR-001. |
+| A-13 | Assumption | Stage 3 form-field extraction uses a tiered strategy (FR-017, DevLog TS-01): AcroForm field read, then PDF text-layer extraction, then AI vision as fallback. The AcroForm field-name mapping and text-layer region mapping are maintained for TTB Form F 5100.31 (04/2023) specifically (A-02); a future form revision with renamed or relocated fields would rely on the AI vision fallback until the mappings are updated. |
+| A-14 | Dependency | The OpenCV preprocessing and OCR bounding-box extraction (FR-039, FR-040, DevLog TS-02) run locally on the backend, concurrently with each label image's AI vision call, and require the `opencv-python` and `pytesseract` (+ Tesseract OCR engine) dependencies at deployment. These are local CPU operations with no external API calls, so they do not affect PR-001's 5-second budget or A-11's concurrency model. |
 
 ---
 
@@ -494,20 +512,29 @@ Source codes:
 | Term | Definition |
 |------|-----------|
 | **ABV** | Alcohol by Volume. The percentage of alcohol content in an alcohol beverage, expressed as a percentage of total volume. |
+| **AcroForm** | A fillable PDF form format (Adobe Acrobat Forms) with named, machine-readable fields. TTB Form F 5100.31 (04/2023) is an AcroForm with 44 named fields, which Stage 3's Tier 1 extraction (FR-017) reads directly when populated. |
 | **ALFD** | Alcohol Labeling and Formulation Division. The TTB division responsible for reviewing COLA applications. |
 | **Allowable Revision** | A change to an approved label that may be made without resubmitting a new COLA application, as enumerated in Section V of TTB Form F 5100.31. In TTB-LVS, mismatches that correspond to allowable revisions are classified as POSSIBLE_ALLOWABLE. |
+| **bbox (Bounding Box)** | A pixel rectangle (`{x, y, w, h}`) identifying the location of an extracted label element on its source image, derived via OCR fuzzy-matching (FR-040). Used for precise SVG annotation placement; falls back to `location_hint` when unavailable. |
+| **Class/Type Code** | A TTB classification code identifying an alcohol beverage's class and type (e.g., "BEER", "TABLE WINE"), recorded on a COLA registry record and persisted for forward-compatibility (FR-018). |
 | **COLA** | Certificate of Label Approval. The federal approval required before a producer may remove labeled alcohol beverages from a bottling plant for sale. |
+| **COLA Registry / COLAs Online** | The TTB's public registry of approved/expired/surrendered/revoked COLAs (viewable at ttbonline.gov) and the system applicants use to submit F 5100.31 applications. TTB-LVS does not connect to either (A-03, A-12); their data model informs the forward-compatible schema fields described in DevLog §6. |
 | **Determination** | The TTB-LVS output for a processed application. One of three values: APPROVE, DENY, or RECOMMEND EXEMPTION REVIEW. |
+| **Extraction Method** | The tier that resolved a given Stage 3 form field's value: `acroform`, `pdftext`, or `ai_vision` (FR-017, DevLog TS-01). Recorded alongside each field's confidence score. |
 | **F 5100.31** | TTB Form F 5100.31 — Application for and Certification/Exemption of Label/Bottle Approval. The official form applicants submit with their label artwork for COLA review. |
 | **HARD_FAILURE** | A comparison result classification indicating a mandatory field mismatch that does not fall within Allowable Revisions. A single HARD_FAILURE produces a DENY determination. |
 | **Label Artwork** | The visual design of the product label submitted with the COLA application, from which the system extracts parameters for comparison. |
 | **MATCH** | A comparison result classification indicating the form value and label value agree within the applicable tolerance rule for that field. |
 | **MISSING_FROM_FORM** | A comparison result classification indicating a field was not present on the submitted form (not required or not provided). |
 | **MISSING_FROM_LABEL** | A comparison result classification indicating a mandatory or expected field was not found on the label by the AI vision model. |
+| **OCR** | Optical Character Recognition. Used in Stage 4 (FR-040, DevLog TS-02) to detect text and pixel bounding boxes on preprocessed label images, complementing — not replacing — Claude Vision's semantic field extraction. |
+| **Origin Code** | A TTB code identifying a product's state of production (domestic) or country of origin (imported), recorded on a COLA registry record and persisted for forward-compatibility (FR-018). |
 | **Override** | An agent action that replaces the AI's determination for a parameter or for the overall application with the agent's own judgment, accompanied by a mandatory reason. |
 | **POSSIBLE_ALLOWABLE** | A comparison result classification indicating a mismatch was found, but the nature of the discrepancy corresponds to a revision type in F 5100.31 Section V and may not require denial or resubmission. |
 | **TTB** | Alcohol and Tobacco Tax and Trade Bureau. The bureau within the US Department of the Treasury responsible for enforcing federal alcohol labeling laws. |
+| **TTB ID** | A 14-digit identifier assigned by TTB to a COLA submission upon receipt (e.g., `25211001000227`), persisted for forward-compatibility (FR-018, DevLog §6). |
 | **TTB-LVS** | TTB Label Verification System. The product defined by this document. |
+| **Vendor Code** | A numeric code identifying the submitting vendor/permittee in COLAs Online, recorded on a COLA registry record and persisted for forward-compatibility (FR-018). |
 | **Workingfiles DB** | The SQLite database used by TTB-LVS to store all application records, extracted parameters, comparison results, determinations, and override audit records during the processing lifecycle. |
 
 ---
@@ -516,5 +543,5 @@ Source codes:
 
 ---
 
-**TTB Label Verification System — PRD-001 v1.0**  
+**TTB Label Verification System — PRD-001 v1.1**  
 *Copyright (c) 2026 Matthew Gabriel Sizemore · Assessment submission: IT Specialist (AI) · 26-DO-12891471-DH*

@@ -13,11 +13,12 @@
 
 1. [Assessment Overview](#1-assessment-overview)
 2. [Requirements Analysis](#2-requirements-analysis)
-3. [System Design](#3-system-design)
+3. [System Design & Trade Studies](#3-system-design--trade-studies)
 4. [Tools & Technology Rationale](#4-tools--technology-rationale)
 5. [Assumptions](#5-assumptions)
-6. [Engineering Log](#6-engineering-log)
-7. [Chat Artifact Index](#7-chat-artifact-index)
+6. [COLA Registry & Future Integration Reference](#6-cola-registry--future-integration-reference)
+7. [Engineering Log](#7-engineering-log)
+8. [Chat Artifact Index](#8-chat-artifact-index)
 
 ---
 
@@ -51,7 +52,7 @@ Requirements extracted from stakeholder interviews and the assessment brief. Eac
 | FR-01 | Ingest application form (TTB F 5100.31 PDF) and log in workingfiles DB | Design session | **MUST** |
 | FR-02 | Ingest companion label artwork image(s) and pair with application in DB | Design session | **MUST** |
 | FR-03 | Extract all structured parameters from the application form | Design session; Sarah Chen: "checks that what's on the label matches what's in the application" | **MUST** |
-| FR-04 | Extract all structured parameters from the label image via AI vision | Design session; Sarah Chen: "ABV is correct? Check. Government warning is there? Check." | **MUST** |
+| FR-04 | Extract all structured parameters from the label image(s) via AI vision | Design session; Sarah Chen: "ABV is correct? Check. Government warning is there? Check." | **MUST** |
 | FR-05 | Compare form parameters vs label parameters, per field | Design session | **MUST** |
 | FR-06 | Issue per-parameter determination: Match / Mismatch | Design session | **MUST** |
 | FR-07 | Issue overall determination: Approve / Deny / Recommend Exemption Review | Design session | **MUST** |
@@ -227,9 +228,50 @@ Section V of TTB F 5100.31 lists 41 revision types that may be made to an approv
 
 ---
 
-## 3. System Design
+## 3. System Design & Trade Studies
 
-### 3.1 Six-Stage Processing Pipeline
+### 3.1 Trade Studies
+
+Before finalizing the architecture, two trade studies were conducted to test whether the "AI for everything" extraction approach implied by the original design is actually the most effective use of AI — both for staying within the PR-001 5-second budget and for extraction accuracy. The guiding principle: **AI is a hard requirement and remains the system's semantic core (Stage 4 label understanding, and the comparison/determination logic built on top of it) — but AI should not be used where a deterministic method is strictly faster and more accurate.**
+
+#### TS-01: Form Data Extraction Method (Stage 3)
+
+**Question:** Should Stage 3 rely solely on Claude Vision for form-field extraction (original design), or can a more direct method improve speed, cost, and accuracy — given NFR-01's 5-second budget is shared with Stage 4's per-image vision calls?
+
+**Finding:** Direct inspection of `f510031.pdf` (the official TTB Form F 5100.31, 04/2023, included in this repo) shows it is a **fillable AcroForm PDF containing 44 named form fields**, mapping to Part I items 1, 2, 6, 7, 8, 8a, 9, 10, 11, 12, 13, 14a–d (including the 14b state-abbreviation field and serial number/year components), 15, 16, 18, 19, plus checkbox widgets for Domestic/Imported and application type. Applications submitted through TTB's COLAs Online system are completed digitally, so a substantial share of real-world submissions will retain these field values intact.
+
+| Option | Method | Speed | Cost/app | Accuracy | Handles scanned PDFs? |
+|--------|--------|-------|----------|----------|----------------------|
+| A (original) | Claude Vision, full PDF, single pass | 1–3s | 1 API call | High, but probabilistic (OCR-style errors possible on names/numbers) | Yes |
+| B | `pdfplumber` text-layer extraction only | <200ms | $0 | Medium — reading-order and checkbox-state ambiguity on a multi-column form | No |
+| C | AcroForm field read (`pypdf`) | <10ms | $0 | Exact — 100% (verbatim submitted values, real checkbox booleans) | No — fields are empty/absent if the PDF was flattened or scanned |
+| **D — chosen** | **Tiered: C → B → A** | <10ms typical, up to 1–3s on fallback | $0 typical; A only as fallback | Best of all — exact when possible, AI only when necessary | Yes — graceful fallback to A |
+
+**Decision:** Adopt Option D. Each form field is resolved by the first tier that returns a usable (non-null) value: (1) AcroForm field read, (2) `pdfplumber` text-layer extraction mapped to known field regions for the F 5100.31 (04/2023) layout, (3) Claude Vision (current Stage 3 design, unchanged as the universal fallback). The extraction method used for each field is recorded alongside its confidence score (FR-016): Tier 1 → 1.0, Tier 2 → ~0.90–0.95 (typical OCR/text-layer reliability), Tier 3 → Claude's self-reported confidence.
+
+**Impact:** Frees nearly all of the PR-001 5-second budget for Stage 4, since the common case (digitally-filled PDF) resolves Stage 3 in single-digit milliseconds. Stage 3's *output* schema (Section 3.2) is unchanged — every Part I field is still extracted, null-handled, and confidence-scored — only the extraction *method* varies per field. Adds `pypdf` as a new dependency (Section 4.1) and new assumption A-20 (Section 5). Guarantees the system still works end-to-end on any submitted PDF, including fully scanned applications, via the Tier 3 fallback.
+
+#### TS-02: Label Image Extraction Method (Stage 4)
+
+**Question:** Should Stage 4 rely solely on Claude Vision (original design), or can local computer vision/OCR complement it — specifically to address FR-21 (degraded label images: angle, glare, lighting — currently an unaddressed "nice-to-have") and the annotation-precision limitation noted in A-13 (location hints are coarse, exact pixel coordinates deferred to "production, needs Azure Document Intelligence")?
+
+| Option | Method | Semantic field identification | Annotation precision | Degraded-image handling | Cost/latency |
+|--------|--------|-------------------------------|----------------------|--------------------------|--------------|
+| A (original) | Claude Vision only | Excellent — understands layout, distinguishes brand vs. fanciful name vs. marketing copy | Coarse — qualitative `location_hint` strings only | None — raw image sent as-is | 1 API call/image |
+| B | OCR/CV only, no AI | Poor — produces a bag of text with no semantic labels; fails on stylized/decorative label fonts and logos | Good — pixel bounding boxes from OCR | Possible with preprocessing | $0, but **rejected** — AI vision is a hard requirement and is genuinely better at semantic categorization |
+| **C — chosen** | **Claude Vision (semantic, unchanged) + OpenCV preprocessing + OCR bounding-box assist, run concurrently** | Excellent (Claude, unchanged) | Precise — OCR-detected pixel bounding boxes fuzzy-matched to Claude's extracted field values | OpenCV deskew/perspective-correction/CLAHE contrast/glare reduction applied before the Claude call | 1 API call/image + local CPU pass (<1s, run in parallel — does not add to wall-clock time) |
+
+**Decision:** Adopt Option C. Three additions to the existing Stage 4 design, all running locally and concurrently with the per-image Claude Vision call (so PR-001's 5-second budget, and A-19's per-application concurrency model, are unaffected):
+
+1. **OpenCV preprocessing** (deskew via contour/perspective correction, CLAHE contrast normalization, glare suppression) is applied to every label image *before* it is sent to Claude — directly addresses FR-21, which previously had no concrete implementation plan.
+2. **OCR bounding-box assist** (`pytesseract`/Tesseract) runs in parallel with the Claude Vision call, producing raw text plus pixel bounding boxes. Post-processing fuzzy-matches each of Claude's extracted field values against the OCR text to recover a real pixel-coordinate `bbox` for that element — resolving A-13's annotation-precision gap **in the prototype**, without Azure Document Intelligence.
+3. **Government Warning size/weight corroboration:** OCR-measured text height of "GOVERNMENT WARNING:" relative to surrounding body text provides an objective ratio that corroborates Claude's qualitative `header_caps_bold` assessment (FR-035) — strengthening the highest-stakes compliance check (Jenny Park's top concern), partially resolving A-07.
+
+**Impact:** Adds `opencv-python` and `pytesseract` (+ Tesseract OCR engine binary) as new dependencies (Section 4.1). Stage 4's per-element output schema (Section 3.2) gains an optional `bbox` field (pixel rect: `{x, y, w, h}`), populated when OCR finds a confident match; when it doesn't, the frontend falls back to the existing qualitative `location_hint`. New assumption A-21 (Section 5). A-07 and A-13 are updated from "deferred to production" to "addressed in prototype, with stated limits" (Section 5).
+
+---
+
+### 3.2 Six-Stage Processing Pipeline
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -276,7 +318,13 @@ Section V of TTB F 5100.31 lists 41 revision types that may be made to an approv
 
 #### Stage 3 — Form Assessment
 
-**Method:** Send the form PDF to Claude via the API (as base64 image or extracted text via pdfplumber). Prompt for structured JSON extraction of **every Part I field (Items 1–18, including 8a)** in a single pass — not just the fields used in comparison (FR-010). Fields blank on the form are extracted as `null`, never omitted (FR-011).
+**Method (per TS-01, Section 3.1):** Each of the 18 Part I fields (Items 1–18, including 8a) is resolved by the first applicable tier, not a single Claude pass:
+
+1. **Tier 1 — AcroForm field read (`pypdf`, <10ms, $0, confidence 1.0):** `f510031.pdf` is a fillable AcroForm with 44 named fields (TS-01 finding). If the submitted PDF retains these fields with non-empty values — the case for applications completed via TTB's COLAs Online — read them directly.
+2. **Tier 2 — `pdfplumber` text-layer extraction (<200ms, $0, confidence ≈0.90–0.95):** For fields not resolved in Tier 1 (flattened PDFs, or scans that retain a text layer), extract the text layer and map known regions of the F 5100.31 (04/2023) layout to fields.
+3. **Tier 3 — Claude Vision (1–3s, fallback only, confidence = Claude's self-reported value):** For fields still unresolved (fully scanned/image-only PDFs, or ambiguous text-layer regions), send the form PDF to Claude, prompting for structured JSON extraction of every Part I field in a single pass (FR-010).
+
+Fields blank on the form are extracted as `null`, never omitted (FR-011), regardless of which tier resolves them. The tier that resolved each field is recorded as its `extraction_method` (FR-017).
 
 **Output schema (per application):**
 ```json
@@ -311,48 +359,63 @@ Section V of TTB F 5100.31 lists 41 revision types that may be made to an approv
     "plant_registry_number": 0.97,
     "brand_name": 0.99,
     "...": "one entry per field above (FR-016)"
+  },
+  "extraction_methods": {
+    "plant_registry_number": "acroform",
+    "brand_name": "acroform",
+    "...": "one entry per field above — acroform | pdftext | ai_vision (TS-01, A-20, FR-017)"
   }
 }
 ```
 
-Store in `form_parameters`. Status → `FORM_ASSESSED`.
+Store in `form_parameters`, including each field's `extraction_method` (Section 3.4). Status → `FORM_ASSESSED`.
 
 #### Stage 4 — Label Assessment
 
-**Method:** For **every label image** associated with the application (FR-030) — brand, back, neck, or other — send the image to Claude Vision API independently. Prompt for structured JSON extraction of **everything visible on that image** in a single pass — all TTB-required mandatory elements (FR-031), all comparison-relevant secondary elements (FR-032), and any remaining text as a generic catch-all (FR-033) — not just the fields used in comparison. Vision model handles varied image quality (angle, glare, lighting). Per A-11, the per-image calls for one application are issued concurrently to stay within the PR-001 5-second budget.
+**Method (per TS-02, Section 3.1):** For **every label image** associated with the application (FR-030) — brand, back, neck, or other — three things happen per image, with the local CV/OCR work running concurrently with the Claude call so neither adds wall-clock time:
+
+1. **OpenCV preprocessing** (deskew/perspective correction, CLAHE contrast normalization, glare suppression) is applied to the raw image first — addresses FR-039's degraded-image scenarios (angle, glare, lighting), the formalized successor to the original FR-21 "nice-to-have" (Section 2.1).
+2. The preprocessed image is sent to **Claude Vision API** independently, prompted for structured JSON extraction of **everything visible on that image** in a single pass — all TTB-required mandatory elements (FR-031), all comparison-relevant secondary elements (FR-032), and any remaining text as a generic catch-all (FR-033) — not just the fields used in comparison.
+3. **In parallel**, OCR (`pytesseract`/Tesseract, FR-040) runs against the preprocessed image, producing raw text plus pixel bounding boxes. Each of Claude's extracted field values is fuzzy-matched against the OCR text to recover a pixel `bbox` for that element, and the OCR-measured text height of "GOVERNMENT WARNING:" relative to surrounding body text is recorded as `header_height_ratio`, corroborating Claude's `header_caps_bold` assessment (FR-035, A-07).
+
+Per A-11/A-19, the per-image Claude Vision calls for one application are issued concurrently to stay within the PR-001 5-second budget; the OpenCV/OCR pass for each image runs locally and concurrently with that image's Claude call.
 
 **Per-image output schema:**
 ```json
 {
   "label_image_id": 42,
   "label_type": "brand|back|neck|other",
-  "brand_name": {"value": "...", "confidence": 0.98, "location_hint": "top-center"},
-  "fanciful_name": {"value": "...", "confidence": 0.95, "location_hint": "..."},
-  "class_type_designation": {"value": "...", "confidence": 0.97, "location_hint": "..."},
-  "alcohol_content": {"value": "...", "confidence": 0.99, "location_hint": "..."},
-  "net_contents": {"value": "...", "confidence": 0.99, "location_hint": "..."},
-  "bottler_name": {"value": "...", "confidence": 0.96, "location_hint": "..."},
-  "bottler_address": {"value": "...", "confidence": 0.94, "location_hint": "..."},
-  "country_of_origin": {"value": "...", "confidence": 0.97, "location_hint": "..."},
+  "brand_name": {"value": "...", "confidence": 0.98, "location_hint": "top-center", "bbox": {"x": 120, "y": 40, "w": 300, "h": 60}},
+  "fanciful_name": {"value": "...", "confidence": 0.95, "location_hint": "...", "bbox": null},
+  "class_type_designation": {"value": "...", "confidence": 0.97, "location_hint": "...", "bbox": {"x": 80, "y": 200, "w": 250, "h": 30}},
+  "alcohol_content": {"value": "...", "confidence": 0.99, "location_hint": "...", "bbox": {"x": 80, "y": 240, "w": 100, "h": 24}},
+  "net_contents": {"value": "...", "confidence": 0.99, "location_hint": "...", "bbox": {"x": 300, "y": 240, "w": 90, "h": 24}},
+  "bottler_name": {"value": "...", "confidence": 0.96, "location_hint": "...", "bbox": {"x": 60, "y": 420, "w": 280, "h": 22}},
+  "bottler_address": {"value": "...", "confidence": 0.94, "location_hint": "...", "bbox": {"x": 60, "y": 444, "w": 280, "h": 22}},
+  "country_of_origin": {"value": "...", "confidence": 0.97, "location_hint": "...", "bbox": null},
   "government_warning": {
     "text_present": true,
     "header_caps_bold": true,
+    "header_height_ratio": 1.05,
     "text_exact_match": true,
     "text_found": "GOVERNMENT WARNING: ...",
     "confidence": 0.99,
-    "location_hint": "bottom"
+    "location_hint": "bottom",
+    "bbox": {"x": 30, "y": 480, "w": 440, "h": 90}
   },
-  "grape_varietals": {"value": [...], "confidence": 0.95, "location_hint": "..."},
-  "wine_appellation": {"value": "...", "confidence": 0.94, "location_hint": "..."},
-  "vintage_date": {"value": "...", "confidence": 0.93, "location_hint": "..."},
-  "age_statement": {"value": "...", "confidence": 0.92, "location_hint": "..."},
-  "for_sale_in_state": {"value": "...", "confidence": 0.98, "location_hint": "..."},
+  "grape_varietals": {"value": [...], "confidence": 0.95, "location_hint": "...", "bbox": null},
+  "wine_appellation": {"value": "...", "confidence": 0.94, "location_hint": "...", "bbox": null},
+  "vintage_date": {"value": "...", "confidence": 0.93, "location_hint": "...", "bbox": null},
+  "age_statement": {"value": "...", "confidence": 0.92, "location_hint": "...", "bbox": null},
+  "for_sale_in_state": {"value": "...", "confidence": 0.98, "location_hint": "...", "bbox": null},
   "other_text": [
-    {"value": "UPC: 012345678905", "confidence": 0.90, "location_hint": "bottom"},
-    {"value": "Drink Responsibly", "confidence": 0.92, "location_hint": "center"}
+    {"value": "UPC: 012345678905", "confidence": 0.90, "location_hint": "bottom", "bbox": {"x": 200, "y": 510, "w": 120, "h": 18}},
+    {"value": "Drink Responsibly", "confidence": 0.92, "location_hint": "center", "bbox": null}
   ]
 }
 ```
+
+`bbox` is populated when OCR finds a confident fuzzy-match for that element's extracted text on the preprocessed image; when it doesn't (e.g., logos or stylized brand marks with no OCR-readable text), `bbox` is `null` and the frontend falls back to the qualitative `location_hint` for annotation placement (A-13). `header_height_ratio` is only meaningful on `government_warning` and is `null` if OCR could not isolate the header text.
 
 Fields with no corresponding element on this image are returned with `"value": null` rather than omitted, mirroring FR-011 on the form side. `other_text` may be an empty array. Every field is written to `label_parameters` as one row per `(label_image_id, field_name)`, so the same field may have multiple rows across images (FR-038).
 
@@ -437,7 +500,7 @@ Store in `determinations`. Status → `COMPLETE`.
 
 ---
 
-### 3.2 UI Architecture
+### 3.3 UI Architecture
 
 #### Agent Dashboard
 
@@ -517,7 +580,7 @@ While processing, a progress panel replaces the button:
 
 ---
 
-### 3.3 Database Schema (SQLite — workingfiles DB)
+### 3.4 Database Schema (SQLite — workingfiles DB)
 
 ```sql
 -- Agents (simple auth for prototype)
@@ -543,7 +606,17 @@ CREATE TABLE applications (
     assigned_agent_id INTEGER REFERENCES agents(id),
     status          TEXT DEFAULT 'PENDING',  -- PENDING|FORM_ASSESSED|LABEL_ASSESSED|COMPARED|COMPLETE
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
-    processed_at    DATETIME
+    processed_at    DATETIME,
+    -- COLA Public Registry forward-compat fields (Section 6, A-22) — populated from the
+    -- form/label extraction where derivable; not validated against any live registry
+    ttb_id              TEXT,   -- 14-digit TTB ID (Section 6.2)
+    vendor_code         TEXT,   -- portion of TTB ID identifying the submitting vendor
+    class_type_code     TEXT,   -- COLA Class/Type Code (Section 6.2)
+    origin_code         TEXT,   -- COLA Origin Code (Section 6.2)
+    registry_status     TEXT,   -- approved|expired|surrendered|revoked (Section 6.2) — N/A for a not-yet-submitted application
+    total_bottle_capacity TEXT, -- COLA "Total Bottle Capacity" field
+    for_sale_in_state   TEXT,   -- registry-level "For Sale In" state, distinct from the per-image label_parameters.for_sale_in_state used in Stage 5 comparison
+    qualifications      TEXT    -- COLA "Qualifications" free text (distinct from the AcroForm "FOR TTB USE ONLY - QUALIFICATIONS" field, which is captured via form_parameters)
 );
 
 -- Label images (multiple per application)
@@ -562,6 +635,7 @@ CREATE TABLE form_parameters (
     field_name      TEXT,
     field_value     TEXT,
     confidence      REAL,
+    extraction_method TEXT,  -- acroform|pdftext|ai_vision (TS-01, A-20) — which tier resolved this field
     extracted_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -573,7 +647,9 @@ CREATE TABLE label_parameters (
     field_name      TEXT,
     field_value     TEXT,
     confidence      REAL,
-    location_hint   TEXT,  -- relative position for annotation placement
+    location_hint   TEXT,  -- relative position for annotation placement (fallback, A-13)
+    bbox_json       TEXT,  -- {"x":.., "y":.., "w":.., "h":..} from OCR fuzzy-match (TS-02, A-13/A-21); NULL if no confident match
+    header_height_ratio REAL, -- government_warning only: OCR text-height ratio corroborating header_caps_bold (TS-02 #3, A-07); NULL otherwise
     extracted_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -622,7 +698,7 @@ CREATE TABLE batches (
 
 ---
 
-### 3.4 API Surface (FastAPI)
+### 3.5 API Surface (FastAPI)
 
 ```
 POST   /auth/login                          → JWT token
@@ -652,8 +728,11 @@ POST   /determinations/{id}/finalize         → save final agent determination
 | **Backend** | SQLite | built-in | Database | Zero-setup for prototype; file-based persistence |
 | **Backend** | Anthropic Python SDK | latest | Claude API client | Official SDK |
 | **Backend** | Claude Sonnet (claude-sonnet-4-6) | claude-sonnet-4-6 | Form + label AI extraction | Sub-3s response; handles degraded images; structured JSON output via tool use |
-| **Backend** | pdfplumber | latest | PDF text extraction | Backup/complement to Claude for digitally-generated PDFs |
+| **Backend** | pypdf | latest | AcroForm field extraction | Tier 1 of TS-01's tiered Stage 3 extraction — reads the F 5100.31's 44 named form fields directly when populated |
+| **Backend** | pdfplumber | latest | PDF text extraction | Tier 2 of TS-01's tiered Stage 3 extraction — text-layer fallback for flattened PDFs |
 | **Backend** | Pillow | latest | Image preprocessing | Format normalization before API submission |
+| **Backend** | opencv-python | latest | Label image preprocessing | TS-02 — deskew/perspective correction, CLAHE contrast normalization, glare suppression before Stage 4's Claude Vision call (FR-039) |
+| **Backend** | pytesseract + Tesseract OCR | latest | Label OCR bounding-box assist | TS-02 — produces text + pixel bboxes, fuzzy-matched to Claude's extracted fields for annotation placement (FR-040) and Government Warning size corroboration |
 | **Backend** | python-jose + passlib | latest | JWT auth | Simple agent authentication |
 | **Backend** | pytest | latest | Unit tests | Comparator and validator logic |
 | **Frontend** | React + Vite | 18+ / 5+ | UI framework | Component model handles split-view, annotations, state; TypeScript support |
@@ -690,6 +769,16 @@ POST   /determinations/{id}/finalize         → save final agent determination
 **Decision 5: Three-tier determination (Approve / Deny / Recommend Exemption Review)**
 - *Rationale:* The F 5100.31 form's Section V lists 41 types of allowable revisions. A binary Approve/Deny would over-deny legitimate applications with cosmetic differences. Mapping mismatches to Section V items enables the system to flag applications that might qualify for approval without resubmission, routing them to agent judgment rather than blanket denial.
 
+**Decision 6: Tiered form extraction (AcroForm → pdfplumber → Claude Vision)**
+- *Origin:* TS-01 (Section 3.1)
+- *Rationale:* `f510031.pdf` is a 44-field fillable AcroForm, and applications submitted via TTB's COLAs Online retain those field values. Reading them directly (`pypdf`) is exact, free, and effectively instant — far better than asking a vision model to re-read values that are already present as structured data in the file. `pdfplumber` text-layer extraction covers flattened PDFs that lost their form fields but kept selectable text. Claude Vision remains the universal fallback for fully scanned, image-only submissions.
+- *Trade-off:* Three extraction code paths to maintain instead of one, and the `pdfplumber`/AcroForm field-name mappings are tied to the F 5100.31 (04/2023) layout (A-20) — a future form revision would require remapping. Mitigated by Claude Vision always being available as a correctness backstop.
+
+**Decision 7: OpenCV preprocessing + OCR bounding-box assist for label images**
+- *Origin:* TS-02 (Section 3.1)
+- *Rationale:* Claude Vision remains the sole source of *semantic* label understanding (brand vs. fanciful name vs. marketing copy) — OCR alone cannot do this reliably on stylized label fonts and logos. But OCR run alongside Claude, on an OpenCV-preprocessed image, gives the system two things it lacked: (1) a concrete handling of degraded images (deskew, glare, contrast) that FR-21 had previously left as an unaddressed nice-to-have, and (2) real pixel bounding boxes for SVG annotations, fuzzy-matched to Claude's field values, instead of the coarse `location_hint` strings.
+- *Trade-off:* Adds two new dependencies (`opencv-python`, `pytesseract` + the Tesseract binary) and a fuzzy-matching step that can fail to find a `bbox` for some elements (logos, decorative text) — handled by falling back to `location_hint` (A-13) rather than blocking on a match.
+
 ---
 
 ## 5. Assumptions
@@ -702,23 +791,107 @@ POST   /determinations/{id}/finalize         → save final agent determination
 | A-04 | Label images are JPEG, PNG, or WebP | Standard format for digital label submissions |
 | A-05 | Government Warning text is 27 CFR § 16.21 statutory statement | TTB regulation; confirmed by Jenny Park |
 | A-06 | Case/punctuation brand name differences are POSSIBLE_ALLOWABLE, not hard failures | Dave Morrison's "STONE'S THROW" example; Section V item 3b |
-| A-07 | Font size of Government Warning is assessed qualitatively by AI (cannot measure px from photos) | Vision models describe relative appearance; pixel measurement requires known image scale |
+| A-07 | Font size/weight of "GOVERNMENT WARNING:" is assessed primarily by Claude's qualitative `header_caps_bold` judgment, corroborated (not replaced) by an OCR-measured `header_height_ratio` (TS-02 #3) — a definitive px measurement still requires a known physical-to-pixel scale, which the prototype does not have | Vision models describe relative appearance reliably; OCR adds an objective height-ratio signal for the highest-stakes check (Jenny Park's top concern) without claiming exact px measurement |
 | A-08 | Application forms are submitted as PDF files in TTB F 5100.31 format | f510031.pdf provided as the source form |
 | A-09 | Label images are paired with application forms by manual association in the upload UI | No automatic barcode-based pairing in prototype |
 | A-10 | One application may have multiple label images (brand/back/neck) | Common in practice; per FR-030/FR-038, ALL images are extracted independently and a required field is satisfied if found on ANY image — there is no single "primary" comparison image |
 | A-11 | Agent authentication is username/password (no SSO/LDAP for prototype) | Marcus Williams: standalone POC; complex auth is production concern |
 | A-12 | Exemption logic is based on Section V Allowable Revisions and Type 14b applications | F 5100.31 form instructions |
-| A-13 | SVG annotation locations are approximate, derived from AI location hints (not exact pixel bounding boxes) | Production would use Azure Document Intelligence or similar for exact coordinates |
+| A-13 | SVG annotation locations use an OCR-derived pixel `bbox` (TS-02 #2) when a confident fuzzy-match exists between Claude's extracted field value and the OCR text; otherwise they fall back to AI `location_hint` strings (approximate region only) | OCR bounding-box assist resolves the precision gap for most printed text in the prototype; logos, decorative fonts, and stylized brand marks have no OCR-readable text and still rely on `location_hint`. A production system handling 100% of cases would still benefit from a dedicated service like Azure Document Intelligence |
 | A-14 | Agent override is recorded with reason but does not re-run the AI pipeline | Override is a manual correction layer on top of AI output |
 | A-15 | Country of origin check applies only when Item 3 is checked "Imported" | Domestic products not required to show country of origin |
 | A-16 | The prototype handles Type 14a and 14b applications; 14c (distinctive bottle) and 14d (resubmission) are noted but not fully validated | Time-constraint prioritization; 14c/14d are edge cases |
 | A-17 | Batch processing is sequential (one application at a time) with a progress indicator | Prototype scope; production would use async task queue (Celery/RQ) |
 | A-18 | When a required field's value is found on multiple label images with differing values, any image whose value matches the form satisfies the requirement (MATCH); only when no image matches is a discrepancy reported, using the highest-confidence non-null candidate for the failure report and annotation | Real labels legitimately repeat (or vary) text across front/back/neck panels — penalizing an application because one panel differs while another matches would be a false failure |
 | A-19 | Within a single application, the per-image Stage 4 vision calls are issued concurrently (not sequentially) so total label-extraction time stays within the PR-001 5-second budget regardless of image count | Sequential per-image calls would multiply latency linearly with the number of label images submitted |
+| A-20 | The AcroForm field-name mapping (TS-01 Tier 1) and the `pdfplumber` region mapping (TS-01 Tier 2) are maintained for the F 5100.31 (04/2023) revision specifically; a future form revision with renamed/relocated fields would require updating both mappings, with Claude Vision (Tier 3) covering the gap until they're updated | `f510031.pdf` (04/2023) is the only form revision provided for this assessment |
+| A-21 | The OpenCV preprocessing and OCR bounding-box pass (TS-02) run locally on the backend, concurrently with each image's Claude Vision call, and do not themselves call any external API | Keeps PR-001's 5-second budget and A-19's concurrency model unaffected — these are additive local CPU passes, not additional network round-trips |
+| A-22 | The `applications` table carries TTB COLA Public Registry fields (TTB ID, Vendor Code, Class/Type Code, Origin Code, registry status, etc., Section 6) so that data extracted in this prototype is structurally compatible with a future COLAs Online integration, but no live connection to `ttbonline.gov` exists or is attempted | Per A-03/NFR-05/CR-001 (no COLA integration in prototype); forward-compatible schema reduces future integration effort without expanding current scope |
 
 ---
 
-## 6. Engineering Log
+## 6. COLA Registry & Future Integration Reference
+
+**Per A-03/NFR-05/CR-001, this prototype does NOT connect to the TTB COLA Public Registry or COLAs Online — no network calls to `ttbonline.gov` are made anywhere in this system.** This section exists purely as a forward-compatibility reference: applicants complete F 5100.31 submissions through COLAs Online, and a production version of TTB-LVS would plausibly *receive* applications from, or *query*, that system. Documenting its data model now lets the prototype's database schema (Section 3.4) capture the same fields without loss, so a future integration is a matter of wiring a connection — not redesigning the schema.
+
+**Sources** (publicly accessible, no login required):
+- TTB COLA Public Registry overview — https://www.ttb.gov/regulated-commodities/labeling/cola-public-registry
+- Public COLA Search (basic) — https://www.ttbonline.gov/colasonline/publicSearchColasBasic.do
+- Example COLA record (Budweiser, TTB ID 25211001000227) — https://ttbonline.gov/colasonline/viewColaDetails.do?action=publicDisplaySearchBasic&ttbid=25211001000227
+
+### 6.1 COLA Record Data Model
+
+Fields observed on a COLA registry detail record (`viewColaDetails.do`):
+
+| Field | Example value | Description |
+|-------|---------------|-------------|
+| TTB ID | `25211001000227` | 14-digit unique identifier assigned by TTB on submission. Encodes submission year/date and a sequence number. |
+| Status | `APPROVED` | Registry lifecycle state. Observed values include `APPROVED`, `EXPIRED`, `SURRENDERED`, `REVOKED`. |
+| Vendor Code | `17931` | Numeric code identifying the submitting vendor/permittee in COLAs Online. |
+| Serial # | `25B003` | Applicant-assigned serial number — same value as F 5100.31 Item 2. |
+| Class/Type Code | `BEER` | TTB class/type classification (numeric code + description in the full registry; the public detail view shows the description). |
+| Origin Code | `MISSOURI` | State of production for domestic products, or country of origin for imports. |
+| Brand Name | `BUDWEISER` | Same as F 5100.31 Item 6. |
+| Fanciful Name | *(blank in example)* | Same as F 5100.31 Item 7. |
+| Type of Application | `LABEL APPROVAL` | Descriptive form of F 5100.31's 14a–d application type checkboxes. |
+| For Sale In | *(blank in example)* | State restriction, populated when Item 14b ("for sale in [STATE] only") applies. |
+| Total Bottle Capacity | *(blank in example)* | Container size declared on the application. |
+| Formula | *(blank in example)* | Formula ID — same concept as F 5100.31 Item 9 (`formula_id`). |
+| Approval Date | `07/31/2025` | Date TTB approved the COLA. |
+| Qualifications | `EACH CONTAINER MUST BE CODED TO INDICATE ACTUAL PLACE OF BOTTLING.` | Free-text conditions attached to the approval. |
+| Plant Registry/Basic Permit/Brewer's No. (Principal Place of Business) | `BR-MO-20000`, Anheuser-Busch LLC, 1 Busch Pl, Saint Louis, MO 63118 | Permit number + name + address for the primary production location — same concept as F 5100.31 Item 8. |
+| Plant Registry/Basic Permit/Brewer's No. (Other) | 11 additional `BR-XX-#####` entries with name + address, in the example record | **Repeating** group of additional production/bottling locations covered by the same approval. |
+| Contact Information | Name + `(314) 577-2693` | Contact person and phone number for the application — same concept as F 5100.31 Items 12/13. |
+
+### 6.2 Public Search Interface
+
+Fields available on the public basic search (`publicSearchColasBasic.do`), useful as a model for a future "look up related COLA" feature:
+
+| Field | Type |
+|-------|------|
+| Date Completed (From / To) | Date range |
+| Product or Fanciful Name | Text, with radio: Brand Name / Fanciful Name / Either |
+| Class/Type (From / To) | Range, with a "Lookup Class Type" code picker |
+| Origin Code | Text, with a "Lookup Origin" code picker |
+
+(TTB ID and Serial Number lookups exist as separate basic-search modes on `ttbonline.gov` but were not captured in this reference pass — out of scope since no integration is planned.)
+
+### 6.3 Forward-Compatibility Mapping (TTB-LVS Schema ↔ COLA Registry)
+
+| COLA Registry Field | TTB-LVS Location | Status |
+|---|---|---|
+| TTB ID | `applications.ttb_id` | **New** (Section 3.4) |
+| Status | `applications.registry_status` | **New** — not populated by this prototype (no live registry to query); reserved for future integration |
+| Vendor Code | `applications.vendor_code` | **New** |
+| Serial # | `applications.serial_number` | Already existed — F 5100.31 Item 2 |
+| Class/Type Code | `applications.class_type_code` | **New** |
+| Origin Code | `applications.origin_code` | **New** |
+| Brand Name | `applications.brand_name`, `form_parameters('brand_name')` | Already existed — Item 6 |
+| Fanciful Name | `form_parameters('fanciful_name')` | Already existed — Item 7 (EAV) |
+| Type of Application | `applications.application_type` | Already existed — 14a–d |
+| For Sale In | `applications.for_sale_in_state` (registry-level), `label_parameters('for_sale_in_state')` (per-image, used in Stage 5 comparison) | **New** column added for the registry-level value; per-image value already existed |
+| Total Bottle Capacity | `applications.total_bottle_capacity` | **New** |
+| Formula | `form_parameters('formula_id')` | Already existed — Item 9 (EAV) |
+| Approval Date | *not mapped* | The prototype has no "TTB approval" concept; `determinations.finalized_at` is the agent's review timestamp, a different fact |
+| Qualifications | `applications.qualifications` | **New** |
+| Plant Registry/Permit (Principal) | `form_parameters('plant_registry_number')`, `form_parameters('applicant_address')` | Already existed — Item 8 (EAV) |
+| Plant Registry/Permit (Other, repeating) | Additional `form_parameters` rows (e.g., `plant_registry_number_2`, `plant_registry_address_2`, ...) | Captured **without a schema change** if present on the form/label — `form_parameters` is an EAV table, so repeating groups need only additional `field_name` values, not new columns |
+| Contact Name + Phone | `applicant_name`, `form_parameters('phone_number')`/`form_parameters('email_address')` | Already existed — Items 12/13 |
+
+The EAV design of `form_parameters`/`label_parameters` (Section 3.4) is what makes "without loss" practical here: most COLA registry fields already have a home as a `field_name`/`field_value` pair, and repeating groups (multiple plant locations) extend naturally as additional rows. The eight new `applications` columns (Section 3.4) cover only the registry "headline" fields — TTB ID, status, codes — that a future integration would index/search/display directly, rather than every field needing its own column.
+
+### 6.4 Future Integration Path (Out of Scope for Prototype)
+
+A production TTB-LVS would plausibly:
+1. Accept F 5100.31 submissions directly from COLAs Online (the applicant-facing system), receiving `ttb_id` and `vendor_code` at ingestion rather than deriving them.
+2. Query the COLA Registry by `ttb_id` to pre-populate `registry_status`/`approval_date`/`qualifications`, and to cross-check the submitted form against the registry's record of the same application.
+3. Offer a "find related COLAs" lookup using the Section 6.2 search fields (date range, brand/fanciful name, class/type code, origin code) — e.g., to surface a prior approval being revised under Section V.
+
+None of this is implemented, called, or stubbed in the prototype — A-03/A-22 hold. This section exists solely so the schema additions in Section 3.4 are traceable to a real data model.
+
+---
+
+## 7. Engineering Log
 
 ### 2026-06-09 — Session 1: Assessment Intake & Initial Setup
 
@@ -784,7 +957,26 @@ POST   /determinations/{id}/finalize         → save final agent determination
 
 ---
 
-## 7. Chat Artifact Index
+### 2026-06-10 — Session 4: Trade Studies & COLA Registry Reference
+
+**Context:** Before proceeding to the planned systems-engineering pass (architecture evaluation, Mermaid diagrams, WBS), conducted two trade studies to test whether "Claude Vision for everything" — the original Stage 3/4 design — is the most effective use of AI given NFR-01's 5-second budget, or whether parts of the extraction pipeline are better served by deterministic local methods. **AI remains a hard requirement and the system's semantic core; the question was whether AI is the *best* tool for every sub-task, not whether to remove it.**
+
+**Completed:**
+- **TS-01 (Stage 3 — Form Data Extraction):** Inspected `f510031.pdf` directly and found it is a **44-field fillable AcroForm**. Adopted a tiered extraction strategy — (1) AcroForm field read via `pypdf`, (2) `pdfplumber` text-layer extraction, (3) Claude Vision as universal fallback — each field resolved by the first tier that returns a usable value, with the resolving tier recorded as `extraction_method` (FR-017). Frees nearly all of the 5-second budget for Stage 4 in the common case (digitally-completed COLAs Online submissions).
+- **TS-02 (Stage 4 — Label Image Extraction):** Adopted OpenCV preprocessing (deskew, CLAHE contrast, glare suppression) before every Claude Vision call — addressing FR-21/FR-39's previously-unimplemented degraded-image handling — plus a parallel OCR (`pytesseract`/Tesseract) pass that fuzzy-matches Claude's extracted field values to recover pixel `bbox`es for SVG annotations, and computes a `header_height_ratio` for "GOVERNMENT WARNING:" as an objective corroboration of Claude's `header_caps_bold` judgment. Both additions run locally and concurrently with the per-image Claude call — A-19's concurrency model and PR-001's budget are unaffected.
+- Restructured DevLog Section 3 into "System Design & Trade Studies" with both trade studies written up in full (options tables, decisions, impacts) in new **Section 3.1**; renumbered the former 3.1–3.4 to 3.2–3.5.
+- Updated the Stage 3 and Stage 4 descriptions and output schemas (Section 3.2) to reflect the tiered extraction (`extraction_methods` map) and OpenCV/OCR augmentation (`bbox` and `header_height_ratio` fields).
+- Updated the tech stack table (4.1) with `pypdf`, `opencv-python`, and `pytesseract` + Tesseract, and added **Decision 6** (tiered form extraction) and **Decision 7** (OpenCV/OCR label augmentation) to 4.2.
+- Resolved **A-07** (Government Warning size assessment now corroborated by OCR `header_height_ratio`, not purely qualitative) and **A-13** (SVG annotations now use OCR-derived `bbox` when a confident match exists, falling back to `location_hint`); added **A-20** (form mapping is specific to F 5100.31 04/2023), **A-21** (OpenCV/OCR run locally/concurrently, no PR-001 impact), and **A-22** (COLA registry forward-compat schema, no live integration).
+- Updated the `applications`, `form_parameters`, and `label_parameters` table definitions (Section 3.4) with the new columns above plus eight COLA-registry forward-compatibility columns on `applications` (`ttb_id`, `vendor_code`, `class_type_code`, `origin_code`, `registry_status`, `total_bottle_capacity`, `for_sale_in_state`, `qualifications`).
+
+**COLA Registry research (new Section 6):** At the user's request, researched the TTB COLA Public Registry / COLAs Online data model (via the public search page and an example record, TTB ID `25211001000227`) to ensure the database schema captures registry fields — TTB ID, Vendor Code, Serial #, Class/Type Code, Origin Code, registry Status, Type of Application, For Sale In, Total Bottle Capacity, Formula, Approval Date, Qualifications, repeating Plant Registry/Permit locations, and Contact info — **without loss**, for forward-compatibility only. **No live connection to `ttbonline.gov` exists or is planned for this prototype** (A-03/CR-001 unchanged) — Section 6 is a reference document plus a field-mapping table showing each registry field's home in the TTB-LVS schema (new `applications` columns, or existing/new EAV rows in `form_parameters`/`label_parameters`).
+
+**Open items for next session:** Apply the corresponding updates to `_DevLog/PRD.md` (revision history, REF-07–09 for the COLA registry sources, new FR-017/018/039/040, traceability matrix, assumptions A-12–14, glossary terms), update `README.md`'s tech stack list, then proceed with the original Session 4 plan: architecture evaluation, Mermaid diagrams (system context, block diagram, concurrency sequence diagram), alternatives brainstorm, and WBS.
+
+---
+
+## 8. Chat Artifact Index
 
 Development session transcripts are stored in `_DevLog/` alongside this DevLog.
 

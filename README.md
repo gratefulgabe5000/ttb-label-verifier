@@ -144,6 +144,8 @@ npm run dev
 **Stack:**
 - Backend: Python · FastAPI · SQLAlchemy · SQLite
 - AI: Claude claude-sonnet-4-6 (Anthropic) — vision + structured JSON extraction
+- Form extraction: pypdf (AcroForm fields) · pdfplumber (text layer) — tiered fallback before AI vision
+- Label preprocessing: OpenCV (deskew, contrast, glare suppression) · Tesseract/pytesseract (OCR bounding-box assist)
 - Frontend: React · Vite · TypeScript · Tailwind CSS · react-pdf
 - Annotations: Custom SVG overlay for cross-document highlighting
 - Deployment: Railway (API) + Netlify (web)
