@@ -1,7 +1,7 @@
 {
-  "wbs_ref": "2.3",
+  "wbs_ref": "2.3-2.4",
   "generated_at": "2026-06-11",
-  "source_note": "Pairs synthetic F 5100.31 application forms (testdata/build_good_sets.py) with existing real label image groups from testdata/ (cataloged in manifest.json, WBS 2.1) to form complete 'good' (all-fields-match) test sets, one per product type. Form field values were chosen to match what is printed on each product's label images, so every Sec. 2.5 Parameter Comparison Matrix rule resolves to MATCH (or NOT_APPLICABLE where the form field is intentionally blank for that product type) and the expected pipeline outcome is APPROVE. Comparison rule references are DevLog.md Sec. 2.5; allowable-revision references are Sec. 2.6.",
+  "source_note": "Pairs synthetic F 5100.31 application forms with existing real label image groups from testdata/ (cataloged in manifest.json, WBS 2.1). WBS 2.3 sets (testdata/build_good_sets.py, set_id prefix 'good_') are 'good' (all-fields-match) sets, one per product type: form field values were chosen to match what is printed on each product's label images, so every Sec. 2.5 Parameter Comparison Matrix rule resolves to MATCH (or NOT_APPLICABLE where the form field is intentionally blank for that product type) and the expected pipeline outcome is APPROVE. WBS 2.4 sets (testdata/build_hard_failure_sets.py, set_id prefix 'hf_') are 'hard failure' sets, one per Sec. 2.5 comparison rule: each takes a WBS 2.3 'good' baseline and changes exactly ONE field so that exactly one rule resolves to HARD_FAILURE (every other rule remains MATCH/NOT_APPLICABLE as in the baseline) and the expected pipeline outcome is DENY. Comparison rule references are DevLog.md Sec. 2.5; allowable-revision references are Sec. 2.6; application type references are Sec. 2.4.",
   "sets": [
     {
       "set_id": "good_spirits_woodford",
@@ -13,9 +13,18 @@
       "expected_outcome": "APPROVE",
       "form_pdf": "forms/good_spirits_woodford.pdf",
       "label_images": [
-        { "filename": "Woodford Reserve burbon front.jpg", "label_type": "brand" },
-        { "filename": "Woodford Reserve burbon front2.jpg", "label_type": "brand" },
-        { "filename": "Woodford Reserve burbon back.jpg", "label_type": "back" }
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "label_type": "back"
+        }
       ],
       "comparison_expectations": [
         {
@@ -113,8 +122,14 @@
       "expected_outcome": "APPROVE",
       "form_pdf": "forms/good_wine_lenzmoser.pdf",
       "label_images": [
-        { "filename": "Fete Rose wine.jpg", "label_type": "brand" },
-        { "filename": "Fete Rose wine back.jpg", "label_type": "back" }
+        {
+          "filename": "Fete Rose wine.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Fete Rose wine back.jpg",
+          "label_type": "back"
+        }
       ],
       "comparison_expectations": [
         {
@@ -211,7 +226,10 @@
       "expected_outcome": "APPROVE",
       "form_pdf": "forms/good_malt_barrilito.pdf",
       "label_images": [
-        { "filename": "Cerveza Barrilito.jpg", "label_type": "brand" }
+        {
+          "filename": "Cerveza Barrilito.jpg",
+          "label_type": "brand"
+        }
       ],
       "comparison_expectations": [
         {
@@ -294,6 +312,1297 @@
           "form_value": "n/a",
           "label_element": "Label",
           "label_value": "1 QT., 8FL.OZ.",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_brandname_woodford",
+      "wbs_ref": "2.4",
+      "description": "Domestic distilled spirits (Woodford Reserve), Type 14a -- single-field hard failure: Item 6 Brand Name does not match the label ('Old Forester' claimed on the form vs. 'Woodford Reserve' on the label).",
+      "product_key": "woodford_reserve",
+      "product_type": "distilled_spirits",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_brandname_woodford.pdf",
+      "label_images": [
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Old Forester",
+          "label_element": "Distillery name on back label (\"PRODUCED BY THE WOODFORD RESERVE DISTILLERY...\")",
+          "label_value": "Woodford Reserve",
+          "expected_result": "HARD_FAILURE",
+          "note": "Form claims brand \"Old Forester\" (a real Brown-Forman brand), but the label brand is \"Woodford Reserve\" -- an Item 6 brand name mismatch (FR-050)."
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank on the form: \"Double Oaked\" appears on the full physical label but not within the cropped label images on file, so claiming it here would risk an unintended Item 7 mismatch."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Domestic (Check Box34 = /Domes)",
+          "label_element": "n/a (no country-of-origin marking expected for a domestic product)",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Country-of-origin check only applies when Item 3 = Imported."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Class/type designation on front label",
+          "label_value": "KENTUCKY STRAIGHT BOURBON WHISKEY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "The Woodford Reserve Distillery, 7855 McCracken Pike, Versailles, KY 40383",
+          "label_element": "Producer name/address on back label",
+          "label_value": "PRODUCED BY THE WOODFORD RESERVE DISTILLERY, VERSAILLES, KENTUCKY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "45.2% ALC/VOL (90.4 PROOF)",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Distilled Spirits."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "750 mL",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_fancifulname_woodford",
+      "wbs_ref": "2.4",
+      "description": "Domestic distilled spirits (Woodford Reserve), Type 14a -- single-field hard failure: Item 7 Fanciful Name 'Double Oaked' does not appear on any submitted label image.",
+      "product_key": "woodford_reserve",
+      "product_type": "distilled_spirits",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_fancifulname_woodford.pdf",
+      "label_images": [
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Woodford Reserve",
+          "label_element": "Distillery name on back label (\"PRODUCED BY THE WOODFORD RESERVE DISTILLERY...\")",
+          "label_value": "Woodford Reserve",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "Double Oaked",
+          "label_element": "n/a -- not present on any submitted label image",
+          "label_value": "n/a",
+          "expected_result": "HARD_FAILURE",
+          "note": "Form claims fanciful name \"Double Oaked\", but this text does not appear on any of the three submitted label images -- an unverifiable Item 7 claim (FR-051). (On the full physical Woodford Reserve Double Oaked product, \"Double Oaked\" does appear on the label, but it falls outside the cropped images cataloged in manifest.json for this product.)"
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Domestic (Check Box34 = /Domes)",
+          "label_element": "n/a (no country-of-origin marking expected for a domestic product)",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Country-of-origin check only applies when Item 3 = Imported."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Class/type designation on front label",
+          "label_value": "KENTUCKY STRAIGHT BOURBON WHISKEY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "The Woodford Reserve Distillery, 7855 McCracken Pike, Versailles, KY 40383",
+          "label_element": "Producer name/address on back label",
+          "label_value": "PRODUCED BY THE WOODFORD RESERVE DISTILLERY, VERSAILLES, KENTUCKY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "45.2% ALC/VOL (90.4 PROOF)",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Distilled Spirits."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "750 mL",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_countryoforigin_woodford",
+      "wbs_ref": "2.4",
+      "description": "Domestic distilled spirits (Woodford Reserve), Type 14a -- single-field hard failure: Item 3 declares the product Imported, but the back label affirmatively states domestic production with no country-of-origin marking.",
+      "product_key": "woodford_reserve",
+      "product_type": "distilled_spirits",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_countryoforigin_woodford.pdf",
+      "label_images": [
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Woodford Reserve",
+          "label_element": "Distillery name on back label (\"PRODUCED BY THE WOODFORD RESERVE DISTILLERY...\")",
+          "label_value": "Woodford Reserve",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank on the form: \"Double Oaked\" appears on the full physical label but not within the cropped label images on file, so claiming it here would risk an unintended Item 7 mismatch."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Imported (Check Box34 = /Import)",
+          "label_element": "Back label producer statement",
+          "label_value": "PRODUCED BY THE WOODFORD RESERVE DISTILLERY, VERSAILLES, KENTUCKY -- no country-of-origin marking; affirmatively domestic production",
+          "expected_result": "HARD_FAILURE",
+          "note": "Form declares the product Imported (Item 3), but the back label affirmatively states domestic production in Versailles, Kentucky and carries no country-of-origin marking of any kind -- a direct Item 3 contradiction (FR-052/FR-100)."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Class/type designation on front label",
+          "label_value": "KENTUCKY STRAIGHT BOURBON WHISKEY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "The Woodford Reserve Distillery, 7855 McCracken Pike, Versailles, KY 40383",
+          "label_element": "Producer name/address on back label",
+          "label_value": "PRODUCED BY THE WOODFORD RESERVE DISTILLERY, VERSAILLES, KENTUCKY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "45.2% ALC/VOL (90.4 PROOF)",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Distilled Spirits."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "750 mL",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_14b_woodford",
+      "wbs_ref": "2.4",
+      "description": "Domestic distilled spirits (Woodford Reserve), Type 14b (Certificate of Exemption, For sale in OHIO only) -- single-field hard failure: no state-restriction statement appears on any submitted label image.",
+      "product_key": "woodford_reserve",
+      "product_type": "distilled_spirits",
+      "application_type": "14b",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_14b_woodford.pdf",
+      "label_images": [
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Woodford Reserve",
+          "label_element": "Distillery name on back label (\"PRODUCED BY THE WOODFORD RESERVE DISTILLERY...\")",
+          "label_value": "Woodford Reserve",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank on the form: \"Double Oaked\" appears on the full physical label but not within the cropped label images on file, so claiming it here would risk an unintended Item 7 mismatch."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Domestic (Check Box34 = /Domes)",
+          "label_element": "n/a (no country-of-origin marking expected for a domestic product)",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Country-of-origin check only applies when Item 3 = Imported."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Class/type designation on front label",
+          "label_value": "KENTUCKY STRAIGHT BOURBON WHISKEY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "The Woodford Reserve Distillery, 7855 McCracken Pike, Versailles, KY 40383",
+          "label_element": "Producer name/address on back label",
+          "label_value": "PRODUCED BY THE WOODFORD RESERVE DISTILLERY, VERSAILLES, KENTUCKY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "14b checked, \"OH\" (Certificate of Exemption from Label Approval -- For sale in OHIO only)",
+          "label_element": "n/a -- no submitted label image",
+          "label_value": "n/a -- no \"FOR SALE IN OHIO ONLY\" (or any state) statement appears on any of the three submitted label images",
+          "expected_result": "HARD_FAILURE",
+          "note": "The application claims Type 14b (Certificate of Exemption, restricted to sale in Ohio only), which per Sec. 2.6 requires a corresponding state-restriction statement on the label -- but none of the submitted label images contain any such statement (FR-056)."
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "45.2% ALC/VOL (90.4 PROOF)",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Distilled Spirits."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "750 mL",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_applicantname_woodford",
+      "wbs_ref": "2.4",
+      "description": "Domestic distilled spirits (Woodford Reserve), Type 14a -- single-field hard failure: Item 8 producer name ('Old Forester Distillery') does not match the label's producer name ('The Woodford Reserve Distillery'), though the address matches.",
+      "product_key": "woodford_reserve",
+      "product_type": "distilled_spirits",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_applicantname_woodford.pdf",
+      "label_images": [
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Woodford Reserve",
+          "label_element": "Distillery name on back label (\"PRODUCED BY THE WOODFORD RESERVE DISTILLERY...\")",
+          "label_value": "Woodford Reserve",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank on the form: \"Double Oaked\" appears on the full physical label but not within the cropped label images on file, so claiming it here would risk an unintended Item 7 mismatch."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Domestic (Check Box34 = /Domes)",
+          "label_element": "n/a (no country-of-origin marking expected for a domestic product)",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Country-of-origin check only applies when Item 3 = Imported."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Class/type designation on front label",
+          "label_value": "KENTUCKY STRAIGHT BOURBON WHISKEY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "Old Forester Distillery, 7855 McCracken Pike, Versailles, KY 40383",
+          "label_element": "Producer name/address on back label",
+          "label_value": "PRODUCED BY THE WOODFORD RESERVE DISTILLERY, VERSAILLES, KENTUCKY",
+          "expected_result": "HARD_FAILURE",
+          "note": "The address half of Item 8 (7855 McCracken Pike, Versailles, KY) matches the label's location, but the producer NAME on the form (\"Old Forester Distillery\") does not match the label's producer name (\"The Woodford Reserve Distillery\") -- an Item 8 name mismatch (FR-053/FR-101) despite the address half matching."
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "45.2% ALC/VOL (90.4 PROOF)",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Distilled Spirits."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "750 mL",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_applicantaddress_woodford",
+      "wbs_ref": "2.4",
+      "description": "Domestic distilled spirits (Woodford Reserve), Type 14a -- single-field hard failure: Item 8 address state ('Versailles, IN') does not match the label's address state ('Versailles, Kentucky'), an out-of-state change not covered by the Sec. 2.6 allowable in-state address revision.",
+      "product_key": "woodford_reserve",
+      "product_type": "distilled_spirits",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_applicantaddress_woodford.pdf",
+      "label_images": [
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Woodford Reserve",
+          "label_element": "Distillery name on back label (\"PRODUCED BY THE WOODFORD RESERVE DISTILLERY...\")",
+          "label_value": "Woodford Reserve",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank on the form: \"Double Oaked\" appears on the full physical label but not within the cropped label images on file, so claiming it here would risk an unintended Item 7 mismatch."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Domestic (Check Box34 = /Domes)",
+          "label_element": "n/a (no country-of-origin marking expected for a domestic product)",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Country-of-origin check only applies when Item 3 = Imported."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Class/type designation on front label",
+          "label_value": "KENTUCKY STRAIGHT BOURBON WHISKEY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "The Woodford Reserve Distillery, 7855 McCracken Pike, Versailles, IN 47042",
+          "label_element": "Producer name/address on back label",
+          "label_value": "PRODUCED BY THE WOODFORD RESERVE DISTILLERY, VERSAILLES, KENTUCKY",
+          "expected_result": "HARD_FAILURE",
+          "note": "The producer NAME on the form matches the label (\"The Woodford Reserve Distillery\"), but the form's address state (Versailles, IN) does not match the label's state (Versailles, KENTUCKY) -- an out-of-state Item 8 address mismatch (FR-053/FR-101). Per Sec. 2.6, only an in-state address change is an allowable revision; an out-of-state change is a hard failure."
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "45.2% ALC/VOL (90.4 PROOF)",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Distilled Spirits."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "750 mL",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_netcontents_woodford",
+      "wbs_ref": "2.4",
+      "description": "Domestic distilled spirits (Woodford Reserve), Type 14a -- single-field hard failure: Item 15 declares an embossed net contents of 1 LITER, conflicting with the label's printed 750 mL.",
+      "product_key": "woodford_reserve",
+      "product_type": "distilled_spirits",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_netcontents_woodford.pdf",
+      "label_images": [
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Woodford Reserve",
+          "label_element": "Distillery name on back label (\"PRODUCED BY THE WOODFORD RESERVE DISTILLERY...\")",
+          "label_value": "Woodford Reserve",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank on the form: \"Double Oaked\" appears on the full physical label but not within the cropped label images on file, so claiming it here would risk an unintended Item 7 mismatch."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Domestic (Check Box34 = /Domes)",
+          "label_element": "n/a (no country-of-origin marking expected for a domestic product)",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Country-of-origin check only applies when Item 3 = Imported."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Class/type designation on front label",
+          "label_value": "KENTUCKY STRAIGHT BOURBON WHISKEY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "The Woodford Reserve Distillery, 7855 McCracken Pike, Versailles, KY 40383",
+          "label_element": "Producer name/address on back label",
+          "label_value": "PRODUCED BY THE WOODFORD RESERVE DISTILLERY, VERSAILLES, KENTUCKY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "45.2% ALC/VOL (90.4 PROOF)",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Distilled Spirits."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "Item 15: \"NET CONTENTS 1 LITER BLOWN INTO BASE OF BOTTLE\"",
+          "label_element": "Front label",
+          "label_value": "750 mL",
+          "expected_result": "HARD_FAILURE",
+          "note": "Item 15 declares an embossed/blown net contents of 1 LITER, but the submitted front label prints 750 mL -- two conflicting net contents declarations for the same product (27 CFR 5.203/4.37/7.43, FR-058)."
+        }
+      ]
+    },
+    {
+      "set_id": "hf_grapevarietals_rossoveneto",
+      "wbs_ref": "2.4",
+      "description": "Imported wine ('Duo' / Rosso Veneto IGT, Italy), Type 14a -- single-field hard failure: Item 10 claims the varietal 'Sangiovese', but the back label states the blend is Corvina 50% / Cabernet Franc 50%.",
+      "product_key": "rosso_veneto",
+      "product_type": "wine",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_grapevarietals_rossoveneto.pdf",
+      "label_images": [
+        {
+          "filename": "Rosso Veneto wine front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Rosso Veneto wine back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Duo",
+          "label_element": "Front label brand name (\"DUO\")",
+          "label_value": "Duo",
+          "expected_result": "MATCH",
+          "note": "manifest.json catalogs this product as product_key \"rosso_veneto\" / brand_name \"Rosso Veneto\" (derived from the source filename), but \"Rosso Veneto Indicazione Geografica Tipica\" is itself the wine's appellation/class designation as printed on the label -- the brand actually printed on the bottle is \"Duo\"."
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "Appassimento Project",
+          "label_element": "Back label heading (\"'DUO' APPASSIMENTO PROJECT\")",
+          "label_value": "Appassimento Project",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Imported (Check Box34 = /Import)",
+          "label_element": "Front label (\"Roncà - Italia\"); back label (\"PRODUCT OF ITALY\")",
+          "label_value": "Italy",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Wine (Check Box22 = /Wine)",
+          "label_element": "Front label (\"ROSSO VENETO INDICAZIONE GEOGRAFICA TIPICA\"); back label (\"RED WINE\")",
+          "label_value": "Rosso Veneto Indicazione Geografica Tipica -- RED WINE",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "Marcato Direct, 1200 Lake Street, Addison, IL 60108",
+          "label_element": "Back label importer line",
+          "label_value": "Imported by: MARCATO DIRECT, Addison, IL 60108",
+          "expected_result": "MATCH",
+          "note": "Item 8 holds the US importer's permit name/address for imported product, per FAA Act basic permit requirements."
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "Sangiovese",
+          "label_element": "Back label blend statement",
+          "label_value": "Corvina 50% and Cabernet Franc 50%",
+          "expected_result": "HARD_FAILURE",
+          "note": "Form claims the wine is 100% Sangiovese, but the back label states the blend is Corvina 50% and Cabernet Franc 50% -- Sangiovese does not appear in the label's varietal statement at all, an Item 10 mismatch (FR-054/FR-103). Every varietal listed on Item 10 must appear on the label."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "Rosso Veneto",
+          "label_element": "Front label (\"ROSSO VENETO INDICAZIONE GEOGRAFICA TIPICA\")",
+          "label_value": "Rosso Veneto",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label (\"Alc. 14,5% by Vol. - Net Cont. 750 mL\")",
+          "label_value": "14,5% by Vol.",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Wine. Label uses the European decimal-comma format (14,5%)."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label (\"Alc. 14,5% by Vol. - Net Cont. 750 mL\")",
+          "label_value": "750 mL",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_wineappellation_rossoveneto",
+      "wbs_ref": "2.4",
+      "description": "Imported wine ('Duo' / Rosso Veneto IGT, Italy), Type 14a -- single-field hard failure: Item 11 claims appellation 'Chianti Classico' (Tuscany), but the label states 'Rosso Veneto Indicazione Geografica Tipica' (Veneto).",
+      "product_key": "rosso_veneto",
+      "product_type": "wine",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_wineappellation_rossoveneto.pdf",
+      "label_images": [
+        {
+          "filename": "Rosso Veneto wine front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Rosso Veneto wine back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Duo",
+          "label_element": "Front label brand name (\"DUO\")",
+          "label_value": "Duo",
+          "expected_result": "MATCH",
+          "note": "manifest.json catalogs this product as product_key \"rosso_veneto\" / brand_name \"Rosso Veneto\" (derived from the source filename), but \"Rosso Veneto Indicazione Geografica Tipica\" is itself the wine's appellation/class designation as printed on the label -- the brand actually printed on the bottle is \"Duo\"."
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "Appassimento Project",
+          "label_element": "Back label heading (\"'DUO' APPASSIMENTO PROJECT\")",
+          "label_value": "Appassimento Project",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Imported (Check Box34 = /Import)",
+          "label_element": "Front label (\"Roncà - Italia\"); back label (\"PRODUCT OF ITALY\")",
+          "label_value": "Italy",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Wine (Check Box22 = /Wine)",
+          "label_element": "Front label (\"ROSSO VENETO INDICAZIONE GEOGRAFICA TIPICA\"); back label (\"RED WINE\")",
+          "label_value": "Rosso Veneto Indicazione Geografica Tipica -- RED WINE",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "Marcato Direct, 1200 Lake Street, Addison, IL 60108",
+          "label_element": "Back label importer line",
+          "label_value": "Imported by: MARCATO DIRECT, Addison, IL 60108",
+          "expected_result": "MATCH",
+          "note": "Item 8 holds the US importer's permit name/address for imported product, per FAA Act basic permit requirements."
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "Corvina, Cabernet Franc",
+          "label_element": "Back label blend statement",
+          "label_value": "Corvina 50% and Cabernet Franc 50%",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "Chianti Classico",
+          "label_element": "Front label (\"ROSSO VENETO INDICAZIONE GEOGRAFICA TIPICA\")",
+          "label_value": "Rosso Veneto",
+          "expected_result": "HARD_FAILURE",
+          "note": "Form claims the appellation \"Chianti Classico\" (a Tuscany DOCG), but the label states \"Rosso Veneto Indicazione Geografica Tipica\" (a Veneto IGT) -- a different region and designation tier entirely, an Item 11 mismatch (FR-055/FR-104)."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label (\"Alc. 14,5% by Vol. - Net Cont. 750 mL\")",
+          "label_value": "14,5% by Vol.",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Wine. Label uses the European decimal-comma format (14,5%)."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label (\"Alc. 14,5% by Vol. - Net Cont. 750 mL\")",
+          "label_value": "750 mL",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_producttype_fortemasso",
+      "wbs_ref": "2.4",
+      "description": "Imported product (Forte Masso), Type 14a -- single-field hard failure: Item 5 declares Malt Beverages, but the label is an Italian Barbera d'Alba DOCG red wine (manifest.json-flagged classification anomaly).",
+      "product_key": "forte_masso",
+      "product_type": "malt_beverages",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_producttype_fortemasso.pdf",
+      "label_images": [
+        {
+          "filename": "Forte Masso beer front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Forte Masso beer back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Forte Masso",
+          "label_element": "Front/back label wordmark (\"FORTEMASSO\")",
+          "label_value": "Fortemasso",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank: no separate fanciful name beyond the brand \"Fortemasso\" appears on the label."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Imported (Check Box34 = /Import)",
+          "label_element": "Back label (\"PRODOTTO IN ITALIA / PRODUCT OF ITALY\")",
+          "label_value": "Italy",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Malt Beverages (Check Box22 = /Malt)",
+          "label_element": "Back label (\"2013 BARBERA D'ALBA DENOMINAZIONE DI ORIGINE CONTROLLATA RED WINE\")",
+          "label_value": "Barbera d'Alba DOCG -- RED WINE",
+          "expected_result": "HARD_FAILURE",
+          "note": "Form declares the product a Malt Beverage (Item 5), but the back label unambiguously identifies it as an Italian Barbera d'Alba DOCG RED WINE -- a fundamental Item 5/class-type conflict (FR-100/FR-107). This carries forward the manifest.json-flagged anomaly for product_key \"forte_masso\" (cataloged as malt_beverages despite its label)."
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "Due Fratelli Imports, LLC, 88 Marginal Way, Portland, ME 04101",
+          "label_element": "Back label importer line",
+          "label_value": "IMPORTED BY: DUE FRATELLI IMPORTS, LLC PORTLAND MAINE",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank: Item 5 on the form declares Malt Beverages, so the wine-only Grape Varietals field does not apply on the form's own terms; the label's Barbera varietal is captured by the Item 5 conflict above."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank for the same reason as Grape Varietals; the label's Barbera d'Alba DOCG appellation is captured by the Item 5 conflict above."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Item 14 reference table excludes 14b for malt beverages; 14a is the only valid choice given the form's (incorrect) Item 5 declaration."
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label (\"13,5% vol\")",
+          "label_value": "13,5% vol",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Wine. Label uses the European decimal-comma format (13,5%)."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label (\"750 ML.\")",
+          "label_value": "750 ML.",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_govtwarning_twelv31",
+      "wbs_ref": "2.4",
+      "description": "Domestic distilled spirits liqueur (Twelv3 'Velvet Berry'), Type 14a -- hard failure: no Government Warning statement appears on the only submitted label image (with an unavoidable secondary Applicant Name/Address co-failure, since the image contains no producer/bottler statement at all).",
+      "product_key": "twelv_31",
+      "product_type": "distilled_spirits",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_govtwarning_twelv31.pdf",
+      "label_images": [
+        {
+          "filename": "Twelv 31 liqeur front.jpg",
+          "label_type": "brand"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Twelv3",
+          "label_element": "Front label (stylized \"TWELV3\" wordmark)",
+          "label_value": "Twelv3",
+          "expected_result": "MATCH",
+          "note": "manifest.json catalogs this product as product_key \"twelv_31\" / brand_name \"Twelv 31\" (derived from the source filename), but the printed wordmark on the label reads \"TWELV3\"."
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "Velvet Berry",
+          "label_element": "Front label (\"Velvet Berry Liqueur\")",
+          "label_value": "Velvet Berry",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Domestic (Check Box34 = /Domes)",
+          "label_element": "n/a (no country-of-origin marking expected for a domestic product)",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Country-of-origin check only applies when Item 3 = Imported."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Front label (\"Liqueur\")",
+          "label_value": "Liqueur",
+          "expected_result": "MATCH",
+          "note": "Liqueur is a distilled-spirits class/type under 27 CFR Part 5."
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "Twelv3 Spirits Co., 450 Industrial Pkwy, Brooklyn, NY 11222",
+          "label_element": "n/a",
+          "label_value": "n/a -- no producer/bottler name or address appears anywhere on \"Twelv 31 liqeur front.jpg\", the only label image cataloged for this product",
+          "expected_result": "HARD_FAILURE",
+          "note": "Secondary co-failure: this single cropped front-label image contains no producer/bottler statement at all, so Item 8 cannot be verified against any label element. (Rule 6's dedicated, isolated coverage of an out-of-state Applicant Address mismatch is hf_applicantaddress_woodford.pdf.)"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "n/a",
+          "label_value": "n/a -- no Government Warning statement appears anywhere on \"Twelv 31 liqeur front.jpg\", the only label image cataloged for this product",
+          "expected_result": "HARD_FAILURE",
+          "note": "27 CFR 16.21 requires the Government Warning statement on every container of alcoholic beverages offered for sale in the U.S.; it is absent from the only image submitted for this product."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label (\"20% ALC./VOL.  40 PROOF  750 ML\")",
+          "label_value": "20% ALC./VOL. (40 PROOF)",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with a Liqueur."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "750 ML",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "hf_abv_woodford",
+      "wbs_ref": "2.4",
+      "description": "Domestic distilled spirits (Woodford Reserve), Type 14a -- single-field hard failure: Item 9 references a TTB-approved formula at 40.0% ALC/VOL, but the front label states 45.2% ALC/VOL, violating 27 CFR 5.65.",
+      "product_key": "woodford_reserve",
+      "product_type": "distilled_spirits",
+      "application_type": "14a",
+      "expected_outcome": "DENY",
+      "form_pdf": "forms/hf_abv_woodford.pdf",
+      "label_images": [
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Woodford Reserve",
+          "label_element": "Distillery name on back label (\"PRODUCED BY THE WOODFORD RESERVE DISTILLERY...\")",
+          "label_value": "Woodford Reserve",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank on the form: \"Double Oaked\" appears on the full physical label but not within the cropped label images on file, so claiming it here would risk an unintended Item 7 mismatch."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Domestic (Check Box34 = /Domes)",
+          "label_element": "n/a (no country-of-origin marking expected for a domestic product)",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Country-of-origin check only applies when Item 3 = Imported."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Class/type designation on front label",
+          "label_value": "KENTUCKY STRAIGHT BOURBON WHISKEY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "The Woodford Reserve Distillery, 7855 McCracken Pike, Versailles, KY 40383",
+          "label_element": "Producer name/address on back label",
+          "label_value": "PRODUCED BY THE WOODFORD RESERVE DISTILLERY, VERSAILLES, KENTUCKY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "Item 9 (FORMULA): \"TTB Formula #2019-KY-00341 (approved at 40.0% ALC/VOL)\"",
+          "label_element": "Front label",
+          "label_value": "45.2% ALC/VOL (90.4 PROOF)",
+          "expected_result": "HARD_FAILURE",
+          "note": "Item 9 references a TTB-approved formula stating 40.0% ALC/VOL, but the front label states 45.2% ALC/VOL (90.4 PROOF) -- the labeled alcohol content does not conform to the TTB-approved formula referenced on the application, as required by 27 CFR 5.65 (FR-066)."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "750 mL",
           "expected_result": "MATCH"
         }
       ]
