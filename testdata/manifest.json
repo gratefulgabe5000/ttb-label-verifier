@@ -1,0 +1,695 @@
+{
+  "wbs_ref": "2.1",
+  "generated_at": "2026-06-11",
+  "source_note": "Flat inventory of testdata/ label images. The original good/bad category subfolders (good spirits, good wine+beer, bad spirits label/photo/warning, bad wine+beer) were removed by Gabe on 2026-06-11 -- they no longer encode an expected pass/fail outcome. Every file below is a raw label image awaiting assessment, grouped by product (front/brand, back, other views of the same bottle/can). No application forms (F 5100.31) exist for any of these products yet; synthetic forms must be generated (WBS 2.2) and paired with these label groups (WBS 2.3-2.7) to assign expected outcomes (APPROVE / DENY / RECOMMEND_EXEMPTION_REVIEW) and comparison-rule coverage.",
+  "totals": {
+    "images": 88,
+    "products": 45,
+    "by_product_type": {
+      "distilled_spirits": 78,
+      "wine": 7,
+      "malt_beverages": 3
+    }
+  },
+  "products": [
+    {
+      "product_key": "alpine_lafayette",
+      "brand_name": "Alpine Lafayette",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Alpine Lafayette whiskey.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "angels_envy",
+      "brand_name": "Angels Envy",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Angels Envy burbon back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Angels Envy burbon front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "barenjager",
+      "brand_name": "Barenjager",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Barenjager back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Barenjager front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "barenjager_burbon",
+      "brand_name": "Barenjager Burbon",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Barenjager burbon back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Barenjager burbon front.jpg",
+          "label_type": "brand"
+        }
+      ],
+      "notes": [
+        "Filename includes 'burbon' -- treated as a distinct product from 'Barenjager' (honey liqueur). Kept separate pending visual confirmation during 2.3-2.5 pairing."
+      ]
+    },
+    {
+      "product_key": "black_maple_hill",
+      "brand_name": "Black Maple Hill",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Black Maple Hill whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Black Maple Hill whiskey front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Black Maple Hill whiskey other.jpg",
+          "label_type": "other"
+        }
+      ]
+    },
+    {
+      "product_key": "boston_harbor",
+      "brand_name": "Boston Harbor",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Boston Harbor maple cream back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Boston Harbor maple cream front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "casamigos",
+      "brand_name": "Casamigos",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Casamigos tequila back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Casamigos tequila front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "cascade_val",
+      "brand_name": "Cascade Val",
+      "product_type": "wine",
+      "images": [
+        {
+          "filename": "Cascade Val wine.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "barrilito",
+      "brand_name": "Barrilito",
+      "product_type": "malt_beverages",
+      "images": [
+        {
+          "filename": "Cerveza Barrilito.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "collaboration",
+      "brand_name": "Collabor&tion",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Collabor&tion whiskey.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "cotton_hollow",
+      "brand_name": "Cotton Hollow",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Cotton Hollow burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Cotton Hollow burbon other.jpg",
+          "label_type": "other"
+        }
+      ]
+    },
+    {
+      "product_key": "den_of_thieves",
+      "brand_name": "Den of Thieves",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Den of Thieves chocolate whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Den of Thieves chocolate whiskey front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "dutch_courage",
+      "brand_name": "Dutch Courage",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Dutch Courage gin back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Dutch Courage gin front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "fete_rose",
+      "brand_name": "Fete Rose",
+      "product_type": "wine",
+      "images": [
+        {
+          "filename": "Fete Rose wine back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Fete Rose wine.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "forte_masso",
+      "brand_name": "Forte Masso",
+      "product_type": "malt_beverages",
+      "images": [
+        {
+          "filename": "Forte Masso beer back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Forte Masso beer front.jpg",
+          "label_type": "brand"
+        }
+      ],
+      "notes": [
+        "Filename says 'beer' but the label artwork reads 'Barbera D'Alba -- Denominazione di Origine Controllata' (an Italian wine appellation/class designation). Likely an intentional product/class-type mismatch fixture (FR-100 product/class-type, FR-107 wine appellation) -- confirm intended product_type before pairing with a synthetic form in WBS 2.4."
+      ]
+    },
+    {
+      "product_key": "fuel",
+      "brand_name": "Fuel",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Fuel moonshine.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "ginger_sins",
+      "brand_name": "Ginger Sins",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Ginger Sins whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Ginger Sins whiskey front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Ginger Sins whiskey other.jpg",
+          "label_type": "other"
+        }
+      ]
+    },
+    {
+      "product_key": "gordian_knot",
+      "brand_name": "Gordian Knot",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Gordian Knot rum back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Gordian Knot rum front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "hanami",
+      "brand_name": "Hanami",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Hanami gin back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Hanami gin front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "howling_moon_moonshine",
+      "brand_name": "Howling Moon (Moonshine)",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Howling Moon moonshine back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Howling Moon moonshine front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "howling_moon_whiskey",
+      "brand_name": "Howling Moon (Whiskey)",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Howling Moon whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Howling Moon whiskey front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "jacques_cardin",
+      "brand_name": "Jacques Cardin",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Jacques Cardin cognac back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Jacques Cardin cognac front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "lenz_moser",
+      "brand_name": "Lenz Moser",
+      "product_type": "wine",
+      "images": [
+        {
+          "filename": "Lenz Moser wine back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Lenz Moser wine front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "market_alley",
+      "brand_name": "Market Alley",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Market Alley gin (back).jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Market Alley gin (front).jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "mckenzie_brew_house",
+      "brand_name": "McKenzie Brew House",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "McKenzie Brew House vodka.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "misunderstood",
+      "brand_name": "Misunderstood",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Misunderstood ginger whiskey front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Misunderstood ginger whiskey other.jpg",
+          "label_type": "other"
+        }
+      ]
+    },
+    {
+      "product_key": "mokka",
+      "brand_name": "Mokka",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Mokka whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Mokka whiskey front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Mokka whiskey other.jpg",
+          "label_type": "other"
+        }
+      ]
+    },
+    {
+      "product_key": "monkey_47",
+      "brand_name": "Monkey 47",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Monkey 47 gin back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Monkey 47 gin front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "nicks_and_bruce",
+      "brand_name": "Nicks & Bruce",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Nicks & Bruce aged rum back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Nicks & Bruce aged rum front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "original_spice",
+      "brand_name": "Original Spice",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Original Spice whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Original Spice whiskey front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Original Spice whiskey other.jpg",
+          "label_type": "other"
+        }
+      ]
+    },
+    {
+      "product_key": "presidential_dram",
+      "brand_name": "Presidential Dram",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Presidential Dram whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Presidential Dram whiskey front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "resilient",
+      "brand_name": "Resilient",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Resilient burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Resilient burbon other.jpg",
+          "label_type": "other"
+        }
+      ]
+    },
+    {
+      "product_key": "rocky_mount",
+      "brand_name": "Rocky Mount",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Rocky Mount whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Rocky Mount whiskey front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "rosso_veneto",
+      "brand_name": "Rosso Veneto",
+      "product_type": "wine",
+      "images": [
+        {
+          "filename": "Rosso Veneto wine back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Rosso Veneto wine front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "sailor_jerry",
+      "brand_name": "Sailor Jerry",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Sailor Jerry rum.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "salted_caramel",
+      "brand_name": "Salted Caramel",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Salted Caramel whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Salted Caramel whiskey front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Salted Caramel whiskey other.jpg",
+          "label_type": "other"
+        }
+      ]
+    },
+    {
+      "product_key": "seven_fathoms",
+      "brand_name": "Seven Fathoms",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Seven Fathoms rum back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Seven Fathoms rum front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "sortilege_1",
+      "brand_name": "Sortilege",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Sortilege liqueur back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Sortilege liqueur front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Sortilege liqueur other.jpg",
+          "label_type": "other"
+        }
+      ]
+    },
+    {
+      "product_key": "sortilege_2",
+      "brand_name": "Sortilege (variant 2)",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Sortilege liqueur2 back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Sortilege liqueur2 front.jpg",
+          "label_type": "brand"
+        }
+      ],
+      "notes": [
+        "Second Sortilege label set ('liqueur2') -- kept as a separate product from 'sortilege_1' since it appears to be a different bottle/edition."
+      ]
+    },
+    {
+      "product_key": "stoll_and_wolfe",
+      "brand_name": "Stoll & Wolfe",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Stoll & Wolfe whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Stoll & Wolfe whiskey front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "twelv_31",
+      "brand_name": "Twelv 31",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Twelv 31 liqeur front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "uncle_nearest",
+      "brand_name": "Uncle Nearest",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Uncle Nearest whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Uncle Nearest whiskey front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "warm",
+      "brand_name": "Warm",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Warm whiskey.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "white_label",
+      "brand_name": "White Label",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "White Label whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "White Label whiskey front.jpg",
+          "label_type": "brand"
+        }
+      ]
+    },
+    {
+      "product_key": "woodford_reserve",
+      "brand_name": "Woodford Reserve",
+      "product_type": "distilled_spirits",
+      "images": [
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "label_type": "brand"
+        }
+      ],
+      "notes": [
+        "Second brand-label photo (alternate angle/printing) -- both 'front' and 'front2' map to label_type 'brand'."
+      ]
+    }
+  ]
+}

@@ -43,7 +43,6 @@ logs/
 # Temporary uploads (never persist user-submitted label images)
 uploads/
 tmp/
-testdata/
 
 # Backend runtime data (SQLite DB + uploaded files, IA-26)
 app/data/

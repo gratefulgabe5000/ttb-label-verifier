@@ -20,7 +20,6 @@
 5. [Initial Assumptions](#5-initial-assumptions)
 6. [COLA Registry & Future Integration Reference](#6-cola-registry--future-integration-reference)
 7. [Engineering Log](#7-engineering-log)
-8. [Chat Artifact Index](#8-chat-artifact-index)
 
 ---
 
@@ -1249,7 +1248,6 @@ None of this is implemented, called, or stubbed in the prototype — IA-03/IA-22
 - Added Sessions 7 and 8 to this Engineering Log (previously only Sessions 1–6 were recorded).
 - Corrected the `README.md` `Project Structure` tree: relocated the `f510031.pdf` reference into `_ProblemStatement/` (it does not exist at repo root) and added `PRD.md`/`WBS.md` to the `_DevLog/` listing.
 - Fixed `WBS.md` item **0.13** (left as an incomplete placeholder during the Session 8 re-baseline) and added new item **0.14** documenting this pass.
-- Restored this **§8 Chat Artifact Index**, referenced by `WBS.md` items 20.0/20.4 but inadvertently left without a body — rewritten to point to §7's Engineering Log as the authoritative session record until transcripts are exported per WBS 20.4, rather than listing not-yet-exported files as if present.
 - Bumped `PRD.md` to **v2.0** (revision history entry added; no functional requirement changes — FR/PR/IR/UR/SR/CR sets unchanged from v1.4).
 - Added a **Documentation Suite Version: 2.0** marker to this header, `README.md`, and `TODO.md`, indicating README, PRD (v2.0), DevLog, WBS (v2.0), and TODO are mutually consistent as of this session.
 
@@ -1289,6 +1287,22 @@ None of this is implemented, called, or stubbed in the prototype — IA-03/IA-22
 - The manifest intentionally does **not** assign per-set pass/fail outcomes — `WBS.md` item 2.1's original wording ("...into a manifest mapping each set to its expected pass/fail outcome") describes the now-removed folder-based framing. Expected outcomes will instead fall out of WBS 2.2 (synthetic F 5100.31 forms) and 2.3–2.5 (pairing each product's label set with a matching, hard-failure, or allowable-revision form). **Open item:** reconcile `WBS.md` 2.1's wording with this delivered scope in a future documentation pass — out of scope for this session (DevLog/TODO only, per Gabe's instruction).
 
 **Outcome:** Backend (`app/`) and frontend (`web/`) scaffolds are both built, tested, and verified end-to-end against each other, including the new runtime-only API-key Settings architecture. `testdata/manifest.json` provides the per-product label-image inventory that WBS 2.2 (synthetic forms) and 2.3–2.7 (paired good/hard-failure/allowable/degraded/14b sets) will build on next.
+
+---
+
+### 2026-06-11 — Session 11: Synthetic Test Data — TS-01 Tier Sample Forms (2.2)
+
+**Context:** With WBS 1.0/11.0/2.1 complete (Session 10), began executing the remaining synthetic-test-data items (2.2–2.7) per Gabe's direction to proceed sequentially through the WBS, stopping after each item for approval. WBS 2.2 produces sample F 5100.31 PDFs across all three TS-01 extraction tiers (FR-017) — the fixtures WBS 5.7's tiered-extraction unit tests will exercise. Before starting, fixed a documentation loose end Gabe identified: `WBS.md` items 0.14 and 20.4 still referenced a "Chat Artifact Index (§8)" that was removed from `DevLog.md` in an earlier (uncommitted) edit — actual chat transcripts will not be provided as part of the submission, so both references were corrected/removed.
+
+**Completed:**
+- Reverse-engineered `_ProblemStatement/f510031.pdf`'s AcroForm: 5-page, AES-encrypted (decrypts with empty password via `pypdf` + `cryptography`), 74 field entries on page 1, of which ~25 carry `/TU` tooltips matching PRD Items 1–19, plus two radio-button groups (Item 3 Source of Product: Domestic/Imported; Item 5 Type of Product: Wine/Distilled Spirits/Malt Beverages) and four Item-14 checkboxes (Item 14d's "on" export state is `/yse` — a typo in the government's own PDF).
+- Built `testdata/build_sample_forms.py`, generating one fictional "Sample Creek Distillery" domestic straight-bourbon COLA application (`SAMPLE_VALUES`: all populated Items, Domestic/Distilled Spirits/14a checked) as three PDF variants in `testdata/forms/`:
+  - `sample_creek_acroform.pdf` (Tier 1) — `fill_form()` via `pypdf.PdfWriter.update_page_form_field_values()`. Verified: AcroForm intact, 74 fields, `/V` values (incl. radio-group `/Spirits`/`/Domes` and checkbox `/yes`) re-readable via `pypdf`.
+  - `sample_creek_flattened.pdf` (Tier 2) — `flatten_form()` via PyMuPDF's `Document.bake(annots=False, widgets=True)`, which converts filled widget appearances into permanent page content and removes `/AcroForm`. Verified: no `/AcroForm`, 0 widgets, full 2,985-character text layer (matching the original page's character count) including all sample values and the checked-box marks.
+  - `sample_creek_scanned.pdf` (Tier 3) — `rasterize_to_image_pdf()` rasterizes each flattened page to a 150 DPI PNG and rebuilds a same-size, image-only PDF. Verified: 0 extractable characters, 1 image per page.
+- **Debugging note:** an earlier hand-rolled flatten approach (`page.insert_textbox()` per widget value/checkmark, then `page.delete_widget()`, then `xref_set_key(catalog, "AcroForm", "null")`) silently discarded both the newly-drawn marks and ~425 characters of the form's own static content — reproducible regardless of draw/delete ordering (draw-then-delete, delete-then-draw, or delete+save+reopen+draw all failed identically). Root cause not fully isolated beyond "`delete_widget()` invalidates page content added via `insert_textbox()`'s shape-commit." PyMuPDF 1.27's `Document.bake()` (added in 1.24) replaced the entire hand-rolled approach with one call and preserves the full text layer — adopted as the permanent `flatten_form()` implementation.
+
+**Outcome:** WBS 2.2 complete — `testdata/forms/` contains the three TS-01 tier fixtures, each independently verified to exercise its intended extraction path (Tier 1 AcroForm field read, Tier 2 `pdfplumber`-style text-layer extraction, Tier 3 Claude Vision fallback). Pending Gabe's approval before proceeding to WBS 2.3 ("good" application + label sets per product type).
 
 ---
 

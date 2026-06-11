@@ -39,7 +39,7 @@
 | **0.11** | **Systems Engineering Review** | Renamed DevLog §5 "Assumptions" → "Initial Assumptions" (IA-01–26) to deconflict with PRD §8 (A-01–14); re-audited and corrected every cross-document A-/IA- reference; fixed 3 broken PRD self-references | 2026-06-10 | DevLog §5; PRD §8 |
 | **0.12** | **Documentation Review** | Assumptions-completeness audit → PRD v1.3 (A-15/16/17, FR-066); comparison-matrix completeness audit → PRD v1.4 (FR-100–107); updated DevLog §5 IA cross-references and TODO.md Session 7 | 2026-06-10 | PRD v1.3/v1.4; TODO.md Session 7 |
 | **0.13** | **WBS Re-Baseline (v2.0)** | Rewrote `WBS.md` as a single dependency-ordered Phase 1 sequence (1.0–21.0); added Phase 0 (0.1–0.12); re-scoped Stage 5 Comparison Engine to 16 sub-items covering FR-066/FR-100–107; re-sequenced synthetic test data to 2.0; removed hour estimates and target dates | 2026-06-11 | TODO.md Session 8; WBS.md v2.0 |
-| **0.14** | **Documentation Consistency Pass (v2.0 Baseline)** | Cross-document review of README/PRD/DevLog/WBS/TODO; corrected footer versions, TOC anchors, section cross-references, and DevLog Engineering Log coverage (Sessions 7–8); restored DevLog §8 Chat Artifact Index; bumped PRD to v2.0; synchronized all five documents to a unified v2.0 baseline | 2026-06-11 | TODO.md Session 9; PRD.md v2.0 |
+| **0.14** | **Documentation Consistency Pass (v2.0 Baseline)** | Cross-document review of README/PRD/DevLog/WBS/TODO; corrected footer versions, TOC anchors, section cross-references, and DevLog Engineering Log coverage (Sessions 7–8); bumped PRD to v2.0; synchronized all five documents to a unified v2.0 baseline | 2026-06-11 | TODO.md Session 9; PRD.md v2.0 |
 
 ---
 
@@ -55,7 +55,7 @@
 | 1.5 | Configure CORS middleware | 1.1 | IR-006 |
 | 1.6 | Minimal "hello world" smoke-test deploy to Railway — verify Tesseract install path (Aptfile/`nixpacks.toml`), persistent volume mount, and env vars resolve in the deployed environment before feature code depends on them | 1.1, 1.4 | IA-26, Decision 8 (deployment watch-items) |
 | **2.0** | **Synthetic Test Data Preparation** *(parallel with 1.0; must complete before the unit/integration tests in 5.7, 6.8, 7.16, 8.5, 9.7, 10.4, 16.x consume it)* | Phase 0 | TS-01, TS-02 |
-| 2.1 | Inventory and organize existing `testdata/` (good spirits, good wine+beer, bad spirits label/photo/warning, bad wine+beer) into a manifest mapping each set to its expected pass/fail outcome | 2.0 | TS-02 |
+| 2.1 | Inventory and organize existing `testdata/` into a manifest mapping each set to its expected pass/fail outcome | 2.0 | TS-02 |
 | 2.2 | Produce sample F 5100.31 PDFs covering all three TS-01 tiers: (a) filled AcroForm, (b) flattened/text-layer-only, (c) scanned/image-only | 0.3 | TS-01, FR-017 |
 | 2.3 | Build "good" (all-fields-match) application + label sets for each product type (wine, spirits, malt beverage) | 2.1, 2.2 | §2.5 Comparison Matrix |
 | 2.4 | Build "hard failure" sets — one per comparison rule (brand name, government warning text/format, "for sale in [STATE]", country of origin, fanciful name, product/class-type, applicant name, applicant address, grape varietals, wine appellation, ABV, net contents) | 2.1, 2.2 | FR-050–059, FR-066, FR-100–107 |
@@ -196,7 +196,7 @@
 | 20.1 | Final review of `README.md` (setup/run instructions, live URL, known limitations) | 19.3 | CR-005 |
 | 20.2 | Final review of `DevLog.md` — confirm Engineering Log captures all sessions through deployment | 19.3 | DevLog §7 |
 | 20.3 | Final consistency check across `PRD.md`/`WBS.md`/`TODO.md` (version numbers, footers, cross-references) | 20.2 | — |
-| 20.4 | Export remaining chat session transcripts to `_DevLog/` per the Chat Artifact Index (§8) | 20.3 | NOT REQUIRED |
+| 20.4 | Export remaining chat session transcripts to `_DevLog/` | 20.3 | NOT REQUIRED — transcripts will not be provided as part of this submission |
 | 20.5 | Repository cleanup — verify `.gitignore` covers secrets/`.env`, confirm no exposed API keys in history | 20.4 | — |
 | 20.6 | Final lint/format pass on `app/` and `web/` | 20.5 | — |
 | **21.0** | **Submission** | 20.6 | — |

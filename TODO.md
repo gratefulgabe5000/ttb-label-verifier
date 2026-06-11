@@ -21,16 +21,18 @@
 | Work Breakdown Structure | ✅ Complete, re-baselined to v2.0 (2026-06-11) — [`WBS.md` v2.0](_DevLog/WBS.md) |
 | Backend (`app/`) | 🔶 Scaffolding complete (WBS 1.0, 4/4 pytest passing, Railway config) — WBS 3.0–10.0 remaining |
 | Frontend (`web/`) | 🔶 Scaffolding complete (WBS 11.0 + Settings/API-key UI, build & lint passing) — WBS 12.0–14.0 remaining |
-| Synthetic test data (sample forms + multi-image label sets) | 🔶 2.1 inventory complete (`testdata/manifest.json` — 45 products / 88 images) — WBS 2.2–2.7 remaining |
+| Synthetic test data (sample forms + multi-image label sets) | 🔶 2.1–2.2 complete (`testdata/manifest.json` — 45 products / 88 images; `testdata/forms/sample_creek_*.pdf` — TS-01 3-tier fixtures) — WBS 2.3–2.7 remaining |
 | Deployed application URL | ☐ Pending — WBS 18.0 |
 
 ---
 
-## Next Session — Synthetic Test Data Build-Out (2.2–2.7) & Auth Backend (3.0)
+## Next Session — Synthetic Test Data Build-Out (2.3–2.7) & Auth Backend (3.0)
 
 > **Update:** Session 10 completed backend scaffolding (WBS 1.0), frontend scaffolding + the new Settings/API-key UI (WBS 11.0), and the test-data inventory (WBS 2.1 — `testdata/manifest.json`, 45 products / 88 images). Both `app/` and `web/` build/test cleanly and were verified end-to-end against each other.
+>
+> **Update:** Session 11 completed WBS 2.2 — `testdata/build_sample_forms.py` generates a fictional "Sample Creek Distillery" application as three TS-01 tier fixtures (`testdata/forms/sample_creek_acroform.pdf`, `_flattened.pdf`, `_scanned.pdf`), each verified to exercise its intended extraction path (Tier 1 AcroForm fields, Tier 2 text layer, Tier 3 image-only).
 
-1. **WBS 2.2–2.7 — Synthetic test data build-out**: produce sample F 5100.31 PDFs across all three TS-01 tiers (2.2), then pair them with `testdata/manifest.json` label sets to build "good" (2.3), "hard failure" — one per comparison rule incl. the `Forte Masso` product/class-type anomaly noted in DevLog Session 10 (2.4), "possible allowable revision" (2.5), degraded-quality (2.6), and Type 14b (2.7) sets.
+1. **WBS 2.3–2.7 — Synthetic test data build-out (cont.)**: pair `testdata/build_sample_forms.py` (2.2) and `testdata/manifest.json` (2.1) label sets to build "good" (2.3), "hard failure" — one per comparison rule incl. the `Forte Masso` product/class-type anomaly noted in DevLog Session 10 (2.4), "possible allowable revision" (2.5), degraded-quality (2.6), and Type 14b (2.7) sets.
 2. **WBS 3.0 — Auth backend** (`app/`): `Agent` ORM model + seed script (3.1), `POST /auth/login` JWT issuance (3.2), current-agent JWT dependency applied to protected routers (3.3), unit tests (3.4) — unblocks the frontend's existing `LoginPage`/`AuthContext` (11.6).
 
 ---
@@ -40,7 +42,7 @@
 > Sequencing, dependencies, and traceability for all items below are in [`WBS.md` v2.0 — Work Breakdown Structure](_DevLog/WBS.md) §2.
 
 - [x] WBS 1.0 — Backend scaffolding (`app/`): FastAPI structure, SQLAlchemy models for all 8 tables, env config, CORS, early Railway smoke-test deploy (Session 10)
-- [ ] WBS 2.0 — Synthetic test data (parallel w/ 1.0): sample F 5100.31 PDFs across all 3 TS-01 tiers + multi-image label sets (good / hard-failure / allowable / degraded / 14b) — **2.1 done** (`testdata/manifest.json`, Session 10); 2.2–2.7 remaining
+- [ ] WBS 2.0 — Synthetic test data (parallel w/ 1.0): sample F 5100.31 PDFs across all 3 TS-01 tiers + multi-image label sets (good / hard-failure / allowable / degraded / 14b) — **2.1–2.2 done** (`testdata/manifest.json`, Session 10; `testdata/forms/sample_creek_*.pdf`, Session 11); 2.3–2.7 remaining
 - [ ] WBS 3.0 — Auth: agent model + seed, JWT login, current-agent dependency, unit tests
 - [ ] WBS 4.0 — Stage 1–2: ingestion endpoints, file validation, persistence, list/detail endpoints, unit tests
 - [ ] WBS 5.0 — Stage 3: form assessment (tiered TS-01 extraction, all 18 Part I fields, normalization, confidence scoring, unit tests)
@@ -127,7 +129,6 @@
   - Fixed this file's WBS section cross-references (`WBS.md §3`/`§4` → `§2`/`§3`) and added Sessions 7 and 8 to DevLog §7 Engineering Log (previously only through Session 6).
   - Corrected the README `Project Structure` tree (`f510031.pdf` relocated to `_ProblemStatement/`; added `PRD.md`/`WBS.md` to `_DevLog/`).
   - Fixed `WBS.md` item **0.13** (incomplete from the Session 8 re-baseline) and added new item **0.14** documenting this pass.
-  - Restored `DevLog.md` **§8 Chat Artifact Index** (referenced by `WBS.md` 20.0/20.4 but left without a body), pointing to §7's Engineering Log as the authoritative session record until transcripts are exported per WBS 20.4.
   - Bumped `PRD.md` to **v2.0** (no functional requirement changes — FR/PR/IR/UR/SR/CR sets unchanged from v1.4).
   - Added a **Documentation Suite/Baseline: v2.0** marker to `README.md`, `DevLog.md`, and this `TODO.md`.
   - **The documentation suite is now internally consistent and synchronized at v2.0.** Implementation (WBS 1.0/2.0/11.0) begins next session.
@@ -137,6 +138,12 @@
   - **New cross-cutting requirement (per Gabe):** the `ANTHROPIC_API_KEY` is no longer developer-provisioned — each agent enters their own key via a Settings panel. **WBS 1.4** delivers this: `GET/PUT/DELETE /settings/api-key` sets `os.environ["ANTHROPIC_API_KEY"]` for the running process only (never persisted to disk/DB), returns a masked key (`sk-ant********XXXX`) and a live connection-test result (`models.list(limit=1)`). Anthropic API *usage* (Claude calls in the pipeline) remains deferred to WBS 5.0+.
   - **WBS 11.0 (`web/`):** Vite + React 19 + TS + Tailwind CSS 4 + shadcn/ui ("base-nova"/`@base-ui/react`) + react-pdf + React Query 5 + react-router 7. Built `pages/`, `components/{layout,settings,ui}`, `contexts/`, `hooks/`, `lib/`, a typed API client (`apiFetch<T>`/`ApiError`, implemented vs. forward-declared endpoints), JWT auth scaffolding (`AuthContext`/`useAuth`/`ProtectedRoute`/`LoginPage`), and a new **Settings gear icon → `SettingsDialog`** (masked key, connected/configured status badges, Save/Remove via React Query against `/settings/api-key`). `npm run lint` and `npm run build` pass cleanly; verified end-to-end against the live backend (Settings GET/PUT/DELETE + CORS).
   - **WBS 2.1 (test-data inventory):** `testdata/` originally held 88 label images across 6 good/bad subfolders. **Mid-session, Gabe flattened `testdata/`** — the subfolders no longer represent a meaningful pass/fail outcome; every image is now just a raw label image, and there are no application forms to pair with them (to be generated in 2.2). Built `testdata/build_manifest.py` → `testdata/manifest.json`, grouping the 88 files into **45 product-level label sets** (`brand`/`back`/`other` views, tagged with `brand_name` + `product_type`: 39 `distilled_spirits` products / 78 images, 4 `wine` / 7, 2 `malt_beverages` / 3). Flagged `Forte Masso beer front/back.jpg` (filename says beer, label artwork is an Italian wine — "Barbera D'Alba DOC") as a ready-made product/class-type mismatch fixture for WBS 2.4. Per-set expected outcomes are deferred to 2.2–2.7 (pairing with synthetic forms) — see DevLog Session 10 for the open item on reconciling `WBS.md` 2.1's original wording with this delivered scope.
+
+- **Session 11 — Synthetic Test Data: TS-01 Tier Sample Forms (2.2).** Per Gabe's direction to execute the WBS sequentially with a stop for approval after each item, began with WBS 2.2.
+  - First, fixed a documentation loose end Gabe flagged at the start of the session: removed the dangling "Chat Artifact Index (§8)" references from `WBS.md` items 0.14 and 20.4 — actual chat transcripts will not be provided as part of the submission.
+  - **WBS 2.2 (sample F 5100.31 PDFs, all 3 TS-01 tiers):** Reverse-engineered `_ProblemStatement/f510031.pdf`'s AcroForm (5 pages, AES-encrypted/empty password, 74 fields on page 1; ~25 carry `/TU` tooltips matching PRD Items 1–19, plus radio groups for Item 3 Source of Product and Item 5 Type of Product, plus Item 14a–d checkboxes — note 14d's "on" state is `/yse`, a typo in TTB's own PDF). Built `testdata/build_sample_forms.py`, which generates one fictional "Sample Creek Distillery" domestic straight-bourbon application as three files in `testdata/forms/`: `sample_creek_acroform.pdf` (Tier 1, filled via `pypdf`), `sample_creek_flattened.pdf` (Tier 2, via PyMuPDF's `Document.bake()`), and `sample_creek_scanned.pdf` (Tier 3, rasterized to image-only PDF). Verified each tier independently: Tier 1 retains all 74 AcroForm fields with correct `/V` values (incl. radio buttons and checkboxes); Tier 2 has zero widgets, no `/AcroForm`, and a full 2,985-char text layer containing every sample value; Tier 3 has zero extractable text and one image per page.
+  - **Debugging note:** an initial hand-rolled flatten (`insert_textbox()` per widget value/checkmark, then `delete_widget()`, then strip `/AcroForm`) silently dropped both the new text and ~425 chars of the form's own static content, regardless of draw/delete ordering. PyMuPDF 1.27's `Document.bake(annots=False, widgets=True)` (added in 1.24) replaced this entirely with one call that preserves the full text layer.
+  - **WBS 2.2 complete — awaiting Gabe's approval before starting WBS 2.3.**
 
 ---
 
