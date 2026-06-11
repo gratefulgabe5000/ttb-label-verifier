@@ -18,14 +18,7 @@ Usage:
     testdata/.venv/Scripts/python.exe testdata/build_sample_forms.py
 """
 
-from pathlib import Path
-
-import fitz  # PyMuPDF
-from pypdf import PdfReader, PdfWriter
-
-ROOT = Path(__file__).resolve().parent
-TEMPLATE = ROOT.parent / "_ProblemStatement" / "f510031.pdf"
-OUT_DIR = ROOT / "forms"
+from formlib import OUT_DIR, fill_form, flatten_form, rasterize_to_image_pdf
 
 # Fully-qualified AcroForm field names (pypdf get_fields() keys) -> values
 # for the fictional "Sample Creek Distillery" domestic straight bourbon
@@ -67,47 +60,6 @@ SAMPLE_VALUES = {
     "TTB ID": "",
 }
 
-def fill_form(output_path: Path) -> None:
-    """Tier 1: write a copy of the template with AcroForm fields populated."""
-    reader = PdfReader(TEMPLATE)
-    reader.decrypt("")
-
-    writer = PdfWriter()
-    writer.append(reader)
-
-    for page in writer.pages:
-        writer.update_page_form_field_values(page, SAMPLE_VALUES, auto_regenerate=False)
-
-    with open(output_path, "wb") as f:
-        writer.write(f)
-
-
-def flatten_form(acroform_path: Path, output_path: Path) -> None:
-    """Tier 2: bake the filled widgets' appearances into permanent page
-    content and remove the AcroForm, leaving a plain text/vector layer."""
-    doc = fitz.open(acroform_path)
-    doc.bake(annots=False, widgets=True)
-    doc.save(output_path, garbage=4, deflate=True)
-    doc.close()
-
-
-def rasterize_to_image_pdf(flattened_path: Path, output_path: Path, dpi: int = 150) -> None:
-    """Tier 3: render each page to a raster image and rebuild a PDF
-    containing only those images (no extractable text)."""
-    src = fitz.open(flattened_path)
-    out = fitz.open()
-
-    for page in src:
-        pix = page.get_pixmap(dpi=dpi)
-        img_bytes = pix.tobytes("png")
-
-        new_page = out.new_page(width=page.rect.width, height=page.rect.height)
-        new_page.insert_image(new_page.rect, stream=img_bytes)
-
-    out.save(output_path)
-    out.close()
-    src.close()
-
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -116,7 +68,7 @@ def main() -> None:
     flattened_path = OUT_DIR / "sample_creek_flattened.pdf"
     scanned_path = OUT_DIR / "sample_creek_scanned.pdf"
 
-    fill_form(acroform_path)
+    fill_form(SAMPLE_VALUES, acroform_path)
     print(f"Wrote {acroform_path}")
 
     flatten_form(acroform_path, flattened_path)

@@ -1,0 +1,302 @@
+{
+  "wbs_ref": "2.3",
+  "generated_at": "2026-06-11",
+  "source_note": "Pairs synthetic F 5100.31 application forms (testdata/build_good_sets.py) with existing real label image groups from testdata/ (cataloged in manifest.json, WBS 2.1) to form complete 'good' (all-fields-match) test sets, one per product type. Form field values were chosen to match what is printed on each product's label images, so every Sec. 2.5 Parameter Comparison Matrix rule resolves to MATCH (or NOT_APPLICABLE where the form field is intentionally blank for that product type) and the expected pipeline outcome is APPROVE. Comparison rule references are DevLog.md Sec. 2.5; allowable-revision references are Sec. 2.6.",
+  "sets": [
+    {
+      "set_id": "good_spirits_woodford",
+      "wbs_ref": "2.3",
+      "description": "Domestic distilled spirits (Kentucky straight bourbon whiskey), Type 14a, all fields match the label.",
+      "product_key": "woodford_reserve",
+      "product_type": "distilled_spirits",
+      "application_type": "14a",
+      "expected_outcome": "APPROVE",
+      "form_pdf": "forms/good_spirits_woodford.pdf",
+      "label_images": [
+        { "filename": "Woodford Reserve burbon front.jpg", "label_type": "brand" },
+        { "filename": "Woodford Reserve burbon front2.jpg", "label_type": "brand" },
+        { "filename": "Woodford Reserve burbon back.jpg", "label_type": "back" }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Woodford Reserve",
+          "label_element": "Distillery name on back label (\"PRODUCED BY THE WOODFORD RESERVE DISTILLERY...\")",
+          "label_value": "Woodford Reserve",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank on the form: \"Double Oaked\" appears on the full physical label but not within the cropped label images on file, so claiming it here would risk an unintended Item 7 mismatch. Fanciful Name MATCH is exercised by good_wine_lenzmoser instead."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Domestic (Check Box34 = /Domes)",
+          "label_element": "n/a (no country-of-origin marking expected for a domestic product)",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Country-of-origin check only applies when Item 3 = Imported."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Class/type designation on front label",
+          "label_value": "KENTUCKY STRAIGHT BOURBON WHISKEY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "The Woodford Reserve Distillery, 7855 McCracken Pike, Versailles, KY 40383",
+          "label_element": "Producer name/address on back label",
+          "label_value": "PRODUCED BY THE WOODFORD RESERVE DISTILLERY, VERSAILLES, KENTUCKY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL... (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "45.2% ALC/VOL (90.4 PROOF)",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Distilled Spirits."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "750 mL",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "good_wine_lenzmoser",
+      "wbs_ref": "2.3",
+      "description": "Imported wine (Austria), Type 14a, all fields match the label, including a diacritic-normalized Wine Appellation match.",
+      "product_key": "lenz_moser",
+      "product_type": "wine",
+      "application_type": "14a",
+      "expected_outcome": "APPROVE",
+      "form_pdf": "forms/good_wine_lenzmoser.pdf",
+      "label_images": [
+        { "filename": "Fete Rose wine.jpg", "label_type": "brand" },
+        { "filename": "Fete Rose wine back.jpg", "label_type": "back" }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Lenz Moser",
+          "label_element": "Brand label and back label header",
+          "label_value": "Lenz Moser",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "Fete Rose",
+          "label_element": "Brand label and back label header",
+          "label_value": "Fete Rose (stylized \"Fete Rose\")",
+          "expected_result": "MATCH",
+          "note": "Case/diacritic-tolerant normalized match (FR-059)."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Imported (Check Box34 = /Import)",
+          "label_element": "Back label",
+          "label_value": "PRODUCT OF AUSTRIA",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Wine (Check Box22 = /Wine)",
+          "label_element": "Back label",
+          "label_value": "Qualitatswein trocken (quality wine, dry); STILL ROSE WINE",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "Niche Import Co., 21 Ridgedale Avenue, Cedar Knolls, NJ 07927",
+          "label_element": "Back label importer block",
+          "label_value": "IMPORTED BY: niche W. & S., CEDAR KNOLLS, NJ",
+          "expected_result": "MATCH",
+          "note": "Item 8 holds the US importer's permit name/address for imported product, per FAA Act basic permit requirements."
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a (label states no specific varietals, only \"Qualitatswein trocken\")",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank on the form: no varietal names are printed on the label, so listing any here would be an unverifiable claim (Item 10 requires every listed varietal to appear on the label)."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "Niederosterreich",
+          "label_element": "Back label header (\"...Fete Rose Niederoesterreich 2010\")",
+          "label_value": "Niederoesterreich",
+          "expected_result": "MATCH",
+          "note": "Form spells the region with the standard German diacritic (Niederosterreich); label prints the ASCII transliteration (Niederoesterreich). Exercises the comparator's diacritic-normalized match (FR-059, FR-107)."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL... (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label",
+          "label_value": "12% ALC./VOL.",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Wine."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label",
+          "label_value": "750ML",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "good_malt_barrilito",
+      "wbs_ref": "2.3",
+      "description": "Imported malt beverage (Mexico), Type 14a, all fields match the label.",
+      "product_key": "barrilito",
+      "product_type": "malt_beverages",
+      "application_type": "14a",
+      "expected_outcome": "APPROVE",
+      "form_pdf": "forms/good_malt_barrilito.pdf",
+      "label_images": [
+        { "filename": "Cerveza Barrilito.jpg", "label_type": "brand" }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Barrilito",
+          "label_element": "Brand logo (\"Cerveza Barrilito\")",
+          "label_value": "Barrilito",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "\"Cerveza\" is the generic Spanish term for \"beer\" (i.e., the product type), not a fanciful name; left blank."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Imported (Check Box34 = /Import)",
+          "label_element": "Label",
+          "label_value": "PRODUCT OF MEXICO",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Malt Beverages (Check Box22 = /Malt)",
+          "label_element": "Label (\"Cerveza\" = beer)",
+          "label_value": "Cerveza",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "RR Importaciones Inc., 141 3rd St, Unit #143, Passaic, NJ 07055",
+          "label_element": "Label importer block",
+          "label_value": "IMPORTED BY: RR IMPORTACIONES INC. 141 3RD ST, UNIT #143 PASSAIC, N.J. 07055-0000",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Item 14 reference table excludes 14b for malt beverages and imports; 14a is the only valid choice here."
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL... (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Label",
+          "label_value": "ALC 3.6% BY VOL",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Malt Beverages."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Label",
+          "label_value": "1 QT., 8FL.OZ.",
+          "expected_result": "MATCH"
+        }
+      ]
+    }
+  ]
+}
