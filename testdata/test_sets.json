@@ -1,7 +1,7 @@
 {
-  "wbs_ref": "2.3-2.5",
+  "wbs_ref": "2.3-2.5, 2.7",
   "generated_at": "2026-06-11",
-  "source_note": "Pairs synthetic F 5100.31 application forms with existing real label image groups from testdata/ (cataloged in manifest.json, WBS 2.1). WBS 2.3 sets (testdata/build_good_sets.py, set_id prefix 'good_') are 'good' (all-fields-match) sets, one per product type: form field values were chosen to match what is printed on each product's label images, so every Sec. 2.5 Parameter Comparison Matrix rule resolves to MATCH (or NOT_APPLICABLE where the form field is intentionally blank for that product type) and the expected pipeline outcome is APPROVE. WBS 2.4 sets (testdata/build_hard_failure_sets.py, set_id prefix 'hf_') are 'hard failure' sets, one per Sec. 2.5 comparison rule: each takes a WBS 2.3 'good' baseline and changes exactly ONE field so that exactly one rule resolves to HARD_FAILURE (every other rule remains MATCH/NOT_APPLICABLE as in the baseline) and the expected pipeline outcome is DENY. WBS 2.5 sets (testdata/build_allowable_revision_sets.py, set_id prefix 'ar_') are 'possible allowable revision' sets: each takes a WBS 2.3 'good' baseline and changes exactly ONE field so that exactly one rule resolves to POSSIBLE_ALLOWABLE with a populated section_v_ref (every other rule remains MATCH/NOT_APPLICABLE as in the baseline) and the expected pipeline outcome is RECOMMEND_EXEMPTION_REVIEW. Of the WBS 2.5 row's three named examples, two are covered by dedicated sets: case/punctuation/spacing brand-name differences (Sec. V item 3b, ar_brandname_fortemasso) and in-state applicant-address changes (Sec. V item 19, ar_address_barrilito). The third example, 'color/font differences' (Sec. V items 3a/3b -- also FR-057's literal test case, 'only label colors differ'), describes a label-appearance attribute with no corresponding field on Form F 5100.31, so it cannot be expressed as a form-value-vs-label-value comparison row in this schema; see DevLog.md Sec. 2.5/2.6 outcome notes for this scoping decision. Comparison rule references are DevLog.md Sec. 2.5; allowable-revision references are Sec. 2.6; application type references are Sec. 2.4.",
+  "source_note": "Pairs synthetic F 5100.31 application forms with existing real label image groups from testdata/ (cataloged in manifest.json, WBS 2.1). WBS 2.3 sets (testdata/build_good_sets.py, set_id prefix 'good_') are 'good' (all-fields-match) sets, one per product type: form field values were chosen to match what is printed on each product's label images, so every Sec. 2.5 Parameter Comparison Matrix rule resolves to MATCH (or NOT_APPLICABLE where the form field is intentionally blank for that product type) and the expected pipeline outcome is APPROVE. WBS 2.4 sets (testdata/build_hard_failure_sets.py, set_id prefix 'hf_') are 'hard failure' sets, one per Sec. 2.5 comparison rule: each takes a WBS 2.3 'good' baseline and changes exactly ONE field so that exactly one rule resolves to HARD_FAILURE (every other rule remains MATCH/NOT_APPLICABLE as in the baseline) and the expected pipeline outcome is DENY. WBS 2.5 sets (testdata/build_allowable_revision_sets.py, set_id prefix 'ar_') are 'possible allowable revision' sets: each takes a WBS 2.3 'good' baseline and changes exactly ONE field so that exactly one rule resolves to POSSIBLE_ALLOWABLE with a populated section_v_ref (every other rule remains MATCH/NOT_APPLICABLE as in the baseline) and the expected pipeline outcome is RECOMMEND_EXEMPTION_REVIEW. Of the WBS 2.5 row's three named examples, two are covered by dedicated sets: case/punctuation/spacing brand-name differences (Sec. V item 3b, ar_brandname_fortemasso) and in-state applicant-address changes (Sec. V item 19, ar_address_barrilito). The third example, 'color/font differences' (Sec. V items 3a/3b -- also FR-057's literal test case, 'only label colors differ'), describes a label-appearance attribute with no corresponding field on Form F 5100.31, so it cannot be expressed as a form-value-vs-label-value comparison row in this schema; see DevLog.md Sec. 2.5/2.6 outcome notes for this scoping decision. Comparison rule references are DevLog.md Sec. 2.5; allowable-revision references are Sec. 2.6; application type references are Sec. 2.4. WBS 2.7 (testdata/build_type14b_sets.py, set_id type14b_match_stollwolfe) provides the FR-056 MATCH-path fixture for Type 14b applications: Item 14b checked with a state abbreviation, and a submitted label image containing the matching 'For sale in [STATE] only' statement, so the Type 14b row resolves to MATCH and the expected outcome is APPROVE. Because no real photographed label in testdata/ carries this statement, the matching label image (synthetic/stollwolfe_for_sale_pa.jpg) is a Pillow-generated mockup, kept in testdata/synthetic/ to distinguish it from the real photographed images cataloged in manifest.json. FR-056's other test case (Item 14b checked, no matching statement on any image -> HARD_FAILURE) is already covered by the WBS 2.4 set hf_14b_woodford and was not duplicated.",
   "sets": [
     {
       "set_id": "good_spirits_woodford",
@@ -1812,6 +1812,117 @@
           "form_value": "n/a",
           "label_element": "Label",
           "label_value": "1 QT., 8FL.OZ.",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "type14b_match_stollwolfe",
+      "wbs_ref": "2.7",
+      "description": "Domestic distilled spirits (Stoll & Wolfe American Straight Whiskey blend), Type 14b (Certificate of Exemption, For sale in PENNSYLVANIA only) -- the matching state-restriction statement is present on a submitted label image, so the Type 14b row resolves to MATCH (FR-056's first test case). The 'no statement -> HARD_FAILURE' half of FR-056 is covered by the WBS 2.4 set hf_14b_woodford.",
+      "product_key": "stoll_and_wolfe",
+      "product_type": "distilled_spirits",
+      "application_type": "14b",
+      "expected_outcome": "APPROVE",
+      "form_pdf": "forms/type14b_match_stollwolfe.pdf",
+      "label_images": [
+        {
+          "filename": "Stoll & Wolfe whiskey front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Stoll & Wolfe whiskey back.jpg",
+          "label_type": "back"
+        },
+        {
+          "filename": "synthetic/stollwolfe_for_sale_pa.jpg",
+          "label_type": "other",
+          "note": "Synthetic (Pillow-generated, testdata/build_type14b_sets.py) state-restriction statement label -- no real photographed label in testdata/ carries a 'For sale in [STATE] only' statement, so this fixture supplies one to exercise FR-056's MATCH path."
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Stoll & Wolfe",
+          "label_element": "Script wordmark on front label / distillery name on back label (\"STOLL & WOLFE DISTILLERY\")",
+          "label_value": "Stoll & Wolfe",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank: the front label carries no fanciful/product name beyond the brand and its class/type designation (\"A Blend of American Straight Whiskeys\")."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Domestic (Check Box34 = /Domes)",
+          "label_element": "n/a (no country-of-origin marking expected for a domestic product)",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Country-of-origin check only applies when Item 3 = Imported."
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Distilled Spirits (Check Box22 = /Spirits)",
+          "label_element": "Class/type designation on front label",
+          "label_value": "A Blend of American Straight Whiskeys",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "Heritage Spirits LLC, 450 Distillery Lane, Lancaster, PA 17602",
+          "label_element": "Bottler statement on back label",
+          "label_value": "Bottled by Heritage Spirits LLC - Lancaster, PA.",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "14b checked, \"PA\" (Certificate of Exemption from Label Approval -- For sale in PENNSYLVANIA only)",
+          "label_element": "Synthetic state-restriction label (synthetic/stollwolfe_for_sale_pa.jpg)",
+          "label_value": "FOR SALE IN PENNSYLVANIA ONLY",
+          "expected_result": "MATCH",
+          "note": "FR-056's first test case: the application's Item 14b state abbreviation (\"PA\") matches a 'For sale in PENNSYLVANIA only' statement present on a submitted label image. The second test case (no such statement on any image -> HARD_FAILURE) is covered by hf_14b_woodford (WBS 2.4, \"For sale in OHIO only\")."
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "43% ALC. by VOL. (86 PROOF)",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Distilled Spirits."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Front label",
+          "label_value": "750ml",
           "expected_result": "MATCH"
         }
       ]
