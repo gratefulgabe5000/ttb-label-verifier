@@ -1,0 +1,8 @@
+# Railway build config for the FastAPI backend.
+# Adds the Tesseract OCR binary (TS-02 / Decision 8 deployment watch-item) so
+# pytesseract has a backend to call once Stage 4 (label assessment) lands.
+[phases.setup]
+aptPkgs = ["tesseract-ocr"]
+
+[start]
+cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT"

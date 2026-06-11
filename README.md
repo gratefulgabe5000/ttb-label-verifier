@@ -36,12 +36,18 @@ An AI-powered web application that automates the review of COLA (Certificate of 
 
 ```bash
 cd app
+python -m venv .venv
+.venv/Scripts/activate    # Windows; use `source .venv/bin/activate` on macOS/Linux
 pip install -r requirements.txt
 cp .env.example .env
-# Add your ANTHROPIC_API_KEY to .env
 uvicorn main:app --reload
 # API runs at http://localhost:8000
 ```
+
+> **Anthropic API key:** not set via `.env`. Each agent enters their own key
+> at runtime from the frontend Settings panel (gear icon). It is held only in
+> the running server process's environment and is never written to disk or
+> the database — see [Settings & API Key](#settings--api-key).
 
 ### Frontend Setup
 
@@ -119,6 +125,24 @@ npm run dev
 
 ---
 
+## Settings & API Key
+
+The app does not ship with a baked-in Anthropic API key. After logging in,
+each agent opens **Settings** (gear icon) and pastes their own key:
+
+- The key is sent once over the authenticated API and stored only in the
+  backend process's environment (`os.environ["ANTHROPIC_API_KEY"]`) — it is
+  **never** written to `.env`, disk, or the database.
+- Settings displays a masked preview (e.g. `sk-ant********7890`) and a
+  checkmark once a key is present in the environment.
+- A **Test Connection** indicator calls a free, no-cost Anthropic endpoint
+  (`models.list`) and reports success/failure with a plain-English message.
+- Restarting the backend process clears the key; the agent re-enters it.
+
+`GET /settings/api-key` · `PUT /settings/api-key` · `DELETE /settings/api-key`
+
+---
+
 ## Architecture
 
 ```
@@ -189,6 +213,27 @@ ttb-label-verifier/
 ├── TODO.md
 └── .gitignore
 ```
+
+---
+
+## Deployment
+
+**Backend (Railway)** — config lives in `app/nixpacks.toml` and `app/railway.json`:
+- Nixpacks installs `tesseract-ocr` (apt) alongside the Python build (TS-02).
+- Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`; Railway
+  health check hits `GET /health`.
+- Set the Railway service's **root directory** to `app/`.
+- Mount a persistent volume (e.g. at `/data`) and set:
+  - `DATABASE_URL=sqlite:////data/workingfiles.db`
+  - `UPLOAD_DIR=/data/uploads`
+  - `JWT_SECRET` / `JWT_ALGORITHM` / `JWT_EXPIRE_MINUTES`
+  - `CORS_ORIGINS=<deployed frontend origin>`
+- `ANTHROPIC_API_KEY` is intentionally **not** set as a deploy-time env var —
+  agents provide it at runtime via Settings (see above).
+
+**Frontend (Netlify)** — `web/`, build command `npm run build`, publish
+directory `web/dist`, with `VITE_API_BASE_URL` pointing at the Railway
+backend URL.
 
 ---
 

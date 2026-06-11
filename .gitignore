@@ -44,3 +44,11 @@ logs/
 uploads/
 tmp/
 testdata/
+
+# Backend runtime data (SQLite DB + uploaded files, IA-26)
+app/data/
+
+# Frontend
+node_modules/
+web/dist/
+web/build/

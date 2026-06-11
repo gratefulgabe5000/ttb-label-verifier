@@ -1257,13 +1257,38 @@ None of this is implemented, called, or stubbed in the prototype — IA-03/IA-22
 
 ---
 
-## 8. Chat Artifact Index
+### 2026-06-11 — Session 10: Implementation Start — Backend Scaffolding (1.0), Frontend Scaffolding (11.0), Test-Data Inventory (2.1)
 
-Per `WBS.md` item 20.4 (Submission Material Review & Collation, §2), full chat session transcripts for Sessions 1–9 will be exported to `_DevLog/` as a final pre-submission step. As of this entry, no transcripts have been exported — the **Engineering Log (§7 above)** is the authoritative session-by-session record of decisions, designs, and document revisions until that export occurs.
+**Context:** First implementation session per the Session 8/9 plan — WBS 1.0, 11.0, and 2.0 run in parallel, in that order, with synthetic test-data *building* (2.2–2.7) deferred to a later session. Gabe also introduced a new cross-cutting requirement: the `ANTHROPIC_API_KEY` is no longer provisioned by the developer — each logged-in agent supplies their own key via a Settings panel, which sets it in the backend process's environment only (never persisted to disk/DB). WBS 1.4 was scoped to deliver this; Anthropic API *usage* (the Claude calls themselves) remains deferred to WBS 5.0+.
 
-| Session | Date | Topic | Transcript |
-|---|---|---|---|
-| 1–9 | 2026-06-09 – 2026-06-11 | See §7 Engineering Log for per-session summaries | Pending export — `WBS.md` 20.4 |
+**Completed — WBS 1.0 (Backend Scaffolding & Infrastructure), `app/`:**
+- Initialized FastAPI app structure: `main.py`, `routers/`, `services/`, `models/`, `schemas/`, dependency injection, error handling, OpenAPI docs (1.1).
+- Configured SQLAlchemy + SQLite (`db.py`: engine, session factory, `Base`, `create_all()` bootstrap) (1.2).
+- Defined ORM models for all 8 tables — `agents`, `applications` (incl. 8 COLA forward-compat columns), `label_images`, `form_parameters` (incl. `bbox_json`/`location_hint`), `label_parameters` (incl. `bbox_json`/`header_height_ratio`), `comparisons`, `determinations`, `batches` (1.3).
+- **New Settings/API-key model (1.4):** `GET/PUT/DELETE /settings/api-key` reads/writes `os.environ["ANTHROPIC_API_KEY"]` for the running process only — never written to `.env`, disk, or the database. `GET`/successful `PUT` return a masked key (`sk-ant********XXXX`) plus a live connection-test result (`Anthropic(api_key=key).models.list(limit=1)`). JWT secret, DB path, and upload volume path also configured via env vars.
+- Configured CORS middleware via `CORS_ORIGINS` env var matching the frontend origin (1.5).
+- Set up the backend venv, installed dependencies, and ran the test suite — **4/4 pytest passing**, all 8 SQLite tables created on `create_all()`.
+- **Railway deploy config (1.6):** added `nixpacks.toml` (apt package `tesseract-ocr`, per Decision 8's deployment watch-item) and `railway.json` (NIXPACKS builder, `healthcheckPath: /health`, `ON_FAILURE` restart policy, max 3 retries). Updated `.gitignore` (`app/data/`, frontend `node_modules/`/`dist`/`build`). Updated `README.md` with venv setup steps, a new **Settings & API Key** section, and a new **Deployment** section (Railway for `app/` with a persistent volume at `/data`, explicitly noting `ANTHROPIC_API_KEY` is *not* a deploy-time env var; Netlify for `web/`). Did not attempt a live `railway up` — no Railway CLI/account in this environment, so deployment is documented rather than executed.
+
+**Completed — WBS 11.0 (Frontend Scaffolding & Infrastructure) + Settings UI, `web/`:**
+- Scaffolded Vite + React 19 + TypeScript via `npm create vite@latest web -- --template react-ts`, with Tailwind CSS 4 via `@tailwindcss/vite` (11.1–11.2).
+- Installed and configured shadcn/ui ("base-nova" style, built on `@base-ui/react`, not Radix): `button`, `input`, `label`, `card`, `table`, `badge`, `tabs`, `context-menu`, `checkbox`, `dropdown-menu`, `separator`, `sonner`, `avatar`, `dialog` (11.3).
+- Installed `react-pdf`, `@tanstack/react-query` 5, and `react-router-dom` 7 (11.4).
+- Established project structure: `pages/`, `components/{layout,settings,ui}`, `contexts/`, `hooks/`, `lib/`, with the `@/*` path alias wired in both `tsconfig` and `vite.config.ts` (11.5).
+- Built JWT-based auth scaffolding: `AuthContext`/`useAuth` (token in `localStorage` under `ttb_lvs_token`, claims decoded client-side via `atob()`), `ProtectedRoute`, and `LoginPage` (11.6). No backend `/auth/login` exists yet (WBS 3.0) — login will fail until then.
+- Built a typed API client (`lib/api-client.ts`): generic `apiFetch<T>()`, `ApiError`, and a clear split between **implemented** endpoints (`health`, `settings`) and **forward-declared** endpoints (`auth`, `applications`, `batch`, `determinations`) that mirror the documented API surface for routes WBS 3.0+ will build (11.7).
+- **New Settings UI (per Gabe's API-key requirement):** added a gear icon to `AppShell`'s header opening a `SettingsDialog`. It shows the masked key (`sk-ant********XXXX`) with a green check / red X for "key configured" and "connection verified," a password-style input for entering a new key, and Save/Remove buttons wired via React Query mutations to `/settings/api-key`.
+- Fixed build/lint issues: removed deprecated `baseUrl` from both `tsconfig.json`/`tsconfig.app.json` (TS5101, keeping `paths: {"@/*": ["./src/*"]}`); changed `toQueryString`'s parameter type from `Record<string, unknown>` to `object` (TS2345); resolved `react-refresh/only-export-components` lint errors by disabling that rule for `src/components/ui/**` (shadcn co-exports variant helpers) and by splitting `AuthContext.tsx` into a non-JSX `contexts/auth-context.ts` (context object + types) and a JSX-only `AuthContext.tsx` (provider component).
+- `npm run lint` and `npm run build` both pass cleanly. End-to-end smoke test: ran the dev server against the live backend and exercised the Settings GET/PUT/DELETE flow exactly as `SettingsDialog` does, confirming masking, connection-test results, and CORS all work for `http://localhost:5173` → `http://localhost:8000`.
+
+**Completed — WBS 2.1 (Test Data Inventory):**
+- `testdata/` originally held 88 label-image `.jpg` files split across 6 subfolders (`good spirits`, `good wine+beer`, `bad spirits label/photo/warning`, `bad wine+beer`) with no application forms.
+- **Mid-session redirection from Gabe:** the subfolders themselves were "meaningless" and have been removed — the good/bad categorization no longer represents an expected pass/fail outcome. Every image is now just a raw label image awaiting assessment, and there are no applications to pair with them; those must be generated (WBS 2.2).
+- Built `testdata/build_manifest.py` and the `testdata/manifest.json` it generates: groups the 88 flat files into **45 product-level label sets** (front/`brand`, `back`, `other` views of the same bottle/can per the `LabelType` enum), each tagged with a `brand_name` and `product_type` (`distilled_spirits`: 39 products / 78 images, `wine`: 4 / 7, `malt_beverages`: 2 / 3). The script asserts ROWS and the directory listing match exactly, so it fails loudly if files are added/removed without updating the manifest.
+- Flagged one notable anomaly for WBS 2.4: `Forte Masso beer front/back.jpg` is named "beer" but the label artwork reads "Barbera D'Alba — Denominazione di Origine Controllata" (an Italian wine appellation/class) — a likely ready-made product/class-type mismatch fixture for FR-100 (product/class-type) and FR-107 (wine appellation).
+- The manifest intentionally does **not** assign per-set pass/fail outcomes — `WBS.md` item 2.1's original wording ("...into a manifest mapping each set to its expected pass/fail outcome") describes the now-removed folder-based framing. Expected outcomes will instead fall out of WBS 2.2 (synthetic F 5100.31 forms) and 2.3–2.5 (pairing each product's label set with a matching, hard-failure, or allowable-revision form). **Open item:** reconcile `WBS.md` 2.1's wording with this delivered scope in a future documentation pass — out of scope for this session (DevLog/TODO only, per Gabe's instruction).
+
+**Outcome:** Backend (`app/`) and frontend (`web/`) scaffolds are both built, tested, and verified end-to-end against each other, including the new runtime-only API-key Settings architecture. `testdata/manifest.json` provides the per-product label-image inventory that WBS 2.2 (synthetic forms) and 2.3–2.7 (paired good/hard-failure/allowable/degraded/14b sets) will build on next.
 
 ---
 

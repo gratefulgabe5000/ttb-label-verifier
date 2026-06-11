@@ -19,20 +19,19 @@
 | Architecture evaluation (DevLog §3.6) + alternatives brainstorm | ✅ Complete (2026-06-10) |
 | Mermaid diagrams (system context, block diagram, concurrency sequence) | ✅ Complete (2026-06-10) — DevLog §3.7 |
 | Work Breakdown Structure | ✅ Complete, re-baselined to v2.0 (2026-06-11) — [`WBS.md` v2.0](_DevLog/WBS.md) |
-| Backend (`app/`) | ☐ Not started — WBS 1.0, 3.0–10.0 |
-| Frontend (`web/`) | ☐ Not started — WBS 11.0–14.0 |
-| Synthetic test data (sample forms + multi-image label sets) | ☐ Not started — WBS 2.0 |
+| Backend (`app/`) | 🔶 Scaffolding complete (WBS 1.0, 4/4 pytest passing, Railway config) — WBS 3.0–10.0 remaining |
+| Frontend (`web/`) | 🔶 Scaffolding complete (WBS 11.0 + Settings/API-key UI, build & lint passing) — WBS 12.0–14.0 remaining |
+| Synthetic test data (sample forms + multi-image label sets) | 🔶 2.1 inventory complete (`testdata/manifest.json` — 45 products / 88 images) — WBS 2.2–2.7 remaining |
 | Deployed application URL | ☐ Pending — WBS 18.0 |
 
 ---
 
-## Next Session — Implementation Start (Backend/Frontend Scaffolding)
+## Next Session — Synthetic Test Data Build-Out (2.2–2.7) & Auth Backend (3.0)
 
-> **Update:** The Systems Engineering Pass is complete and the WBS has been re-baselined to **v2.0** (Session 8) — a single dependency-ordered sequence (1.0–21.0) covering the entire remaining build, including the new FR-066/FR-100–107 comparison-engine scope. Implementation begins next session, following the WBS sequence (`WBS.md` §2) and dependency flow (`WBS.md` §3).
+> **Update:** Session 10 completed backend scaffolding (WBS 1.0), frontend scaffolding + the new Settings/API-key UI (WBS 11.0), and the test-data inventory (WBS 2.1 — `testdata/manifest.json`, 45 products / 88 images). Both `app/` and `web/` build/test cleanly and were verified end-to-end against each other.
 
-1. **WBS 1.0 — Backend scaffolding** (`app/`): FastAPI app structure (1.1) + DB schema/migrations incl. `bbox_json`/`location_hint`/COLA columns (1.2–1.3)
-2. **WBS 11.0 — Frontend scaffolding** (`web/`): React + Vite + TS + Tailwind + shadcn/ui + react-pdf skeleton (can start in parallel with 1.0)
-3. **WBS 2.0 — Synthetic test data** (start in parallel with 1.0): sample F 5100.31 PDFs spanning all three TS-01 tiers + multi-image label sets — a prerequisite for nearly every unit/integration test that follows
+1. **WBS 2.2–2.7 — Synthetic test data build-out**: produce sample F 5100.31 PDFs across all three TS-01 tiers (2.2), then pair them with `testdata/manifest.json` label sets to build "good" (2.3), "hard failure" — one per comparison rule incl. the `Forte Masso` product/class-type anomaly noted in DevLog Session 10 (2.4), "possible allowable revision" (2.5), degraded-quality (2.6), and Type 14b (2.7) sets.
+2. **WBS 3.0 — Auth backend** (`app/`): `Agent` ORM model + seed script (3.1), `POST /auth/login` JWT issuance (3.2), current-agent JWT dependency applied to protected routers (3.3), unit tests (3.4) — unblocks the frontend's existing `LoginPage`/`AuthContext` (11.6).
 
 ---
 
@@ -40,8 +39,8 @@
 
 > Sequencing, dependencies, and traceability for all items below are in [`WBS.md` v2.0 — Work Breakdown Structure](_DevLog/WBS.md) §2.
 
-- [ ] WBS 1.0 — Backend scaffolding (`app/`): FastAPI structure, SQLAlchemy models for all 8 tables, env config, CORS, early Railway smoke-test deploy
-- [ ] WBS 2.0 — Synthetic test data (parallel w/ 1.0): sample F 5100.31 PDFs across all 3 TS-01 tiers + multi-image label sets (good / hard-failure / allowable / degraded / 14b)
+- [x] WBS 1.0 — Backend scaffolding (`app/`): FastAPI structure, SQLAlchemy models for all 8 tables, env config, CORS, early Railway smoke-test deploy (Session 10)
+- [ ] WBS 2.0 — Synthetic test data (parallel w/ 1.0): sample F 5100.31 PDFs across all 3 TS-01 tiers + multi-image label sets (good / hard-failure / allowable / degraded / 14b) — **2.1 done** (`testdata/manifest.json`, Session 10); 2.2–2.7 remaining
 - [ ] WBS 3.0 — Auth: agent model + seed, JWT login, current-agent dependency, unit tests
 - [ ] WBS 4.0 — Stage 1–2: ingestion endpoints, file validation, persistence, list/detail endpoints, unit tests
 - [ ] WBS 5.0 — Stage 3: form assessment (tiered TS-01 extraction, all 18 Part I fields, normalization, confidence scoring, unit tests)
@@ -50,7 +49,7 @@
 - [ ] WBS 8.0 — Stage 6: determination logic + report schema, unit tests
 - [ ] WBS 9.0 — Pipeline orchestration + Batch Orchestrator (bounded concurrency), unit/integration tests
 - [ ] WBS 10.0 — Overrides, finalize, batch report endpoints, unit tests
-- [ ] WBS 11.0 — Frontend scaffolding (`web/`): Vite + React + TS + Tailwind + shadcn/ui + react-pdf + API client
+- [x] WBS 11.0 — Frontend scaffolding (`web/`): Vite + React + TS + Tailwind + shadcn/ui + react-pdf + API client, plus new Settings/API-key UI (Session 10)
 - [ ] WBS 12.0 — Agent Dashboard (list, filter, batch select, process, badges, upload modal, unit tests)
 - [ ] WBS 13.0 — Application Detail View (split view, multi-image tabs, annotation overlays, cross-highlight, overrides, finalize, unit tests)
 - [ ] WBS 14.0 — Batch Report view (counts, common failure type, CSV/PDF export, unit tests)
@@ -132,6 +131,12 @@
   - Bumped `PRD.md` to **v2.0** (no functional requirement changes — FR/PR/IR/UR/SR/CR sets unchanged from v1.4).
   - Added a **Documentation Suite/Baseline: v2.0** marker to `README.md`, `DevLog.md`, and this `TODO.md`.
   - **The documentation suite is now internally consistent and synchronized at v2.0.** Implementation (WBS 1.0/2.0/11.0) begins next session.
+
+- **Session 10 — Implementation Start: Backend (1.0) & Frontend (11.0) Scaffolding, Test-Data Inventory (2.1).** First implementation session — WBS 1.0, 11.0, and 2.0 run in parallel, in that order, per the Session 8/9 plan (synthetic test-data *building*, 2.2–2.7, deferred to a later session).
+  - **WBS 1.0 (`app/`):** FastAPI app structure, routers/services/models/schemas, SQLAlchemy + SQLite with `create_all()` bootstrap, ORM models for all 8 tables (incl. COLA forward-compat columns and `bbox_json`/`location_hint`/`header_height_ratio`), CORS middleware, and Railway deploy config (`nixpacks.toml` with `tesseract-ocr`, `railway.json`). 4/4 pytest passing.
+  - **New cross-cutting requirement (per Gabe):** the `ANTHROPIC_API_KEY` is no longer developer-provisioned — each agent enters their own key via a Settings panel. **WBS 1.4** delivers this: `GET/PUT/DELETE /settings/api-key` sets `os.environ["ANTHROPIC_API_KEY"]` for the running process only (never persisted to disk/DB), returns a masked key (`sk-ant********XXXX`) and a live connection-test result (`models.list(limit=1)`). Anthropic API *usage* (Claude calls in the pipeline) remains deferred to WBS 5.0+.
+  - **WBS 11.0 (`web/`):** Vite + React 19 + TS + Tailwind CSS 4 + shadcn/ui ("base-nova"/`@base-ui/react`) + react-pdf + React Query 5 + react-router 7. Built `pages/`, `components/{layout,settings,ui}`, `contexts/`, `hooks/`, `lib/`, a typed API client (`apiFetch<T>`/`ApiError`, implemented vs. forward-declared endpoints), JWT auth scaffolding (`AuthContext`/`useAuth`/`ProtectedRoute`/`LoginPage`), and a new **Settings gear icon → `SettingsDialog`** (masked key, connected/configured status badges, Save/Remove via React Query against `/settings/api-key`). `npm run lint` and `npm run build` pass cleanly; verified end-to-end against the live backend (Settings GET/PUT/DELETE + CORS).
+  - **WBS 2.1 (test-data inventory):** `testdata/` originally held 88 label images across 6 good/bad subfolders. **Mid-session, Gabe flattened `testdata/`** — the subfolders no longer represent a meaningful pass/fail outcome; every image is now just a raw label image, and there are no application forms to pair with them (to be generated in 2.2). Built `testdata/build_manifest.py` → `testdata/manifest.json`, grouping the 88 files into **45 product-level label sets** (`brand`/`back`/`other` views, tagged with `brand_name` + `product_type`: 39 `distilled_spirits` products / 78 images, 4 `wine` / 7, 2 `malt_beverages` / 3). Flagged `Forte Masso beer front/back.jpg` (filename says beer, label artwork is an Italian wine — "Barbera D'Alba DOC") as a ready-made product/class-type mismatch fixture for WBS 2.4. Per-set expected outcomes are deferred to 2.2–2.7 (pairing with synthetic forms) — see DevLog Session 10 for the open item on reconciling `WBS.md` 2.1's original wording with this delivered scope.
 
 ---
 

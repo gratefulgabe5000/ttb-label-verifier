@@ -192,11 +192,11 @@
 | 19.1 | Re-run the 17.1 user-path walkthrough against the deployed URL (no VPN/special credentials required) | 18.6 | CR-004 |
 | 19.2 | Re-verify PR-001/PR-003 timing on deployed infrastructure (network latency may differ from localhost) | 19.1 | PR-001, PR-003 |
 | 19.3 | Cross-browser spot-check on the deployed URL | 19.1 | IR-006 |
-| **20.0** | **Submission Material Review & Collation** | 19.3 | DevLog §8 Chat Artifact Index |
+| **20.0** | **Submission Material Review & Collation** | 19.3 |  |
 | 20.1 | Final review of `README.md` (setup/run instructions, live URL, known limitations) | 19.3 | CR-005 |
 | 20.2 | Final review of `DevLog.md` — confirm Engineering Log captures all sessions through deployment | 19.3 | DevLog §7 |
 | 20.3 | Final consistency check across `PRD.md`/`WBS.md`/`TODO.md` (version numbers, footers, cross-references) | 20.2 | — |
-| 20.4 | Export remaining chat session transcripts to `_DevLog/` per the Chat Artifact Index (§8) | 20.3 | DevLog §8 |
+| 20.4 | Export remaining chat session transcripts to `_DevLog/` per the Chat Artifact Index (§8) | 20.3 | NOT REQUIRED |
 | 20.5 | Repository cleanup — verify `.gitignore` covers secrets/`.env`, confirm no exposed API keys in history | 20.4 | — |
 | 20.6 | Final lint/format pass on `app/` and `web/` | 20.5 | — |
 | **21.0** | **Submission** | 20.6 | — |
