@@ -1,0 +1,93 @@
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
+
+class LabelImageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    application_id: int | None
+    image_path: str | None
+    label_type: str | None
+    uploaded_at: datetime
+
+
+class FormParameterOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    application_id: int | None
+    field_name: str | None
+    field_value: str | None
+    confidence: float | None
+    extraction_method: str | None
+    location_hint: str | None
+    bbox_json: str | None
+    extracted_at: datetime
+
+
+class LabelParameterOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    application_id: int | None
+    label_image_id: int | None
+    field_name: str | None
+    field_value: str | None
+    confidence: float | None
+    location_hint: str | None
+    bbox_json: str | None
+    header_height_ratio: float | None
+    extracted_at: datetime
+
+
+class DeterminationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    application_id: int | None
+    recommendation: str | None
+    hard_failures_json: str | None
+    allowable_json: str | None
+    agent_override: str | None
+    override_by: int | None
+    override_reason: str | None
+    override_at: datetime | None
+    finalized_at: datetime | None
+    created_at: datetime
+
+
+class ApplicationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    serial_number: str | None
+    year: str | None
+    form_path: str | None
+    product_type: str | None
+    source: str | None
+    brand_name: str | None
+    applicant_name: str | None
+    application_type: str | None
+    assigned_agent_id: int | None
+    status: str
+    created_at: datetime
+    processed_at: datetime | None
+
+    # COLA Public Registry forward-compatibility fields (IA-22)
+    ttb_id: str | None
+    vendor_code: str | None
+    class_type_code: str | None
+    origin_code: str | None
+    registry_status: str | None
+    total_bottle_capacity: str | None
+    for_sale_in_state: str | None
+    qualifications: str | None
+
+
+class ApplicationDetailOut(ApplicationOut):
+    label_images: list[LabelImageOut] = []
+    form_parameters: list[FormParameterOut] = []
+    label_parameters: list[LabelParameterOut] = []
+    determination: DeterminationOut | None = None

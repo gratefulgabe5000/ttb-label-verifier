@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from config import get_settings
 from db import init_db
-from routers import auth, health, settings as settings_router
+from routers import applications, auth, health, settings as settings_router
 
 settings = get_settings()
 
@@ -44,3 +44,4 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(settings_router.router)
+app.include_router(applications.router)

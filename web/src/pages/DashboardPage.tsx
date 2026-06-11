@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { UploadApplicationDialog } from "@/components/applications/UploadApplicationDialog";
 import { applicationsApi } from "@/lib/api-client";
 
 export function DashboardPage() {
@@ -19,19 +20,23 @@ export function DashboardPage() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Pending Applications</CardTitle>
+        <UploadApplicationDialog />
       </CardHeader>
       <CardContent>
         {applicationsQuery.isLoading && (
           <p className="text-sm text-muted-foreground">Loading applications...</p>
         )}
         {applicationsQuery.isError && (
+          <p className="text-sm text-destructive">Failed to load applications. Please try again.</p>
+        )}
+        {applicationsQuery.data && applicationsQuery.data.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            Application list is not available yet (WBS 4.0+).
+            No applications yet. Use "New Upload" to submit one.
           </p>
         )}
-        {applicationsQuery.data && (
+        {applicationsQuery.data && applicationsQuery.data.length > 0 && (
           <Table>
             <TableHeader>
               <TableRow>

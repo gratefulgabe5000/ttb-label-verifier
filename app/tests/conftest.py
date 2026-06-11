@@ -52,3 +52,32 @@ def auth_headers(client, test_agent):
     response = client.post("/auth/login", json={"username": "testagent", "password": "testpass123"})
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def second_agent(client):
+    from db import SessionLocal
+    from models.agent import Agent
+    from services.auth_service import hash_password
+
+    db = SessionLocal()
+    try:
+        agent = Agent(
+            username="testagent2",
+            display_name="Test Agent Two",
+            password_hash=hash_password("testpass123"),
+        )
+        db.add(agent)
+        db.commit()
+        db.refresh(agent)
+    finally:
+        db.close()
+
+    return agent
+
+
+@pytest.fixture()
+def second_auth_headers(client, second_agent):
+    response = client.post("/auth/login", json={"username": "testagent2", "password": "testpass123"})
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
