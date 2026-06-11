@@ -1,11 +1,13 @@
-# DevLog — TTB AI Label Verification Tool
+# DevLog — TTB Label Verification System (TTB-LVS)
 
 **Assessment:** IT Specialist (AI) · 26-DO-12891471-DH  
 **Candidate:** Matthew Gabriel Sizemore  
 **Assessment Received:** June 9, 2026, 1458 hrs  
 **Deadline:** June 16, 2026, 1458 hrs  
 **Repository:** https://github.com/gratefulgabe5000/ttb-label-verifier  
-**Submission Form:** https://forms.osi.office365.us/r/xWrQGduMw7
+**Submission Form:** https://forms.osi.office365.us/r/xWrQGduMw7  
+**Related Documents:** [`PRD.md`](PRD.md) (Product Requirements Document, INCOSE-style) · [`WBS.md`](WBS.md) (Work Breakdown Structure)  
+**Documentation Suite Version:** 2.0 (Session 9 — Documentation Consistency Pass, 2026-06-11)
 
 ---
 
@@ -15,7 +17,7 @@
 2. [Requirements Analysis](#2-requirements-analysis)
 3. [System Design & Trade Studies](#3-system-design--trade-studies)
 4. [Tools & Technology Rationale](#4-tools--technology-rationale)
-5. [Assumptions](#5-assumptions)
+5. [Initial Assumptions](#5-initial-assumptions)
 6. [COLA Registry & Future Integration Reference](#6-cola-registry--future-integration-reference)
 7. [Engineering Log](#7-engineering-log)
 8. [Chat Artifact Index](#8-chat-artifact-index)
@@ -43,46 +45,41 @@
 
 ## 2. Requirements Analysis
 
-### 2.1 Functional Requirements
+### 2.1 Derived Requirements
 
 Requirements extracted from stakeholder interviews and the assessment brief. Each requirement is tagged with its verbatim source.
 
 | ID | Requirement | Source | Priority |
 |----|-------------|--------|----------|
-| FR-01 | Ingest application form (TTB F 5100.31 PDF) and log in workingfiles DB | Design session | **MUST** |
-| FR-02 | Ingest companion label artwork image(s) and pair with application in DB | Design session | **MUST** |
-| FR-03 | Extract all structured parameters from the application form | Design session; Sarah Chen: "checks that what's on the label matches what's in the application" | **MUST** |
-| FR-04 | Extract all structured parameters from the label image(s) via AI vision | Design session; Sarah Chen: "ABV is correct? Check. Government warning is there? Check." | **MUST** |
-| FR-05 | Compare form parameters vs label parameters, per field | Design session | **MUST** |
-| FR-06 | Issue per-parameter determination: Match / Mismatch | Design session | **MUST** |
-| FR-07 | Issue overall determination: Approve / Deny / Recommend Exemption Review | Design session | **MUST** |
-| FR-08 | Verify Government Warning Statement — exact statutory text; "GOVERNMENT WARNING:" in all-caps bold | Jenny Park: "It has to be exact. Like, word-for-word, and the 'GOVERNMENT WARNING:' part has to be in all caps and bold." | **MUST** |
-| FR-09 | Apply case/punctuation tolerance to brand name matching | Dave Morrison: "'STONE'S THROW' on the label but 'Stone's Throw' in the application. Technically a mismatch? Sure. But it's obviously the same thing." | **MUST** |
-| FR-10 | Flag mismatches that fall within Allowable Revisions (F 5100.31 Section V) as "Recommend Exemption Review" rather than hard denial | Design session | **MUST** |
-| FR-11 | Agent dashboard: list pending applications assigned to agent | Design session | **MUST** |
-| FR-12 | Batch selection: checkboxes on dashboard to select multiple applications | Design session; Sarah Chen: "If there was some way to handle batch uploads, that would be huge." | **MUST** |
-| FR-13 | Batch processing: process all selected applications in a single action | Design session | **MUST** |
-| FR-14 | Batch summary report: header count of Approvals / Denials / Exemption Reviews, plus per-application result | Design session | **MUST** |
-| FR-15 | Application detail view: split view — form PDF (left) + label image (right) | Design session | **MUST** |
-| FR-16 | Visual annotations: red ellipses on mismatched elements in both form and label views | Design session | **SHOULD** |
-| FR-17 | Mouse-over on annotation: highlight corresponding element on opposite document | Design session | **SHOULD** |
-| FR-18 | Agent override: right-click any parameter to override AI determination with reason | Design session | **MUST** |
-| FR-19 | Agent override: override overall determination | Design session | **MUST** |
-| FR-20 | Support batch upload of forms and label images | Design session | **NICE-TO-HAVE** |
-| FR-21 | Handle degraded label image quality (angle, glare, bad lighting) | Jenny Park: "It would be amazing if the tool could handle images that aren't perfectly shot." | **NICE-TO-HAVE** |
+| Req-01 | Ingest application form (TTB F 5100.31 PDF) and log in workingfiles DB | Design session | **MUST** |
+| Req-02 | Ingest companion label artwork image(s) and pair with application in DB | Design session | **MUST** |
+| Req-03 | Extract all structured parameters from the application form | Design session; Sarah Chen: "checks that what's on the label matches what's in the application" | **MUST** |
+| Req-04 | Extract all structured parameters from the label image(s) via AI vision | Design session; Sarah Chen: "ABV is correct? Check. Government warning is there? Check." | **MUST** |
+| Req-05 | Compare form parameters vs label parameters, per field | Design session | **MUST** |
+| Req-06 | Issue per-parameter determination: Match / Mismatch | Design session | **MUST** |
+| Req-07 | Issue overall determination: Approve / Deny / Recommend Exemption Review | Design session | **MUST** |
+| Req-08 | Verify Government Warning Statement — exact statutory text; "GOVERNMENT WARNING:" in all-caps bold | Jenny Park: "It has to be exact. Like, word-for-word, and the 'GOVERNMENT WARNING:' part has to be in all caps and bold." | **MUST** |
+| Req-09 | Apply case/punctuation tolerance to brand name matching | Dave Morrison: "'STONE'S THROW' on the label but 'Stone's Throw' in the application. Technically a mismatch? Sure. But it's obviously the same thing." | **MUST** |
+| Req-10 | Flag mismatches that fall within Allowable Revisions (F 5100.31 Section V) as "Recommend Exemption Review" rather than hard denial | Design session | **MUST** |
+| Req-11 | Agent dashboard: list pending applications assigned to agent | Design session | **MUST** |
+| Req-12 | Batch selection: checkboxes on dashboard to select multiple applications | Design session; Sarah Chen: "If there was some way to handle batch uploads, that would be huge." | **MUST** |
+| Req-13 | Batch processing: process all selected applications in a single action | Design session | **MUST** |
+| Req-14 | Batch summary report: header count of Approvals / Denials / Exemption Reviews, plus per-application result | Design session | **MUST** |
+| Req-15 | Application detail view: split view — form PDF (left) + label image (right) | Design session | **MUST** |
+| Req-16 | Visual annotations: red ellipses on mismatched elements in both form and label views | Design session | **SHOULD** |
+| Req-17 | Mouse-over on annotation: highlight corresponding element on opposite document | Design session | **SHOULD** |
+| Req-18 | Agent override: right-click any parameter to override AI determination with reason | Design session | **MUST** |
+| Req-19 | Agent override: override overall determination | Design session | **MUST** |
+| Req-20 | Support batch upload of forms and label images | Design session | **NICE-TO-HAVE** |
+| Req-21 | Handle degraded label image quality (angle, glare, bad lighting) | Jenny Park: "It would be amazing if the tool could handle images that aren't perfectly shot." | **NICE-TO-HAVE** |
+| Req-22 | Response time ≤ 5 seconds per label (AI extraction + comparison) | Sarah Chen: "If we can't get results back in about 5 seconds, nobody's going to use it. We learned that the hard way." | **HARD CONSTRAINT** |
+| Req-23 | UI accessible to non-technical users | Sarah Chen: "We need something my mother could figure out—she's 73 and just learned to video call her grandkids last year... Half our team is over 50." | **MUST** |
+| Req-24 | Clean interface — no hunting for buttons | Sarah Chen: "Clean, obvious, no hunting for buttons." Dave Morrison: prior modernization failures cited. | **MUST** |
+| Req-25 | No persistent storage of sensitive data beyond prototype scope | Marcus Williams: "We're not storing anything sensitive for this exercise." | **MUST** |
+| Req-26 | Standalone POC — no COLA system integration | Marcus Williams: "Think of this as a standalone proof-of-concept... that's years away, realistically." | **MUST** |
+| Req-27 | Publicly accessible deployed URL | Assessment README — Deliverables; Email notification | **MUST** |
 
-### 2.2 Non-Functional Requirements
-
-| ID | Requirement | Source | Priority |
-|----|-------------|--------|----------|
-| NFR-01 | Response time ≤ 5 seconds per label (AI extraction + comparison) | Sarah Chen: "If we can't get results back in about 5 seconds, nobody's going to use it. We learned that the hard way." | **HARD CONSTRAINT** |
-| NFR-02 | UI accessible to non-technical users | Sarah Chen: "We need something my mother could figure out—she's 73 and just learned to video call her grandkids last year... Half our team is over 50." | **MUST** |
-| NFR-03 | Clean interface — no hunting for buttons | Sarah Chen: "Clean, obvious, no hunting for buttons." Dave Morrison: prior modernization failures cited. | **MUST** |
-| NFR-04 | No persistent storage of sensitive data beyond prototype scope | Marcus Williams: "We're not storing anything sensitive for this exercise." | **MUST** |
-| NFR-05 | Standalone POC — no COLA system integration | Marcus Williams: "Think of this as a standalone proof-of-concept... that's years away, realistically." | **MUST** |
-| NFR-06 | Publicly accessible deployed URL | Assessment README — Deliverables; Email notification | **MUST** |
-
-### 2.3 Government Warning Statement — Critical Detail
+### 2.2 Government Warning Statement — Critical Detail
 
 Per Jenny Park's interview, the Government Health Warning is a frequent rejection point. The AI validator must check for both exact text and formatting.
 
@@ -105,7 +102,7 @@ machinery, and may cause health problems.
 - Abbreviated or paraphrased text
 - Undersized font
 
-### 2.4 Form F 5100.31 — Complete Field Reference
+### 2.3 Form F 5100.31 — Complete Field Reference
 
 Source: `f510031.pdf` — TTB Form F 5100.31 (04/2023)
 
@@ -143,7 +140,7 @@ Source: `f510031.pdf` — TTB Form F 5100.31 (04/2023)
 | — | Expiration Date | If any |
 | — | Label Affixing Area | Applicant affixes complete label set |
 
-### 2.5 Application Types and Determination Routing
+### 2.4 Application Types and Determination Routing
 
 Item 14 determines the processing path:
 
@@ -162,7 +159,7 @@ Item 14 determines the processing path:
 | **DENY** | One or more hard failures (mandatory field mismatch not in Allowable Revisions) |
 | **RECOMMEND EXEMPTION REVIEW** | Mismatches present, but all fall within Allowable Revisions (Section V of F 5100.31); OR application is Type 14b |
 
-### 2.6 Parameter Comparison Matrix
+### 2.5 Parameter Comparison Matrix
 
 The core of the verification engine. Each form field maps to a label element, with specific comparison rules. **Per FR-038, "label" below means the union of ALL of the application's label images** — every image is extracted independently (Stage 4), and a field is considered present if it appears on any one of them, with the source `label_image_id` retained for annotation placement.
 
@@ -180,7 +177,7 @@ The core of the verification engine. Each form field maps to a label element, wi
 | *(all products)* | Alcohol by Volume (ABV) | Must be present on label; must be consistent with product type | Hard failure |
 | *(all products)* | Net Contents | Must be present on label | Allowable if change complies with standards (Section V, item 10) |
 
-### 2.7 Allowable Revisions — Exemption Criteria Reference
+### 2.6 Allowable Revisions — Exemption Criteria Reference
 
 Section V of TTB F 5100.31 lists 41 revision types that may be made to an approved label WITHOUT resubmission. When the AI identifies a mismatch, it cross-references this list to determine if the discrepancy is a **hard failure** (requires denial) or an **allowable revision** (triggers Recommend Exemption Review).
 
@@ -205,7 +202,7 @@ Section V of TTB F 5100.31 lists 41 revision types that may be made to an approv
 
 > **Implementation note:** The AI cannot evaluate all 41 revision types from image inspection alone. The engine will flag any mismatch as one of: `HARD_FAILURE`, `POSSIBLE_ALLOWABLE` (cross-reference Section V), or `MATCH`. The determination engine upgrades `POSSIBLE_ALLOWABLE` applications to "Recommend Exemption Review" rather than "Deny."
 
-### 2.8 Evaluation Criteria (verbatim from Assessment README)
+### 2.7 Evaluation Criteria (verbatim from Assessment README)
 
 1. Correctness and completeness of core requirements
 2. Code quality and organization
@@ -216,7 +213,7 @@ Section V of TTB F 5100.31 lists 41 revision types that may be made to an approv
 
 > **Note on criterion 5:** Requirements are embedded in narrative interview transcripts rather than a structured spec sheet. Extracting all requirements from the stakeholder context — including the 5-second constraint, the Government Warning formatting rules, and the case-tolerance requirement — is itself part of the evaluation. This DevLog demonstrates that all requirements have been identified and traced to their source.
 
-### 2.9 Deliverables Checklist
+### 2.8 Deliverables Checklist
 
 | Deliverable | Status | Location |
 |-------------|--------|----------|
@@ -236,7 +233,7 @@ Before finalizing the architecture, two trade studies were conducted to test whe
 
 #### TS-01: Form Data Extraction Method (Stage 3)
 
-**Question:** Should Stage 3 rely solely on Claude Vision for form-field extraction (original design), or can a more direct method improve speed, cost, and accuracy — given NFR-01's 5-second budget is shared with Stage 4's per-image vision calls?
+**Question:** Should Stage 3 rely solely on Claude Vision for form-field extraction (original design), or can a more direct method improve speed, cost, and accuracy — given PR-001's 5-second budget is shared with Stage 4's per-image vision calls?
 
 **Finding:** Direct inspection of `f510031.pdf` (the official TTB Form F 5100.31, 04/2023, included in this repo) shows it is a **fillable AcroForm PDF containing 44 named form fields**, mapping to Part I items 1, 2, 6, 7, 8, 8a, 9, 10, 11, 12, 13, 14a–d (including the 14b state-abbreviation field and serial number/year components), 15, 16, 18, 19, plus checkbox widgets for Domestic/Imported and application type. Applications submitted through TTB's COLAs Online system are completed digitally, so a substantial share of real-world submissions will retain these field values intact.
 
@@ -249,11 +246,11 @@ Before finalizing the architecture, two trade studies were conducted to test whe
 
 **Decision:** Adopt Option D. Each form field is resolved by the first tier that returns a usable (non-null) value: (1) AcroForm field read, (2) `pdfplumber` text-layer extraction mapped to known field regions for the F 5100.31 (04/2023) layout, (3) Claude Vision (current Stage 3 design, unchanged as the universal fallback). The extraction method used for each field is recorded alongside its confidence score (FR-016): Tier 1 → 1.0, Tier 2 → ~0.90–0.95 (typical OCR/text-layer reliability), Tier 3 → Claude's self-reported confidence.
 
-**Impact:** Frees nearly all of the PR-001 5-second budget for Stage 4, since the common case (digitally-filled PDF) resolves Stage 3 in single-digit milliseconds. Stage 3's *output* schema (Section 3.2) is unchanged — every Part I field is still extracted, null-handled, and confidence-scored — only the extraction *method* varies per field. Adds `pypdf` as a new dependency (Section 4.1) and new assumption A-20 (Section 5). Guarantees the system still works end-to-end on any submitted PDF, including fully scanned applications, via the Tier 3 fallback.
+**Impact:** Frees nearly all of the PR-001 5-second budget for Stage 4, since the common case (digitally-filled PDF) resolves Stage 3 in single-digit milliseconds. Stage 3's *output* schema (Section 3.2) is unchanged — every Part I field is still extracted, null-handled, and confidence-scored — only the extraction *method* varies per field. Adds `pypdf` as a new dependency (Section 4.1) and new assumption IA-20 (Section 5). Guarantees the system still works end-to-end on any submitted PDF, including fully scanned applications, via the Tier 3 fallback.
 
 #### TS-02: Label Image Extraction Method (Stage 4)
 
-**Question:** Should Stage 4 rely solely on Claude Vision (original design), or can local computer vision/OCR complement it — specifically to address FR-21 (degraded label images: angle, glare, lighting — currently an unaddressed "nice-to-have") and the annotation-precision limitation noted in A-13 (location hints are coarse, exact pixel coordinates deferred to "production, needs Azure Document Intelligence")?
+**Question:** Should Stage 4 rely solely on Claude Vision (original design), or can local computer vision/OCR complement it — specifically to address degraded label images (angle, glare, lighting — formalized as **FR-039**) and the annotation-precision limitation noted in IA-13 (location hints are coarse, exact pixel coordinates deferred to "production, needs Azure Document Intelligence")?
 
 | Option | Method | Semantic field identification | Annotation precision | Degraded-image handling | Cost/latency |
 |--------|--------|-------------------------------|----------------------|--------------------------|--------------|
@@ -261,13 +258,13 @@ Before finalizing the architecture, two trade studies were conducted to test whe
 | B | OCR/CV only, no AI | Poor — produces a bag of text with no semantic labels; fails on stylized/decorative label fonts and logos | Good — pixel bounding boxes from OCR | Possible with preprocessing | $0, but **rejected** — AI vision is a hard requirement and is genuinely better at semantic categorization |
 | **C — chosen** | **Claude Vision (semantic, unchanged) + OpenCV preprocessing + OCR bounding-box assist, run concurrently** | Excellent (Claude, unchanged) | Precise — OCR-detected pixel bounding boxes fuzzy-matched to Claude's extracted field values | OpenCV deskew/perspective-correction/CLAHE contrast/glare reduction applied before the Claude call | 1 API call/image + local CPU pass (<1s, run in parallel — does not add to wall-clock time) |
 
-**Decision:** Adopt Option C. Three additions to the existing Stage 4 design, all running locally and concurrently with the per-image Claude Vision call (so PR-001's 5-second budget, and A-19's per-application concurrency model, are unaffected):
+**Decision:** Adopt Option C. Three additions to the existing Stage 4 design, all running locally and concurrently with the per-image Claude Vision call (so PR-001's 5-second budget, and IA-19's per-application concurrency model, are unaffected):
 
-1. **OpenCV preprocessing** (deskew via contour/perspective correction, CLAHE contrast normalization, glare suppression) is applied to every label image *before* it is sent to Claude — directly addresses FR-21, which previously had no concrete implementation plan.
-2. **OCR bounding-box assist** (`pytesseract`/Tesseract) runs in parallel with the Claude Vision call, producing raw text plus pixel bounding boxes. Post-processing fuzzy-matches each of Claude's extracted field values against the OCR text to recover a real pixel-coordinate `bbox` for that element — resolving A-13's annotation-precision gap **in the prototype**, without Azure Document Intelligence.
-3. **Government Warning size/weight corroboration:** OCR-measured text height of "GOVERNMENT WARNING:" relative to surrounding body text provides an objective ratio that corroborates Claude's qualitative `header_caps_bold` assessment (FR-035) — strengthening the highest-stakes compliance check (Jenny Park's top concern), partially resolving A-07.
+1. **OpenCV preprocessing** (deskew via contour/perspective correction, CLAHE contrast normalization, glare suppression) is applied to every label image *before* it is sent to Claude — directly addresses **FR-039** (degraded image handling).
+2. **OCR bounding-box assist** (`pytesseract`/Tesseract) runs in parallel with the Claude Vision call, producing raw text plus pixel bounding boxes. Post-processing fuzzy-matches each of Claude's extracted field values against the OCR text to recover a real pixel-coordinate `bbox` for that element — resolving IA-13's annotation-precision gap **in the prototype**, without Azure Document Intelligence.
+3. **Government Warning size/weight corroboration:** OCR-measured text height of "GOVERNMENT WARNING:" relative to surrounding body text provides an objective ratio that corroborates Claude's qualitative `header_caps_bold` assessment (FR-035) — strengthening the highest-stakes compliance check (Jenny Park's top concern), partially resolving IA-07.
 
-**Impact:** Adds `opencv-python` and `pytesseract` (+ Tesseract OCR engine binary) as new dependencies (Section 4.1). Stage 4's per-element output schema (Section 3.2) gains an optional `bbox` field (pixel rect: `{x, y, w, h}`), populated when OCR finds a confident match; when it doesn't, the frontend falls back to the existing qualitative `location_hint`. New assumption A-21 (Section 5). A-07 and A-13 are updated from "deferred to production" to "addressed in prototype, with stated limits" (Section 5).
+**Impact:** Adds `opencv-python` and `pytesseract` (+ Tesseract OCR engine binary) as new dependencies (Section 4.1). Stage 4's per-element output schema (Section 3.2) gains an optional `bbox` field (pixel rect: `{x, y, w, h}`), populated when OCR finds a confident match; when it doesn't, the frontend falls back to the existing qualitative `location_hint`. New assumption IA-21 (Section 5). IA-07 and IA-13 are updated from "deferred to production" to "addressed in prototype, with stated limits" (Section 5).
 
 ---
 
@@ -363,7 +360,7 @@ Fields blank on the form are extracted as `null`, never omitted (FR-011), regard
   "extraction_methods": {
     "plant_registry_number": "acroform",
     "brand_name": "acroform",
-    "...": "one entry per field above — acroform | pdftext | ai_vision (TS-01, A-20, FR-017)"
+    "...": "one entry per field above — acroform | pdftext | ai_vision (TS-01, IA-20, FR-017)"
   }
 }
 ```
@@ -374,11 +371,11 @@ Store in `form_parameters`, including each field's `extraction_method` (Section 
 
 **Method (per TS-02, Section 3.1):** For **every label image** associated with the application (FR-030) — brand, back, neck, or other — three things happen per image, with the local CV/OCR work running concurrently with the Claude call so neither adds wall-clock time:
 
-1. **OpenCV preprocessing** (deskew/perspective correction, CLAHE contrast normalization, glare suppression) is applied to the raw image first — addresses FR-039's degraded-image scenarios (angle, glare, lighting), the formalized successor to the original FR-21 "nice-to-have" (Section 2.1).
+1. **OpenCV preprocessing** (deskew/perspective correction, CLAHE contrast normalization, glare suppression) is applied to the raw image first — addresses FR-039's degraded-image scenarios (angle, glare, lighting).
 2. The preprocessed image is sent to **Claude Vision API** independently, prompted for structured JSON extraction of **everything visible on that image** in a single pass — all TTB-required mandatory elements (FR-031), all comparison-relevant secondary elements (FR-032), and any remaining text as a generic catch-all (FR-033) — not just the fields used in comparison.
-3. **In parallel**, OCR (`pytesseract`/Tesseract, FR-040) runs against the preprocessed image, producing raw text plus pixel bounding boxes. Each of Claude's extracted field values is fuzzy-matched against the OCR text to recover a pixel `bbox` for that element, and the OCR-measured text height of "GOVERNMENT WARNING:" relative to surrounding body text is recorded as `header_height_ratio`, corroborating Claude's `header_caps_bold` assessment (FR-035, A-07).
+3. **In parallel**, OCR (`pytesseract`/Tesseract, FR-040) runs against the preprocessed image, producing raw text plus pixel bounding boxes. Each of Claude's extracted field values is fuzzy-matched against the OCR text to recover a pixel `bbox` for that element, and the OCR-measured text height of "GOVERNMENT WARNING:" relative to surrounding body text is recorded as `header_height_ratio`, corroborating Claude's `header_caps_bold` assessment (FR-035, IA-07).
 
-Per A-11/A-19, the per-image Claude Vision calls for one application are issued concurrently to stay within the PR-001 5-second budget; the OpenCV/OCR pass for each image runs locally and concurrently with that image's Claude call.
+Per A-11/IA-19, the per-image Claude Vision calls for one application are issued concurrently to stay within the PR-001 5-second budget; the OpenCV/OCR pass for each image runs locally and concurrently with that image's Claude call.
 
 **Per-image output schema:**
 ```json
@@ -415,7 +412,7 @@ Per A-11/A-19, the per-image Claude Vision calls for one application are issued 
 }
 ```
 
-`bbox` is populated when OCR finds a confident fuzzy-match for that element's extracted text on the preprocessed image; when it doesn't (e.g., logos or stylized brand marks with no OCR-readable text), `bbox` is `null` and the frontend falls back to the qualitative `location_hint` for annotation placement (A-13). `header_height_ratio` is only meaningful on `government_warning` and is `null` if OCR could not isolate the header text.
+`bbox` is populated when OCR finds a confident fuzzy-match for that element's extracted text on the preprocessed image; when it doesn't (e.g., logos or stylized brand marks with no OCR-readable text), `bbox` is `null` and the frontend falls back to the qualitative `location_hint` for annotation placement (IA-13). `header_height_ratio` is only meaningful on `government_warning` and is `null` if OCR could not isolate the header text.
 
 Fields with no corresponding element on this image are returned with `"value": null` rather than omitted, mirroring FR-011 on the form side. `other_text` may be an empty array. Every field is written to `label_parameters` as one row per `(label_image_id, field_name)`, so the same field may have multiple rows across images (FR-038).
 
@@ -425,7 +422,7 @@ Store in `label_parameters`. Status → `LABEL_ASSESSED` once all images for the
 
 #### Stage 5 — Comparison
 
-Apply comparison matrix (Section 2.6) to each field pair. For each form field, search `label_parameters` across **all** of the application's `label_image_id`s (FR-038) — a field is "on the label" if any image reports a non-null value for it.
+Apply comparison matrix (Section 2.5) to each field pair. For each form field, search `label_parameters` across **all** of the application's `label_image_id`s (FR-038) — a field is "on the label" if any image reports a non-null value for it.
 
 Per-field result:
 ```
@@ -536,13 +533,16 @@ While processing, a progress panel replaces the button:
 │  App 26-1 · Old Tom Distillery · Spirits   [ ❌ DENY ]  [< Back]│
 ├────────────────────────────────┬─────────────────────────────────┤
 │  TTB FORM F 5100.31            │  LABEL ARTWORK                  │
-│  ┌──────────────────────────┐  │  ┌───────────────────────────┐  │
-│  │  Brand: OLD TOM DIST...  │  │  │                           │  │
-│  │  [red ellipse on field]  │  │  │   [image with red ellipse │  │
-│  │  Type: Distilled Spirits │  │  │    on brand name area]    │  │
-│  │  ABV: 45% Alc./Vol.      │  │  │                           │  │
-│  │  ...                     │  │  └───────────────────────────┘  │
-│  └──────────────────────────┘  │                                 │
+│                                 │  ┌─────┬─────┬─────┐            │
+│                                 │  │[🏷️ ]│[🏷️ ]│[🏷️ ]│ ← tabs w/  │
+│                                 │  │Brand│ Back│ Neck│  thumbnails│
+│  ┌──────────────────────────┐  │  └─────┴─────┴─────┘            │
+│  │  Brand: OLD TOM DIST...  │  │  ┌───────────────────────────┐  │
+│  │  [red ellipse on field]  │  │  │                           │  │
+│  │  Type: Distilled Spirits │  │  │   [image with red ellipse │  │
+│  │  ABV: 45% Alc./Vol.      │  │  │    on brand name area]    │  │
+│  │  ...                     │  │  │                           │  │
+│  └──────────────────────────┘  │  └───────────────────────────┘  │
 ├────────────────────────────────┴─────────────────────────────────┤
 │  PARAMETER RESULTS                                               │
 │  ✅ Brand Name      MATCH       "Old Tom Distillery" (case ok)   │
@@ -559,7 +559,8 @@ While processing, a progress panel replaces the button:
 
 **Annotation behavior:**
 - Red ellipses rendered as SVG overlays on both the PDF renderer and the image viewer
-- SVG overlay coordinates derived from `location_hint` values in `label_parameters` (relative: top/bottom/left/center/etc.) and from form field bounding boxes
+- SVG overlay coordinates derived from `bbox_json` when available — on the form panel via `form_parameters.bbox_json` (AcroForm `/Rect` or pdfplumber word bbox, FR-019) and on the label panel via `label_parameters.bbox_json` (OCR fuzzy-match, FR-036/FR-040) — falling back to each table's `location_hint` (relative: top/bottom/left/center/etc.) when no bbox was resolved (IA-13, Section 3.6.2)
+- **Multi-image tab selector** (shadcn/ui `Tabs`, FR-091): each of the application's label images is a tab with a small thumbnail preview; when a comparison annotation references a specific `label_image_id` (A-10/FR-038), clicking it auto-switches the right panel to that image's tab before drawing the ellipse (Section 3.6.1 step 8)
 - Mouse-over on a red ellipse: corresponding ellipse on opposite panel glows yellow (cross-document highlight)
 - Right-click on any parameter row: context menu → "Override this determination" → modal with reason field
 
@@ -607,7 +608,7 @@ CREATE TABLE applications (
     status          TEXT DEFAULT 'PENDING',  -- PENDING|FORM_ASSESSED|LABEL_ASSESSED|COMPARED|COMPLETE
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     processed_at    DATETIME,
-    -- COLA Public Registry forward-compat fields (Section 6, A-22) — populated from the
+    -- COLA Public Registry forward-compat fields (Section 6, IA-22) — populated from the
     -- form/label extraction where derivable; not validated against any live registry
     ttb_id              TEXT,   -- 14-digit TTB ID (Section 6.2)
     vendor_code         TEXT,   -- portion of TTB ID identifying the submitting vendor
@@ -635,7 +636,9 @@ CREATE TABLE form_parameters (
     field_name      TEXT,
     field_value     TEXT,
     confidence      REAL,
-    extraction_method TEXT,  -- acroform|pdftext|ai_vision (TS-01, A-20) — which tier resolved this field
+    extraction_method TEXT,  -- acroform|pdftext|ai_vision (TS-01, IA-20) — which tier resolved this field
+    location_hint   TEXT,  -- relative position for annotation placement (fallback, IA-13/IA-23)
+    bbox_json       TEXT,  -- {"x":.., "y":.., "w":.., "h":..} from AcroForm /Rect (Tier 1) or pdfplumber word bbox (Tier 2) (FR-019, IA-23); NULL for Tier 3-resolved fields
     extracted_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -647,9 +650,9 @@ CREATE TABLE label_parameters (
     field_name      TEXT,
     field_value     TEXT,
     confidence      REAL,
-    location_hint   TEXT,  -- relative position for annotation placement (fallback, A-13)
-    bbox_json       TEXT,  -- {"x":.., "y":.., "w":.., "h":..} from OCR fuzzy-match (TS-02, A-13/A-21); NULL if no confident match
-    header_height_ratio REAL, -- government_warning only: OCR text-height ratio corroborating header_caps_bold (TS-02 #3, A-07); NULL otherwise
+    location_hint   TEXT,  -- relative position for annotation placement (fallback, IA-13)
+    bbox_json       TEXT,  -- {"x":.., "y":.., "w":.., "h":..} from OCR fuzzy-match (TS-02, IA-13/IA-21); NULL if no confident match
+    header_height_ratio REAL, -- government_warning only: OCR text-height ratio corroborating header_caps_bold (TS-02 #3, IA-07); NULL otherwise
     extracted_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -716,6 +719,197 @@ POST   /determinations/{id}/finalize         → save final agent determination
 
 ---
 
+### 3.6 Architecture Evaluation
+
+**Question:** With TS-01 and TS-02 (Section 3.1) adopted, does the React + Vite / FastAPI / SQLite / Claude architecture (Sections 3.2–3.5) still hold end-to-end — and is each component the most appropriate choice for the role it plays in the pipeline, given the comprehensive single-pass extraction and multi-image revisions made in Session 3?
+
+**Method:** Walk an ideal-scenario application through the entire system — agent login through batch report — mapping each step to the architectural component(s) that handle it (Section 3.6.1), then evaluate each component against its role, the alternatives, and the trade-offs of switching.
+
+#### Executive Summary
+
+| # | Component | Current Choice | Recommendation | Rationale |
+|---|-----------|-----------------|-----------------|-----------|
+| 1 | Frontend stack | React + Vite + TS + Tailwind | **ACCEPT** | Only realistic fit for split-view + SVG overlays + cross-highlighting (Decision 1 holds) |
+| 2 | PDF rendering | react-pdf | **ACCEPT** | Mature PDF.js wrapper; renders AcroForm-filled PDFs for display |
+| 3 | Annotation overlay | Custom SVG | **ACCEPT** | TS-02's `bbox` data makes this *stronger* than when first chosen (Decision 4) |
+| 4 | UI primitives | Tailwind only | **ACCEPT + ADD** shadcn/ui | Accessible tabs/modal/context-menu primitives directly serve UR-001–006 (50+, non-technical users) |
+| 5 | Multi-image selector (open question, Section 3.3 / Engineering Log 2026-06-09 Session 3) | Undecided | **RESOLVED → tabs with thumbnail previews** | See Section 3.6.2; new PRD FR-091 |
+| 6 | Form-panel (left) annotation data | Not addressed | **ADD** `form_parameters.bbox_json` / `location_hint` | New finding — near-zero cost given TS-01's tiers (Section 3.4; new PRD FR-019) |
+| 7 | API state management | React Query (polling) | **ACCEPT** | Batches finish in seconds; polling is simpler than WebSockets/SSE at this scale |
+| 8 | Backend framework | FastAPI | **ACCEPT** | Async I/O is exactly what IA-19's concurrent per-image Claude calls need |
+| 9 | DB + file persistence | SQLAlchemy + SQLite + local file paths | **ACCEPT + REFINE** | Concurrent-compute/sequential-persist write pattern (Decision 8); mount a Railway volume for the DB file (SR-003-scoped for raw uploads) |
+| 10 | Stage 3 extraction | pypdf → pdfplumber → Claude Vision (TS-01) | **ACCEPT** | Already trade-studied (Section 3.1) — fits cleanly into the pipeline |
+| 11 | Stage 4 extraction | OpenCV + pytesseract/Tesseract + Claude Vision (TS-02) | **ACCEPT** | Already trade-studied (Section 3.1) — one deployment watch-item (Tesseract binary on Railway, Decision 8) |
+| 12 | AI call structure | Claude Sonnet 4.6, N separate concurrent per-image calls | **ACCEPT + ADD** prompt caching | Keep calls separate (provenance, failure isolation per IA-19); cache the repeated extraction-schema system prompt |
+| 13 | Comparison/determination | Pure Python, deterministic (Stages 5–6) | **ACCEPT** | Auditable, testable, free — AI's role stays "extraction," not "judgment" |
+| 14 | Concurrency model | Per-image async (IA-19); cross-application batch sequential (IA-17) | **REFINE + CHANGE** | Run OpenCV/Tesseract via thread pool so they don't block the event loop; change IA-17 to bounded-concurrency batch processing |
+| 15 | Agent authentication | JWT (python-jose + passlib) | **ACCEPT** | Matches IA-11/CR-001 — standalone POC, no SSO needed |
+
+#### 3.6.1 Ideal-Scenario User Path
+
+This walkthrough maps the Section 3.2 pipeline diagram to the components that implement each step, in the order an agent experiences them.
+
+1. **Login** — Agent authenticates via `POST /auth/login`; FastAPI + python-jose/passlib issue a JWT (#15, accept).
+2. **Dashboard load** — `GET /applications` → SQLAlchemy query joins `applications`/`determinations`/`batches` → React renders the queue with status badges (#7/#8, accept).
+3. **Ingest (Stages 1–2)** — Agent uploads form PDF + N label images via `POST /applications/upload`; FastAPI writes files to disk and inserts `applications`/`label_images` rows, status `PENDING` (#9). **Persistence note:** on Railway, the container filesystem is ephemeral across redeploys unless a volume is mounted. The `workingfiles` SQLite DB (CR-003's persistent record) needs a mounted volume regardless. Per SR-003, raw uploaded PDFs/images are scoped to "the active processing session" — interpreted as lasting through agent finalization (`determinations.finalized_at`), since FR-080/FR-081 render the original files in the Detail View; the same volume covers this bounded lifetime. No new dependency — a Railway configuration item (Decision 8, IA-26).
+4. **Batch select & process** — Checkbox selection → `POST /batch/process { application_ids }` → new `batches` row.
+5. **Pipeline execution per application:**
+   - **Stage 3 (#10)** — Tiered pypdf → pdfplumber → Claude (TS-01). Already settled. New: Tier 1/2 also capture each field's `bbox` (AcroForm `/Rect`, pdfplumber word bbox) for the form-panel annotation gap (#6, Decision 8 item 1).
+   - **Stage 4 (#11)** — Per label image: OpenCV preprocess → {Claude Vision call ‖ pytesseract OCR} concurrently (TS-02). Already settled. **Watch-item:** Railway's Nixpacks builder needs an `Aptfile`/`nixpacks.toml` entry for `tesseract-ocr`, confirmed at deploy time (Decision 8 item 2).
+   - **Persist pattern (#9/#14, refine)** — Rather than each of the N concurrent per-image tasks writing to `label_parameters` as it completes, `asyncio.gather()` all per-image (Claude + OpenCV/OCR) tasks, collect results in memory, then write all rows in a single transaction once everything resolves. Avoids SQLite single-writer contention without WAL-mode configuration, and is the natural shape for "wait for all images before Stage 5" (Decision 8 item 3, new IA-24).
+   - **Stage 5 (#13)** — Pure-Python comparison across all `label_image_id`s (A-10/FR-038) → `comparisons` rows. Accept — the right boundary for deterministic logic.
+   - **Stage 6 (#13)** — Rule-based determination (Section V mapping) → `determinations` row.
+6. **Cross-application batch concurrency (#14, change)** — IA-17 currently specifies sequential processing. Stage 4 is I/O-bound (~3–5s waiting on Claude per application) and FastAPI is already async, so processing a batch fully sequentially wastes wall-clock time for no benefit. Process applications within a batch concurrently, bounded by a semaphore (e.g., 3–5 in flight) to respect Anthropic per-minute rate limits while cutting batch time roughly proportionally. Orchestration change only — no new dependency (Decision 8 item 2, IA-17 revised, PRD A-07 revised).
+7. **Results polling** — React Query polls `GET /batch/{id}/status` until `COMPLETE`; dashboard refreshes badges (#7, accept). Per-application completion order may now differ from selection order (item 6) — each row updates independently, consistent with UR-004's "X of N" framing.
+8. **Application Detail View / multi-image resolution (#5, resolved)** — `GET /applications/{id}` returns form parameters (now including `bbox_json`/`location_hint`, item #6), all `label_images`, and per-image `label_parameters`. **Multi-image selector resolution:** tabs with small thumbnail previews above the label panel. When a `comparisons` row references a specific `label_image_id` (A-10) and the agent interacts with its annotation, the UI switches to that tab and draws the SVG ellipse — directly answering "which image does this annotation belong to" (new PRD FR-091, Decision 8 item 5). No new endpoint required — `GET /applications/{id}` already returns the full `label_images[]`/`label_parameters[]` set.
+9. **Override & finalize** — Right-click → modal → `POST /determinations/{id}/override`; `POST /determinations/{id}/finalize` (#1/#8, accept; IA-14 unchanged — override does not re-run the AI pipeline).
+10. **Batch report** — `GET /batch/{id}/report`; CSV export is trivial (stdlib `csv`); PDF export library remains an open implementation decision (e.g., `weasyprint` server-side or `jsPDF` client-side) — not an architecture issue.
+
+#### 3.6.2 Resolved Items
+
+**Form-panel annotation gap (new finding, item #6).** Walking the *left* (form) panel through the same lens TS-02 applied to the *right* (label) panel surfaced an asymmetry: `form_parameters` (Section 3.4) has no `bbox_json` or `location_hint` column, so FR-082 ("red elliptical annotation over each field on the form PDF") had no defined positional source — Decision 4's "location hints" framing predates TS-01 and was really aimed at the label side. TS-01's tiers already carry positional data for free: Tier 1 (pypdf/AcroForm) reads each field widget's `/Rect`; Tier 2 (pdfplumber) returns word/character bounding boxes; Tier 3 falls back to `location_hint` like the label side. **Decision:** add `form_parameters.bbox_json` and `location_hint` (Section 3.4), populated per-tier as above — symmetric with TS-02's label-side solution, at essentially no additional extraction cost (Decision 8 item 1; new PRD FR-019).
+
+**Multi-image selector (open design question, resolved, item #5).** Tabs with thumbnail previews above the label panel — see Section 3.6.1 step 8. Chosen over a thumbnail strip (extra click + state to manage) and stacked panels (loses side-by-side comparison, requires scrolling). New PRD FR-091 (Decision 8 item 5).
+
+**Combined vs. separate extraction calls (considered, rejected).** Collapsing Stage 3 plus all of an application's Stage 4 calls into a single multi-image Claude prompt was considered and rejected:
+- Breaks per-image `label_image_id` provenance (A-10/FR-038's multi-image resolution depends on knowing *which* image each value came from); Claude self-tagging N images' worth of fields in one response is error-prone.
+- Loses failure isolation — one bad/ambiguous image degrades the whole response instead of just that image's row.
+- A larger combined prompt grows with image count, working against PR-001 (current design holds wall-clock flat under per-image concurrency).
+
+The "fewer API calls" benefit is captured instead by prompt caching (item #12) without sacrificing per-image independence (IA-19). No change to IA-19/FR-030 needed — this confirms the existing design.
+
+**Impact:** DB schema additions to Section 3.4 (`form_parameters.bbox_json`/`location_hint`); Decision 8 (Section 4.2) records the five refinements above; Section 5 — IA-17 revised, new IA-23–IA-26; PRD changes — new FR-019 (form bbox) and FR-091 (multi-image selector), revised A-07 and FR-074 verification method, traceability matrix and glossary updated accordingly.
+
+---
+
+### 3.7 System Diagrams
+
+These diagrams formalize the architecture confirmed in Section 3.6, reflecting the bounded-concurrency batch model (A-07/IA-17), the per-image concurrent extraction model (IA-19/IA-24), and the TS-01/TS-02 tiered/local-CV additions.
+
+#### 3.7.1 System Context Diagram
+
+```mermaid
+graph TB
+    Agent["TTB Agent<br/>(authenticated user)"]
+    LVS["TTB Label Verification System<br/>(React frontend + FastAPI backend + SQLite)"]
+    Claude["Anthropic Claude API<br/>(claude-sonnet-4-6, vision)"]
+    COLA["TTB COLA Public Registry /<br/>COLAs Online (ttbonline.gov)"]
+
+    Agent -->|"Uploads form PDF + label image(s);<br/>selects/processes batches;<br/>reviews & overrides determinations"| LVS
+    LVS -->|"Form PDF / label image extraction requests<br/>(Stages 3 & 4)"| Claude
+    Claude -->|"Structured JSON: field values,<br/>confidence, bbox/location_hint"| LVS
+    LVS -.->|"No live integration —<br/>schema-only forward-compat (IA-03/A-12/CR-001)"| COLA
+
+    style COLA stroke-dasharray: 5 5,fill:#eee,color:#888
+```
+
+**Notes:** The only live external dependency is the Claude API (A-08). The COLA Registry is shown dashed/greyed to make explicit that it is *not* called — its data model only informs the forward-compatible schema fields (Section 6, IA-22).
+
+#### 3.7.2 System Block Diagram (Stages 1–6)
+
+```mermaid
+graph TB
+    subgraph FE["React + Vite Frontend"]
+        Dash["Agent Dashboard<br/>(FR-070-077)"]
+        Detail["Application Detail View<br/>split view + tabs (FR-080-091)"]
+        Report["Batch Report<br/>(FR-095-097)"]
+    end
+
+    subgraph BE["FastAPI Backend"]
+        Ingest["Stages 1-2: Ingestion<br/>(FR-001-007)"]
+        S3["Stage 3: Form Assessment<br/>tiered, TS-01 (FR-010-019)"]
+        S4["Stage 4: Label Assessment<br/>per-image concurrent, TS-02 (FR-030-040)"]
+        S5["Stage 5: Comparison<br/>(FR-050-059)"]
+        S6["Stage 6: Determination<br/>(FR-060-065)"]
+        Batch["Batch Orchestrator<br/>bounded concurrency (A-07/IA-17)"]
+    end
+
+    subgraph Local["Local CPU — TS-01 / TS-02"]
+        Tier12["pypdf (Tier 1) /<br/>pdfplumber (Tier 2)"]
+        CV["OpenCV preprocessing<br/>(deskew/contrast/glare)"]
+        OCR["Tesseract OCR<br/>bbox + header_height_ratio"]
+    end
+
+    DB[("SQLite<br/>workingfiles DB<br/>(Railway volume, IA-26)")]
+    Claude["Claude Sonnet Vision API<br/>(prompt-cached, IA-25)"]
+
+    Dash -- "REST: /applications, /batch/process" --> Batch
+    Detail -- "REST: /applications/{id}, /determinations/{id}/*" --> S6
+    Report -- "REST: /batch/{id}/report" --> S6
+
+    Batch --> Ingest
+    Ingest --> DB
+    Ingest --> S3
+    S3 --> Tier12
+    Tier12 -. "Tier 3 fallback" .-> Claude
+    S3 --> DB
+    S3 --> S4
+    S4 --> CV
+    CV --> OCR
+    S4 --> Claude
+    S4 --> DB
+    S4 --> S5
+    S5 --> DB
+    S5 --> S6
+    S6 --> DB
+    DB --> Detail
+    DB --> Report
+```
+
+**Notes:** "Batch Orchestrator" is the new A-07/IA-17 bounded-concurrency layer (Decision 8 item 2) — it runs Stages 1–6 for each selected application, capping concurrent applications via a semaphore. Within Stage 4, the per-image fan-out (IA-19/IA-24) is detailed in Section 3.7.3.
+
+#### 3.7.3 Sequence Diagram — Concurrent Per-Image Label Extraction (IA-19/IA-24)
+
+```mermaid
+sequenceDiagram
+    participant FE as Frontend
+    participant API as FastAPI (Stage 4)
+    participant CV as OpenCV
+    participant OCR as Tesseract
+    participant Claude as Claude Vision API
+    participant DB as SQLite
+
+    FE->>API: POST /applications/{id}/process
+    API->>DB: load label_images (N images)
+
+    par Image 1
+        API->>CV: preprocess(image_1)
+        CV-->>API: preprocessed_1
+        par
+            API->>Claude: extract(preprocessed_1) [system prompt cached, IA-25]
+            Claude-->>API: result_1 (fields, confidence, location_hint)
+        and
+            API->>OCR: detect_text + bbox(preprocessed_1)
+            OCR-->>API: ocr_text_1, bboxes_1
+        end
+        API->>API: fuzzy_match(result_1, bboxes_1) -> bbox_json_1, header_height_ratio_1
+    and Image 2
+        API->>CV: preprocess(image_2)
+        CV-->>API: preprocessed_2
+        par
+            API->>Claude: extract(preprocessed_2) [system prompt cached, IA-25]
+            Claude-->>API: result_2
+        and
+            API->>OCR: detect_text + bbox(preprocessed_2)
+            OCR-->>API: ocr_text_2, bboxes_2
+        end
+        API->>API: fuzzy_match(result_2, bboxes_2) -> bbox_json_2, header_height_ratio_2
+    and Image N
+        Note over API,OCR: same pattern, repeated per label image (IA-19)
+    end
+
+    Note over API,DB: IA-24 — concurrent-compute, sequential-persist:<br/>all per-image results held in memory until every image resolves
+    API->>DB: INSERT label_parameters (1 transaction, all images)
+    API->>API: Stage 5 — compare across all label_image_ids (A-10/FR-038)
+    API->>API: Stage 6 — determination (Section V mapping)
+    API->>DB: INSERT comparisons, determinations
+    API-->>FE: status: COMPLETE (poll via GET /batch/{id}/status)
+```
+
+**Notes:** The two `par` blocks per image are nested deliberately: the outer `par` is IA-19's per-image concurrency (N images at once); the inner `par` is TS-02's Claude-vs-OCR concurrency *within* one image. Total wall-clock for Stage 4 is therefore bounded by the slowest single image's `max(Claude, OpenCV+OCR)` — not the sum across images or across Claude/OCR — preserving PR-001's 5-second budget regardless of image count.
+
+---
+
 ## 4. Tools & Technology Rationale
 
 ### 4.1 Technology Stack
@@ -738,6 +932,7 @@ POST   /determinations/{id}/finalize         → save final agent determination
 | **Frontend** | React + Vite | 18+ / 5+ | UI framework | Component model handles split-view, annotations, state; TypeScript support |
 | **Frontend** | TypeScript | 5+ | Type safety | Prevents runtime errors in complex UI state |
 | **Frontend** | Tailwind CSS | 4.x | Styling | Utility-first; fast to build clean government-appropriate UI |
+| **Frontend** | shadcn/ui | latest | Accessible UI primitives | Radix-based `Tabs` (multi-image selector, FR-091), modal/dialog (override reason), context menu (right-click override) — accessible out of the box, serving UR-001–006's 50+ non-technical users (Section 3.6 #4, Decision 8) |
 | **Frontend** | react-pdf | latest | PDF rendering | Render F 5100.31 form in-browser for split view |
 | **Frontend** | React Query | latest | API state management | Handles polling for batch job completion |
 | **Frontend** | SVG overlay | (custom) | Visual annotations | Red ellipses over PDF and image; cross-document hover highlighting |
@@ -772,47 +967,62 @@ POST   /determinations/{id}/finalize         → save final agent determination
 **Decision 6: Tiered form extraction (AcroForm → pdfplumber → Claude Vision)**
 - *Origin:* TS-01 (Section 3.1)
 - *Rationale:* `f510031.pdf` is a 44-field fillable AcroForm, and applications submitted via TTB's COLAs Online retain those field values. Reading them directly (`pypdf`) is exact, free, and effectively instant — far better than asking a vision model to re-read values that are already present as structured data in the file. `pdfplumber` text-layer extraction covers flattened PDFs that lost their form fields but kept selectable text. Claude Vision remains the universal fallback for fully scanned, image-only submissions.
-- *Trade-off:* Three extraction code paths to maintain instead of one, and the `pdfplumber`/AcroForm field-name mappings are tied to the F 5100.31 (04/2023) layout (A-20) — a future form revision would require remapping. Mitigated by Claude Vision always being available as a correctness backstop.
+- *Trade-off:* Three extraction code paths to maintain instead of one, and the `pdfplumber`/AcroForm field-name mappings are tied to the F 5100.31 (04/2023) layout (IA-20) — a future form revision would require remapping. Mitigated by Claude Vision always being available as a correctness backstop.
 
 **Decision 7: OpenCV preprocessing + OCR bounding-box assist for label images**
 - *Origin:* TS-02 (Section 3.1)
-- *Rationale:* Claude Vision remains the sole source of *semantic* label understanding (brand vs. fanciful name vs. marketing copy) — OCR alone cannot do this reliably on stylized label fonts and logos. But OCR run alongside Claude, on an OpenCV-preprocessed image, gives the system two things it lacked: (1) a concrete handling of degraded images (deskew, glare, contrast) that FR-21 had previously left as an unaddressed nice-to-have, and (2) real pixel bounding boxes for SVG annotations, fuzzy-matched to Claude's field values, instead of the coarse `location_hint` strings.
-- *Trade-off:* Adds two new dependencies (`opencv-python`, `pytesseract` + the Tesseract binary) and a fuzzy-matching step that can fail to find a `bbox` for some elements (logos, decorative text) — handled by falling back to `location_hint` (A-13) rather than blocking on a match.
+- *Rationale:* Claude Vision remains the sole source of *semantic* label understanding (brand vs. fanciful name vs. marketing copy) — OCR alone cannot do this reliably on stylized label fonts and logos. But OCR run alongside Claude, on an OpenCV-preprocessed image, gives the system two things it lacked: (1) a concrete handling of degraded images (deskew, glare, contrast) required by **FR-039**, and (2) real pixel bounding boxes for SVG annotations, fuzzy-matched to Claude's field values, instead of the coarse `location_hint` strings.
+- *Trade-off:* Adds two new dependencies (`opencv-python`, `pytesseract` + the Tesseract binary) and a fuzzy-matching step that can fail to find a `bbox` for some elements (logos, decorative text) — handled by falling back to `location_hint` (IA-13) rather than blocking on a match.
+
+**Decision 8: Architecture evaluation refinements**
+- *Origin:* Section 3.6 Architecture Evaluation
+- *Rationale:* The evaluation reconfirmed the core React + Vite / FastAPI / SQLite / Claude architecture end-to-end, and surfaced five refinements that close gaps or reduce cost without changing any major component:
+  1. **Form-panel bounding boxes (FR-019, IA-23)** — `form_parameters` gains `bbox_json`/`location_hint` (Section 3.4), populated from TS-01's Tier 1 (AcroForm `/Rect`) and Tier 2 (pdfplumber word bbox) results — symmetric with the label side's TS-02 solution (Decision 7), at no additional extraction cost.
+  2. **Bounded batch concurrency (IA-17 revised)** — Cross-application batch processing changes from fully sequential to semaphore-bounded concurrent (3–5 applications in flight), since Stage 4 is I/O-bound and FastAPI is already async. Per-application completion order may now differ from selection order; UR-004's "X of N" progress indicator remains compatible.
+  3. **Concurrent-compute, sequential-persist (IA-24)** — Within one application, all per-image Stage 4 tasks (`asyncio.gather()`) compute in memory first; `label_parameters` rows are written in a single transaction afterward, avoiding SQLite single-writer contention without WAL-mode configuration.
+  4. **Prompt caching (IA-25)** — The repeated extraction-schema system prompts for Stage 3 Tier-3 and Stage 4 Claude calls are marked for Anthropic prompt caching, reducing token cost/latency at the ~150,000-application/year production scale cited in the README's problem statement.
+  5. **Multi-image tab selector + shadcn/ui (FR-091)** — Resolves the open Application Detail View design question (Sessions 3–4, Section 3.3): label images are presented as tabs with thumbnail previews, auto-switching when a comparison annotation references a specific `label_image_id` (A-10/FR-038). shadcn/ui's Radix-based `Tabs`, dialog, and context-menu primitives are added to the frontend stack (Section 4.1) to implement this accessibly (UR-001–006).
+- *Considered and rejected:* Combining Stage 3 plus all of an application's Stage 4 calls into a single multi-image Claude prompt (fewer API calls). Rejected — breaks per-image `label_image_id` provenance (A-10/FR-038), loses per-image failure isolation, and grows the prompt with image count (working against PR-001). Prompt caching (item 4) captures the cost benefit without these downsides; IA-19/FR-030's per-image concurrent calls are unchanged.
+- *Deployment watch-items:* TS-02's Tesseract OCR binary requires an `Aptfile`/`nixpacks.toml` entry on Railway, to be confirmed at deploy time; a Railway persistent volume is needed for the SQLite `workingfiles` DB (IA-26), scoped per SR-003 for raw uploads.
 
 ---
 
-## 5. Assumptions
+## 5. Initial Assumptions
 
 | ID | Assumption | Basis |
 |----|-----------|-------|
-| A-01 | Internet access available for the deployed prototype | Marcus Williams: firewall concern is for production; prototype is standalone |
-| A-02 | Anthropic API key provisioned for deployment | Required for Claude Vision; cost negligible at prototype usage |
-| A-03 | No COLA system integration | Marcus Williams: explicitly out of scope for prototype |
-| A-04 | Label images are JPEG, PNG, or WebP | Standard format for digital label submissions |
-| A-05 | Government Warning text is 27 CFR § 16.21 statutory statement | TTB regulation; confirmed by Jenny Park |
-| A-06 | Case/punctuation brand name differences are POSSIBLE_ALLOWABLE, not hard failures | Dave Morrison's "STONE'S THROW" example; Section V item 3b |
-| A-07 | Font size/weight of "GOVERNMENT WARNING:" is assessed primarily by Claude's qualitative `header_caps_bold` judgment, corroborated (not replaced) by an OCR-measured `header_height_ratio` (TS-02 #3) — a definitive px measurement still requires a known physical-to-pixel scale, which the prototype does not have | Vision models describe relative appearance reliably; OCR adds an objective height-ratio signal for the highest-stakes check (Jenny Park's top concern) without claiming exact px measurement |
-| A-08 | Application forms are submitted as PDF files in TTB F 5100.31 format | f510031.pdf provided as the source form |
-| A-09 | Label images are paired with application forms by manual association in the upload UI | No automatic barcode-based pairing in prototype |
-| A-10 | One application may have multiple label images (brand/back/neck) | Common in practice; per FR-030/FR-038, ALL images are extracted independently and a required field is satisfied if found on ANY image — there is no single "primary" comparison image |
-| A-11 | Agent authentication is username/password (no SSO/LDAP for prototype) | Marcus Williams: standalone POC; complex auth is production concern |
-| A-12 | Exemption logic is based on Section V Allowable Revisions and Type 14b applications | F 5100.31 form instructions |
-| A-13 | SVG annotation locations use an OCR-derived pixel `bbox` (TS-02 #2) when a confident fuzzy-match exists between Claude's extracted field value and the OCR text; otherwise they fall back to AI `location_hint` strings (approximate region only) | OCR bounding-box assist resolves the precision gap for most printed text in the prototype; logos, decorative fonts, and stylized brand marks have no OCR-readable text and still rely on `location_hint`. A production system handling 100% of cases would still benefit from a dedicated service like Azure Document Intelligence |
-| A-14 | Agent override is recorded with reason but does not re-run the AI pipeline | Override is a manual correction layer on top of AI output |
-| A-15 | Country of origin check applies only when Item 3 is checked "Imported" | Domestic products not required to show country of origin |
-| A-16 | The prototype handles Type 14a and 14b applications; 14c (distinctive bottle) and 14d (resubmission) are noted but not fully validated | Time-constraint prioritization; 14c/14d are edge cases |
-| A-17 | Batch processing is sequential (one application at a time) with a progress indicator | Prototype scope; production would use async task queue (Celery/RQ) |
-| A-18 | When a required field's value is found on multiple label images with differing values, any image whose value matches the form satisfies the requirement (MATCH); only when no image matches is a discrepancy reported, using the highest-confidence non-null candidate for the failure report and annotation | Real labels legitimately repeat (or vary) text across front/back/neck panels — penalizing an application because one panel differs while another matches would be a false failure |
-| A-19 | Within a single application, the per-image Stage 4 vision calls are issued concurrently (not sequentially) so total label-extraction time stays within the PR-001 5-second budget regardless of image count | Sequential per-image calls would multiply latency linearly with the number of label images submitted |
-| A-20 | The AcroForm field-name mapping (TS-01 Tier 1) and the `pdfplumber` region mapping (TS-01 Tier 2) are maintained for the F 5100.31 (04/2023) revision specifically; a future form revision with renamed/relocated fields would require updating both mappings, with Claude Vision (Tier 3) covering the gap until they're updated | `f510031.pdf` (04/2023) is the only form revision provided for this assessment |
-| A-21 | The OpenCV preprocessing and OCR bounding-box pass (TS-02) run locally on the backend, concurrently with each image's Claude Vision call, and do not themselves call any external API | Keeps PR-001's 5-second budget and A-19's concurrency model unaffected — these are additive local CPU passes, not additional network round-trips |
-| A-22 | The `applications` table carries TTB COLA Public Registry fields (TTB ID, Vendor Code, Class/Type Code, Origin Code, registry status, etc., Section 6) so that data extracted in this prototype is structurally compatible with a future COLAs Online integration, but no live connection to `ttbonline.gov` exists or is attempted | Per A-03/NFR-05/CR-001 (no COLA integration in prototype); forward-compatible schema reduces future integration effort without expanding current scope |
+| IA-01 | Internet access available for the deployed prototype | Marcus Williams: firewall concern is for production; prototype is standalone |
+| IA-02 | Anthropic API key provisioned for deployment | Required for Claude Vision; cost negligible at prototype usage |
+| IA-03 | No COLA system integration | Marcus Williams: explicitly out of scope for prototype |
+| IA-04 | Label images are JPEG, PNG, or WebP | Standard format for digital label submissions |
+| IA-05 | Government Warning text is 27 CFR § 16.21 statutory statement | TTB regulation; confirmed by Jenny Park |
+| IA-06 | Case/punctuation brand name differences are POSSIBLE_ALLOWABLE, not hard failures | Dave Morrison's "STONE'S THROW" example; Section V item 3b |
+| IA-07 | Font size/weight of "GOVERNMENT WARNING:" is assessed primarily by Claude's qualitative `header_caps_bold` judgment, corroborated (not replaced) by an OCR-measured `header_height_ratio` (TS-02 #3) — a definitive px measurement still requires a known physical-to-pixel scale, which the prototype does not have | Vision models describe relative appearance reliably; OCR adds an objective height-ratio signal for the highest-stakes check (Jenny Park's top concern) without claiming exact px measurement |
+| IA-08 | Application forms are submitted as PDF files in TTB F 5100.31 format | f510031.pdf provided as the source form |
+| IA-09 | Label images are paired with application forms by manual association in the upload UI | No automatic barcode-based pairing in prototype |
+| IA-10 | One application may have multiple label images (brand/back/neck) | Common in practice; per FR-030/FR-038, ALL images are extracted independently and a required field is satisfied if found on ANY image — there is no single "primary" comparison image |
+| IA-11 | Agent authentication is username/password (no SSO/LDAP for prototype) | Marcus Williams: standalone POC; complex auth is production concern |
+| IA-12 | Exemption logic is based on Section V Allowable Revisions and Type 14b applications | F 5100.31 form instructions |
+| IA-13 | SVG annotation locations use an OCR-derived pixel `bbox` (TS-02 #2) when a confident fuzzy-match exists between Claude's extracted field value and the OCR text; otherwise they fall back to AI `location_hint` strings (approximate region only) | OCR bounding-box assist resolves the precision gap for most printed text in the prototype; logos, decorative fonts, and stylized brand marks have no OCR-readable text and still rely on `location_hint`. A production system handling 100% of cases would still benefit from a dedicated service like Azure Document Intelligence |
+| IA-14 | Agent override is recorded with reason but does not re-run the AI pipeline | Override is a manual correction layer on top of AI output. Promoted to PRD §8 as **A-15**. |
+| IA-15 | Country of origin check applies only when Item 3 is checked "Imported" | Domestic products not required to show country of origin. Promoted to PRD §8 as **A-17**, with new comparison requirement **FR-066**. |
+| IA-16 | The prototype handles Type 14a and 14b applications; 14c (distinctive bottle) and 14d (resubmission) are noted but not fully validated | Time-constraint prioritization; 14c/14d are edge cases |
+| IA-17 | Batch processing uses bounded concurrency — a semaphore allows 3–5 applications to process in flight at once, rather than fully sequential or fully unbounded parallel | Section 3.6 architecture evaluation (revised from "sequential" — Stage 4 is I/O-bound and FastAPI is already async, so sequential processing wastes wall-clock time; bounding avoids exceeding Anthropic per-minute rate limits across concurrent applications × concurrent images). UR-004's "X of N" progress indicator remains compatible regardless of completion order |
+| IA-18 | When a required field's value is found on multiple label images with differing values, any image whose value matches the form satisfies the requirement (MATCH); only when no image matches is a discrepancy reported, using the highest-confidence non-null candidate for the failure report and annotation | Real labels legitimately repeat (or vary) text across front/back/neck panels — penalizing an application because one panel differs while another matches would be a false failure |
+| IA-19 | Within a single application, the per-image Stage 4 vision calls are issued concurrently (not sequentially) so total label-extraction time stays within the PR-001 5-second budget regardless of image count | Sequential per-image calls would multiply latency linearly with the number of label images submitted |
+| IA-20 | The AcroForm field-name mapping (TS-01 Tier 1) and the `pdfplumber` region mapping (TS-01 Tier 2) are maintained for the F 5100.31 (04/2023) revision specifically; a future form revision with renamed/relocated fields would require updating both mappings, with Claude Vision (Tier 3) covering the gap until they're updated | `f510031.pdf` (04/2023) is the only form revision provided for this assessment |
+| IA-21 | The OpenCV preprocessing and OCR bounding-box pass (TS-02) run locally on the backend, concurrently with each image's Claude Vision call, and do not themselves call any external API | Keeps PR-001's 5-second budget and IA-19's concurrency model unaffected — these are additive local CPU passes, not additional network round-trips |
+| IA-22 | The `applications` table carries TTB COLA Public Registry fields (TTB ID, Vendor Code, Class/Type Code, Origin Code, registry status, etc., Section 6) so that data extracted in this prototype is structurally compatible with a future COLAs Online integration, but no live connection to `ttbonline.gov` exists or is attempted | Per IA-03/CR-001 (no COLA integration in prototype); forward-compatible schema reduces future integration effort without expanding current scope |
+| IA-23 | `form_parameters.bbox_json`/`location_hint` (Section 3.4, FR-019) are populated using the same tiers as TS-01's extraction: Tier 1 (AcroForm `/Rect`) and Tier 2 (pdfplumber word/character bbox) provide pixel boxes; Tier 3 (Claude Vision)-resolved fields fall back to `location_hint` only | Section 3.6 architecture evaluation — symmetric with the label side's IA-13/TS-02 bbox solution; no new extraction pass required since TS-01's tiers already read this positional data |
+| IA-24 | Within one application, all per-image Stage 4 results (Claude Vision + OpenCV/OCR) are computed concurrently via `asyncio.gather()` and held in memory; `label_parameters` rows for that application are written in a single transaction once all images resolve | Section 3.6 architecture evaluation — avoids SQLite single-writer contention under IA-19's per-image concurrency and IA-17's bounded batch concurrency, without requiring WAL-mode configuration |
+| IA-25 | The system prompt(s) describing the Stage 3 Tier-3 and Stage 4 extraction JSON schemas are marked for Anthropic prompt caching | Section 3.6 architecture evaluation — these prompts are large and repeated identically across every Tier-3/Stage 4 call; caching reduces token cost/latency at the README's cited ~150,000-application/year production scale, with no change to extraction output |
+| IA-26 | A Railway persistent volume is mounted for the SQLite `workingfiles` DB file; per SR-003, raw uploaded form PDFs and label images remain scoped to "the active processing session," interpreted as lasting through `determinations.finalized_at` (needed for FR-080/FR-081 rendering in the Detail View) | Section 3.6 architecture evaluation — without a mounted volume, Railway's ephemeral container filesystem would lose the DB (and CR-003's persistent record) on every redeploy; this does not introduce new data-retention requirements beyond what FR-080/FR-081 and CR-003 already imply. Promoted to PRD §8 as **A-16**. |
 
 ---
 
 ## 6. COLA Registry & Future Integration Reference
 
-**Per A-03/NFR-05/CR-001, this prototype does NOT connect to the TTB COLA Public Registry or COLAs Online — no network calls to `ttbonline.gov` are made anywhere in this system.** This section exists purely as a forward-compatibility reference: applicants complete F 5100.31 submissions through COLAs Online, and a production version of TTB-LVS would plausibly *receive* applications from, or *query*, that system. Documenting its data model now lets the prototype's database schema (Section 3.4) capture the same fields without loss, so a future integration is a matter of wiring a connection — not redesigning the schema.
+**Per IA-03/CR-001, this prototype does NOT connect to the TTB COLA Public Registry or COLAs Online — no network calls to `ttbonline.gov` are made anywhere in this system.** This section exists purely as a forward-compatibility reference: applicants complete F 5100.31 submissions through COLAs Online, and a production version of TTB-LVS would plausibly *receive* applications from, or *query*, that system. Documenting its data model now lets the prototype's database schema (Section 3.4) capture the same fields without loss, so a future integration is a matter of wiring a connection — not redesigning the schema.
 
 **Sources** (publicly accessible, no login required):
 - TTB COLA Public Registry overview — https://www.ttb.gov/regulated-commodities/labeling/cola-public-registry
@@ -887,7 +1097,7 @@ A production TTB-LVS would plausibly:
 2. Query the COLA Registry by `ttb_id` to pre-populate `registry_status`/`approval_date`/`qualifications`, and to cross-check the submitted form against the registry's record of the same application.
 3. Offer a "find related COLAs" lookup using the Section 6.2 search fields (date range, brand/fanciful name, class/type code, origin code) — e.g., to surface a prior approval being revised under Section V.
 
-None of this is implemented, called, or stubbed in the prototype — A-03/A-22 hold. This section exists solely so the schema additions in Section 3.4 are traceable to a real data model.
+None of this is implemented, called, or stubbed in the prototype — IA-03/IA-22 hold. This section exists solely so the schema additions in Section 3.4 are traceable to a real data model.
 
 ---
 
@@ -918,7 +1128,7 @@ None of this is implemented, called, or stubbed in the prototype — A-03/A-22 h
 - Mapped all Form F 5100.31 fields to label elements (comparison matrix)
 - Mapped Section V Allowable Revisions to `POSSIBLE_ALLOWABLE` classification
 - Designed database schema (8 tables)
-- Designed REST API surface (10 endpoints)
+- Designed REST API surface (11 endpoints)
 - Designed all three UI views (Dashboard, Detail, Batch Report)
 - Updated DevLog and README to reflect revised design
 
@@ -945,11 +1155,11 @@ None of this is implemented, called, or stubbed in the prototype — A-03/A-22 h
 
 **Rationale:** a single comprehensive extraction pass per document — rather than re-querying for additional fields later — is both more efficient (fewer AI calls against the 5-second budget) and produces a complete digital record of each application for audit purposes, independent of which fields happen to be used in today's comparison logic.
 
-**Design correction (multi-image label processing):** the original design treated one label image as the "primary" comparison source per application (A-10, prior wording). Corrected so that:
+**Design correction (multi-image label processing):** the original design treated one label image as the "primary" comparison source per application (IA-10, prior wording). Corrected so that:
 - FR-030–038 (Label Assessment) now require Stage 4 extraction to run independently for **every** label image associated with an application, with each extracted element tagged by its source `label_image_id`
 - A required form field is satisfied if a matching value is found on **any** of the application's label images — the other images exist precisely to satisfy requirements the primary/front label doesn't carry (e.g., Government Warning and bottler address are commonly back-label content)
 - FR-050, FR-053–056 (Comparison) reworded to search across the full image set rather than "the label" (singular)
-- Added A-18 (multi-image value-conflict resolution: any matching image satisfies the requirement) and A-19 (per-image Stage 4 calls run concurrently to preserve the PR-001 5-second budget)
+- Added IA-18 (multi-image value-conflict resolution: any matching image satisfies the requirement) and IA-19 (per-image Stage 4 calls run concurrently to preserve the PR-001 5-second budget)
 - Updated Stage 4/5 pipeline description (Section 3.1): Stage 4 now produces one extraction result per label image; Stage 5 queries across all of an application's `label_image_id`s rather than a single label dataset
 - Traceability matrix updated to `FR-030–038`
 
@@ -959,32 +1169,101 @@ None of this is implemented, called, or stubbed in the prototype — A-03/A-22 h
 
 ### 2026-06-10 — Session 4: Trade Studies & COLA Registry Reference
 
-**Context:** Before proceeding to the planned systems-engineering pass (architecture evaluation, Mermaid diagrams, WBS), conducted two trade studies to test whether "Claude Vision for everything" — the original Stage 3/4 design — is the most effective use of AI given NFR-01's 5-second budget, or whether parts of the extraction pipeline are better served by deterministic local methods. **AI remains a hard requirement and the system's semantic core; the question was whether AI is the *best* tool for every sub-task, not whether to remove it.**
+**Context:** Before proceeding to the planned systems-engineering pass (architecture evaluation, Mermaid diagrams, WBS), conducted two trade studies to test whether "Claude Vision for everything" — the original Stage 3/4 design — is the most effective use of AI given PR-001's 5-second budget, or whether parts of the extraction pipeline are better served by deterministic local methods. **AI remains a hard requirement and the system's semantic core; the question was whether AI is the *best* tool for every sub-task, not whether to remove it.**
 
 **Completed:**
 - **TS-01 (Stage 3 — Form Data Extraction):** Inspected `f510031.pdf` directly and found it is a **44-field fillable AcroForm**. Adopted a tiered extraction strategy — (1) AcroForm field read via `pypdf`, (2) `pdfplumber` text-layer extraction, (3) Claude Vision as universal fallback — each field resolved by the first tier that returns a usable value, with the resolving tier recorded as `extraction_method` (FR-017). Frees nearly all of the 5-second budget for Stage 4 in the common case (digitally-completed COLAs Online submissions).
-- **TS-02 (Stage 4 — Label Image Extraction):** Adopted OpenCV preprocessing (deskew, CLAHE contrast, glare suppression) before every Claude Vision call — addressing FR-21/FR-39's previously-unimplemented degraded-image handling — plus a parallel OCR (`pytesseract`/Tesseract) pass that fuzzy-matches Claude's extracted field values to recover pixel `bbox`es for SVG annotations, and computes a `header_height_ratio` for "GOVERNMENT WARNING:" as an objective corroboration of Claude's `header_caps_bold` judgment. Both additions run locally and concurrently with the per-image Claude call — A-19's concurrency model and PR-001's budget are unaffected.
+- **TS-02 (Stage 4 — Label Image Extraction):** Adopted OpenCV preprocessing (deskew, CLAHE contrast, glare suppression) before every Claude Vision call — fulfilling **FR-039**'s degraded-image handling — plus a parallel OCR (`pytesseract`/Tesseract) pass that fuzzy-matches Claude's extracted field values to recover pixel `bbox`es for SVG annotations, and computes a `header_height_ratio` for "GOVERNMENT WARNING:" as an objective corroboration of Claude's `header_caps_bold` judgment. Both additions run locally and concurrently with the per-image Claude call — IA-19's concurrency model and PR-001's budget are unaffected.
 - Restructured DevLog Section 3 into "System Design & Trade Studies" with both trade studies written up in full (options tables, decisions, impacts) in new **Section 3.1**; renumbered the former 3.1–3.4 to 3.2–3.5.
 - Updated the Stage 3 and Stage 4 descriptions and output schemas (Section 3.2) to reflect the tiered extraction (`extraction_methods` map) and OpenCV/OCR augmentation (`bbox` and `header_height_ratio` fields).
 - Updated the tech stack table (4.1) with `pypdf`, `opencv-python`, and `pytesseract` + Tesseract, and added **Decision 6** (tiered form extraction) and **Decision 7** (OpenCV/OCR label augmentation) to 4.2.
-- Resolved **A-07** (Government Warning size assessment now corroborated by OCR `header_height_ratio`, not purely qualitative) and **A-13** (SVG annotations now use OCR-derived `bbox` when a confident match exists, falling back to `location_hint`); added **A-20** (form mapping is specific to F 5100.31 04/2023), **A-21** (OpenCV/OCR run locally/concurrently, no PR-001 impact), and **A-22** (COLA registry forward-compat schema, no live integration).
+- Resolved **IA-07** (Government Warning size assessment now corroborated by OCR `header_height_ratio`, not purely qualitative) and **IA-13** (SVG annotations now use OCR-derived `bbox` when a confident match exists, falling back to `location_hint`); added **IA-20** (form mapping is specific to F 5100.31 04/2023), **IA-21** (OpenCV/OCR run locally/concurrently, no PR-001 impact), and **IA-22** (COLA registry forward-compat schema, no live integration).
 - Updated the `applications`, `form_parameters`, and `label_parameters` table definitions (Section 3.4) with the new columns above plus eight COLA-registry forward-compatibility columns on `applications` (`ttb_id`, `vendor_code`, `class_type_code`, `origin_code`, `registry_status`, `total_bottle_capacity`, `for_sale_in_state`, `qualifications`).
 
-**COLA Registry research (new Section 6):** At the user's request, researched the TTB COLA Public Registry / COLAs Online data model (via the public search page and an example record, TTB ID `25211001000227`) to ensure the database schema captures registry fields — TTB ID, Vendor Code, Serial #, Class/Type Code, Origin Code, registry Status, Type of Application, For Sale In, Total Bottle Capacity, Formula, Approval Date, Qualifications, repeating Plant Registry/Permit locations, and Contact info — **without loss**, for forward-compatibility only. **No live connection to `ttbonline.gov` exists or is planned for this prototype** (A-03/CR-001 unchanged) — Section 6 is a reference document plus a field-mapping table showing each registry field's home in the TTB-LVS schema (new `applications` columns, or existing/new EAV rows in `form_parameters`/`label_parameters`).
+**COLA Registry research (new Section 6):** At the user's request, researched the TTB COLA Public Registry / COLAs Online data model (via the public search page and an example record, TTB ID `25211001000227`) to ensure the database schema captures registry fields — TTB ID, Vendor Code, Serial #, Class/Type Code, Origin Code, registry Status, Type of Application, For Sale In, Total Bottle Capacity, Formula, Approval Date, Qualifications, repeating Plant Registry/Permit locations, and Contact info — **without loss**, for forward-compatibility only. **No live connection to `ttbonline.gov` exists or is planned for this prototype** (IA-03/CR-001 unchanged) — Section 6 is a reference document plus a field-mapping table showing each registry field's home in the TTB-LVS schema (new `applications` columns, or existing/new EAV rows in `form_parameters`/`label_parameters`).
 
 **Open items for next session:** Apply the corresponding updates to `_DevLog/PRD.md` (revision history, REF-07–09 for the COLA registry sources, new FR-017/018/039/040, traceability matrix, assumptions A-12–14, glossary terms), update `README.md`'s tech stack list, then proceed with the original Session 4 plan: architecture evaluation, Mermaid diagrams (system context, block diagram, concurrency sequence diagram), alternatives brainstorm, and WBS.
 
 ---
 
+### 2026-06-10 — Session 5: Architecture Evaluation
+
+**Context:** With TS-01/TS-02 (Session 4) complete, conducted the architecture-evaluation portion of the systems-engineering pass: walked an ideal-scenario application end-to-end through the React + Vite / FastAPI / SQLite / Claude architecture (Sections 3.2–3.5), confirming each component's role against alternatives and surfacing refinements — and resolving the open multi-image selector question carried from Sessions 3–4.
+
+**Completed:**
+- Added new **Section 3.6 Architecture Evaluation**: a 15-row Executive Summary table (Accept/Change/Refine recommendations spanning the frontend stack, PDF rendering, annotation overlay, UI primitives, multi-image selector, form-panel bbox, API state management, backend framework, DB + persistence, Stage 3/4 extraction, AI call structure, comparison/determination logic, concurrency model, auth, and deployment); §3.6.1 Ideal-Scenario User Path (Steps 0–10, agent login through batch report, mapped to architecture components); and §3.6.2 Resolved Items.
+- **Resolved the open multi-image selector design question** (carried from Sessions 3–4): tabs with thumbnail previews above the label panel, auto-switching to the relevant tab when a comparison annotation references a specific `label_image_id` (A-10/FR-038). New PRD **FR-091**. Updated §3.3's Application Detail View mockup and annotation-behavior bullets accordingly.
+- **New finding — form-panel annotation gap:** `form_parameters` lacked `bbox_json`/`location_hint` (unlike `label_parameters`, added via TS-02). Added both columns (§3.4), populated for free via TS-01's Tier 1 (AcroForm `/Rect`) and Tier 2 (pdfplumber word bbox), with Tier 3 falling back to `location_hint` — symmetric with the label-side solution. New PRD **FR-019**, new **IA-23**.
+- **Considered and rejected:** combining Stage 3 plus all of an application's Stage 4 calls into a single multi-image Claude prompt — breaks per-image `label_image_id` provenance (A-10/FR-038), loses per-image failure isolation, and grows the prompt with image count (against PR-001). Confirms IA-19/FR-030 as-is; Anthropic prompt caching (new **IA-25**) captures the "fewer calls" cost benefit without these downsides.
+- Added **Decision 8** (§4.2): five refinements — (1) form-panel bbox via TS-01 tiers, (2) bounded batch concurrency, (3) concurrent-compute/sequential-persist write pattern, (4) prompt caching, (5) multi-image tabs + shadcn/ui — plus the rejected combined-call alternative and Tesseract/Railway-volume deployment watch-items.
+- Added **shadcn/ui** to the frontend stack (§4.1) for accessible `Tabs`, dialog, and context-menu primitives (UR-001–006).
+- **Revised IA-17** (batch processing: sequential → bounded concurrency, semaphore of 3–5 applications in flight) and added **IA-23–IA-26** (form bbox via TS-01 tiers; concurrent-compute/sequential-persist; prompt caching; Railway volume for the SQLite DB, scoped per SR-003).
+- Updated `_DevLog/PRD.md` to **v1.2**: revision history; new FR-019 (form bbox) and FR-091 (multi-image selector); revised A-07 (bounded concurrency, parallels DevLog IA-17) and FR-074's verification method; traceability matrix (new "AE" source code = DevLog §3.6 Architecture Evaluation); glossary `bbox` entry broadened to cover form fields (FR-019) as well as label elements (FR-040); footer.
+- Updated `README.md` (stack list: shadcn/ui; Application Detail View description: tabbed multi-image selector with thumbnails) and `TODO.md` (status table, Session 5 daily summary, trimmed next-session plan).
+
+**Open items for next session:** Mermaid diagrams (system context, system block diagram for Stages 1–6, sequence diagram for concurrent per-image label extraction per IA-19) and Work Breakdown Structure (WBS) with estimates against the June 16, 2026 deadline.
+
+### 2026-06-10 — Session 6: Diagrams & Work Breakdown Structure
+
+**Context:** With the architecture evaluation (Session 5) complete, this session closed out the remaining Systems Engineering Pass items — visualizing the evaluated architecture as Mermaid diagrams and converting the "Remaining Implementation Work" list into a sequenced, estimated WBS against the June 16, 2026 deadline.
+
+**Completed:**
+- New **DevLog §3.7 System Diagrams** (3 Mermaid diagrams):
+  - **§3.7.1 System Context Diagram** — Agent ↔ LVS ↔ Claude, with the TTB COLA Registry shown dashed/greyed to reinforce IA-03/A-12/CR-001 (no live integration).
+  - **§3.7.2 System Block Diagram** — Stages 1–6 data flow across frontend (Dashboard, Detail View, Batch Report), backend (Ingest, Stages 3–6, plus a new **Batch Orchestrator** node embodying A-07/IA-17's bounded concurrency), local CV/OCR (TS-02), SQLite (Railway volume, IA-26), and Claude (prompt-cached, IA-25).
+  - **§3.7.3 Sequence Diagram** — single-application processing showing nested concurrency: an outer `par` over per-image Stage 4 calls (IA-19), each containing an inner `par` for Claude Vision vs. OpenCV/OCR (TS-02), followed by a `Note` on the concurrent-compute/sequential-persist write pattern (IA-24) before Stage 5/6 and the final status reply.
+- New standalone **`_DevLog/WBS.md`** (Document ID `TTB-LVS-WBS-001`, v1.0): 13 top-level WBS items (1.0–13.0, several with sub-items) covering backend/frontend scaffolding, Stages 1–6, Agent Dashboard, Application Detail View, Batch Report, synthetic test data, testing, and deployment — each traced to governing FR/A/Decision IDs from the architecture evaluation. Estimated **~75 hours across 6 days** (2026-06-11 → 2026-06-16), with a critical-path diagram (§3) and risk/contingency notes (§4) — including a fallback for TS-02's OCR bbox work (degrade to Claude + `location_hint` per IA-13) and a recommendation to smoke-test the Railway/Tesseract deployment path early (2026-06-11) rather than on the deadline day. (Originally drafted as DevLog §9, then transplanted to its own versioned document alongside `PRD.md`.)
+- Added a "Related Documents" line to the DevLog header linking `PRD.md` and `WBS.md`.
+
+**Open items for next session:** Begin implementation per WBS items 1.0–2.0 (backend + frontend scaffolding) and 11.0 (synthetic test data), per the critical path in `WBS.md` §3. The Systems Engineering Pass (TODO.md) is now fully complete.
+
+### 2026-06-10 — Session 7: Documentation Consistency & Requirements Completeness Pass
+  - Before starting implementation, audited cross-document ID references and requirements coverage.
+  - Renamed `_DevLog/DevLog.md` §5 "Assumptions" to **"Initial Assumptions"** (IDs **IA-01–IA-26**) to deconflict with PRD §8's **A-01–A-14**, then re-audited every `A-\d+` reference across `DevLog.md`, `PRD.md`, `WBS.md`, and this `TODO.md` against a PRD↔DevLog concordance table, repointing references to the correct namespace (e.g., several "A-03"/"A-07"/"A-10"/"A-11"/"A-13"/"A-14" references actually meant DevLog's IA-03/IA-07/IA-10/IA-11/IA-13/IA-14) and fixing three broken PRD self-references (§5.3, A-12, Glossary).
+  - Audited DevLog §5 (IA-01–IA-26) against PRD §8 (A-01–A-14) for assumption coverage. 23 of 26 IA items were already covered (directly or promoted to binding FR/SR requirements). Updated `_DevLog/PRD.md` to **v1.3**: added **A-15** (overrides don't re-run the AI pipeline, IA-14), **A-16** (SR-003 "active processing session" interpretation + persistent-storage dependency, IA-26), **A-17** (country-of-origin comparison scope, IA-15), and new **FR-066** (country-of-origin comparison, conditional on Item 3 = "imported").
+  - While tracing IA-15, found DevLog §2.5's Parameter Comparison Matrix had 8 rows with no corresponding FR in §6.1.4 (only Brand Name, Government Warning, and "For sale in [STATE]" had been formalized). Updated `_DevLog/PRD.md` to **v1.4**: added **FR-100–107** for Fanciful Name (Item 7), Product Type/class-type consistency (Item 5), Applicant Name (Item 8), Applicant Address (Item 8/8a, with in-state Allowable Revision per Section V), Grape Varietals (Item 10, Wine), Wine Appellation (Item 11, Wine, conditional), ABV (presence + product-type consistency), and Net Contents (presence).
+  - Updated traceability matrix and `_DevLog/DevLog.md` §5 IA table cross-references (IA-14→A-15, IA-15→A-17/FR-066, IA-26→A-16).
+  - **Open item flagged for next session:** WBS 6.0/6.1 (Comparison engine, currently 6/4 hrs, traced to "A-10, IA-18, FR-038, FR-050–056") does not yet account for the new FR-066/FR-100–107 — re-estimate before starting WBS 6.0.
+
+---
+
+### 2026-06-11 — Session 8: WBS Re-Baseline (v2.0)
+  - Re-examined and rewrote `_DevLog/WBS.md` per Gabe's request for a verbose, fully-sequenced work plan.
+  - Added **Phase 0** (items 0.1–0.12): every project-definition / systems-engineering activity completed to date (Project Setup, Problem Identification, Resource Collection, Requirement Extraction, Design Brainstorming, Tech Approach Planning, PRD Development, Trade Studies, Architecture Evaluation, WBS Development, Systems Engineering Review, Documentation Review), each mapped to its Engineering Log session and artifact, for completeness.
+  - Rewrote **Phase 1** as a single dependency-ordered sequence, items **1.0–21.0**, expanding the old 13-item plan into ~140 X.Y sub-items spanning backend coding, backend unit testing, frontend coding, frontend unit testing, integration, integration testing, synthetic test data, localhost testing, deployment, post-deployment end-to-end testing, and submission material review/collation/submission. Each backend/frontend coding group ends with its own paired unit-test sub-item.
+  - **Resolved the Session 7 open item**: re-scoped the Stage 5 Comparison Engine (now WBS **7.0**) from 2 sub-items to 16, adding dedicated rules for FR-066 (country of origin) and FR-100–107 (fanciful name, product/class-type, applicant name/address, grape varietals, wine appellation, ABV, net contents), all sharing a single multi-image resolution helper (7.1).
+  - **Re-sequenced synthetic test data** (now WBS **2.0**, was 11.0) to immediately follow backend scaffolding, since it is a hard prerequisite for nearly every unit/integration test in the new sequence.
+  - Added new explicit phases not previously broken out: Auth (3.0), Pipeline Orchestration & Batch (9.0), Overrides/Finalize/Batch Report (10.0), FE↔BE Integration wiring (15.0), Localhost E2E (17.0), Post-Deployment E2E (19.0), Submission Material Collation (20.0), Submission (21.0).
+  - **Per Gabe's direction, removed all hour estimates and target dates** — `WBS.md` v2.0 tracks sequence and dependencies only (§4 Dependency Flow diagram, §5 Sequencing & Technical Risk Notes replace the old hour-based Critical Path / Risk register).
+  - Updated this `TODO.md`: status table (WBS → v2.0, corrected WBS-number cross-references for backend/frontend/synthetic-data/deployment rows), "Next Session" section (now points to WBS 1.0/11.0/2.0 per the new numbering), and "Remaining Implementation Work" checklist (rewritten as 21 items matching `WBS.md` §3 1:1).
+
+---
+
+### 2026-06-11 — Session 9: Documentation Consistency Pass (v2.0 Baseline)
+
+**Context:** Following the WBS v2.0 re-baseline (Session 8), conducted a full cross-document documentation review of `README.md`, `PRD.md`, `DevLog.md`, `WBS.md`, and `TODO.md` — re-reading each document fresh and cross-checking version numbers, dates, section references, anchors, IDs, and naming against the "all references must be accurate" standard set in Session 7.
+
+**Completed:**
+- Corrected `PRD.md`'s footer version (v1.2 → v1.4, matching its header) and this DevLog's §5 TOC anchor (`#5-assumptions` → `#5-initial-assumptions`, matching the Session 7 rename to "Initial Assumptions").
+- Corrected `TODO.md`'s WBS section cross-references (`WBS.md §3`/`§4` → `§2`/`§3`, matching `WBS.md` v2.0's actual section numbering).
+- Added Sessions 7 and 8 to this Engineering Log (previously only Sessions 1–6 were recorded).
+- Corrected the `README.md` `Project Structure` tree: relocated the `f510031.pdf` reference into `_ProblemStatement/` (it does not exist at repo root) and added `PRD.md`/`WBS.md` to the `_DevLog/` listing.
+- Fixed `WBS.md` item **0.13** (left as an incomplete placeholder during the Session 8 re-baseline) and added new item **0.14** documenting this pass.
+- Restored this **§8 Chat Artifact Index**, referenced by `WBS.md` items 20.0/20.4 but inadvertently left without a body — rewritten to point to §7's Engineering Log as the authoritative session record until transcripts are exported per WBS 20.4, rather than listing not-yet-exported files as if present.
+- Bumped `PRD.md` to **v2.0** (revision history entry added; no functional requirement changes — FR/PR/IR/UR/SR/CR sets unchanged from v1.4).
+- Added a **Documentation Suite Version: 2.0** marker to this header, `README.md`, and `TODO.md`, indicating README, PRD (v2.0), DevLog, WBS (v2.0), and TODO are mutually consistent as of this session.
+
+**Outcome:** The documentation suite (README, PRD, DevLog, WBS, TODO) is internally consistent and synchronized at **v2.0** — implementation (WBS Phase 1, items 1.0/2.0/11.0) may now begin per the Session 8 plan.
+
+---
+
 ## 8. Chat Artifact Index
 
-Development session transcripts are stored in `_DevLog/` alongside this DevLog.
+Per `WBS.md` item 20.4 (Submission Material Review & Collation, §2), full chat session transcripts for Sessions 1–9 will be exported to `_DevLog/` as a final pre-submission step. As of this entry, no transcripts have been exported — the **Engineering Log (§7 above)** is the authoritative session-by-session record of decisions, designs, and document revisions until that export occurs.
 
-| File | Date | Description |
-|------|------|-------------|
-| `2026-06-09_session-01_setup.md` | 2026-06-09 | Assessment intake, initial requirements extraction, repo initialization |
-| `2026-06-09_session-02_architecture.md` | 2026-06-09 | Form F 5100.31 analysis, full architecture design, DB schema, API design |
-| _(future sessions appended here)_ | | |
+| Session | Date | Topic | Transcript |
+|---|---|---|---|
+| 1–9 | 2026-06-09 – 2026-06-11 | See §7 Engineering Log for per-session summaries | Pending export — `WBS.md` 20.4 |
 
 ---
 

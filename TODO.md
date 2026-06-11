@@ -3,6 +3,7 @@
 **Assessment:** IT Specialist (AI) · 26-DO-12891471-DH
 **Received:** June 9, 2026, 1458 hrs · **Deadline:** June 16, 2026, 1458 hrs
 **Repo:** https://github.com/gratefulgabe5000/ttb-label-verifier
+**Documentation Baseline:** v2.0 — README, PRD (v2.0), DevLog, WBS (v2.0), and TODO are mutually consistent as of Session 9 (2026-06-11)
 
 ---
 
@@ -13,52 +14,53 @@
 | Public GitHub repo | ✅ Created |
 | `README.md` (setup/run instructions) | ✅ Drafted (no runnable code yet) |
 | `_DevLog/DevLog.md` (approach, tools, assumptions, design) | ✅ Comprehensive |
-| `_DevLog/PRD.md` (INCOSE-style PRD + user stories + traceability) | ✅ Drafted, revised twice today, plus v1.1 (2026-06-10) |
+| `_DevLog/PRD.md` (INCOSE-style PRD + user stories + traceability) | ✅ Drafted, revised v1.1–v1.4 (2026-06-10), v2.0 (2026-06-11) |
 | Trade studies (TS-01 form extraction tiering, TS-02 label OpenCV/OCR augmentation) + COLA registry forward-compat reference | ✅ Complete (2026-06-10) |
-| Systems engineering review (architecture, block diagram, alternatives) | ☐ Next session |
-| Work Breakdown Structure | ☐ Pending systems engineering review |
-| Backend (`app/`) | ☐ Not started |
-| Frontend (`web/`) | ☐ Not started |
-| Synthetic test data (sample forms + multi-image label sets) | ☐ Not started |
-| Deployed application URL | ☐ Pending |
+| Architecture evaluation (DevLog §3.6) + alternatives brainstorm | ✅ Complete (2026-06-10) |
+| Mermaid diagrams (system context, block diagram, concurrency sequence) | ✅ Complete (2026-06-10) — DevLog §3.7 |
+| Work Breakdown Structure | ✅ Complete, re-baselined to v2.0 (2026-06-11) — [`WBS.md` v2.0](_DevLog/WBS.md) |
+| Backend (`app/`) | ☐ Not started — WBS 1.0, 3.0–10.0 |
+| Frontend (`web/`) | ☐ Not started — WBS 11.0–14.0 |
+| Synthetic test data (sample forms + multi-image label sets) | ☐ Not started — WBS 2.0 |
+| Deployed application URL | ☐ Pending — WBS 18.0 |
 
 ---
 
-## Next Session (2026-06-10) — Systems Engineering Pass
+## Next Session — Implementation Start (Backend/Frontend Scaffolding)
 
-> **Update:** Trade studies (TS-01, TS-02) and the COLA registry reference were completed in Session 4 (2026-06-10) — see Daily Chat Summary below and DevLog §3.1/§6. The architecture evaluation, diagrams, and WBS below remain pending for the next session.
+> **Update:** The Systems Engineering Pass is complete and the WBS has been re-baselined to **v2.0** (Session 8) — a single dependency-ordered sequence (1.0–21.0) covering the entire remaining build, including the new FR-066/FR-100–107 comparison-engine scope. Implementation begins next session, following the WBS sequence (`WBS.md` §2) and dependency flow (`WBS.md` §3).
 
-Per plan: before writing a WBS, revisit the architecture from a systems-engineering lens.
-
-1. **Architecture evaluation** — review the React+Vite / FastAPI / SQLite / Claude design against alternatives; confirm it still holds given today's PRD revisions (comprehensive single-pass extraction + per-image label processing increase the number of AI calls per application)
-2. **Mermaid diagrams** — produce:
-   - System context diagram
-   - System block diagram (components + data flow, Stages 1–6)
-   - Sequence diagram for single-application processing (concurrent per-image label extraction, per A-19)
-3. **Brainstorm vs. alternatives** — sanity-check current choices before locking in (e.g., one combined extraction call vs. separate form/label calls, sync vs. async batch processing, SQLite vs. alternatives)
-4. **Work Breakdown Structure (WBS)** — once architecture is confirmed, itemize remaining work into a sequenced WBS with estimates against the June 16 deadline
-
-### Open design question carried from today
-Application Detail View (PRD FR-080–090) was designed around a single form-panel/label-panel split view. With multiple label images per application now in scope (FR-030–038), the UI needs a way to present/select among them (tabs, thumbnail strip, or stacked panels) so the agent can see which image a given annotation refers to.
+1. **WBS 1.0 — Backend scaffolding** (`app/`): FastAPI app structure (1.1) + DB schema/migrations incl. `bbox_json`/`location_hint`/COLA columns (1.2–1.3)
+2. **WBS 11.0 — Frontend scaffolding** (`web/`): React + Vite + TS + Tailwind + shadcn/ui + react-pdf skeleton (can start in parallel with 1.0)
+3. **WBS 2.0 — Synthetic test data** (start in parallel with 1.0): sample F 5100.31 PDFs spanning all three TS-01 tiers + multi-image label sets — a prerequisite for nearly every unit/integration test that follows
 
 ---
 
 ## Remaining Implementation Work (post-architecture-review)
 
-- [ ] Scaffold `app/` (FastAPI backend): routers, services, models, schemas, `db.py`
-- [ ] Scaffold `web/` (React + Vite frontend): pages, components, API hooks
-- [ ] Implement Stage 1–2: ingestion endpoints + DB writes (form + N label images)
-- [ ] Implement Stage 3: form assessment (Claude prompt + parser, all 18 Part I fields)
-- [ ] Implement Stage 4: label assessment (Claude Vision prompt + parser, run per image, all elements + `other_text`)
-- [ ] Implement Stage 5: comparison engine (multi-image resolution per A-10/A-18)
-- [ ] Implement Stage 6: determination + report generation
-- [ ] Build Agent Dashboard (list, filter, batch select, process, badges)
-- [ ] Build Application Detail View (split view w/ multi-image selector, annotations, overrides)
-- [ ] Build Batch Report view
-- [ ] Create synthetic test data: sample F 5100.31 PDFs + multi-image label sets
-- [ ] Unit tests: comparison logic, government warning validator, multi-image resolution
-- [ ] Deploy: Railway (API) + Netlify (web); update README with live URL
-- [ ] Export chat session transcripts into `_DevLog/` per the Chat Artifact Index
+> Sequencing, dependencies, and traceability for all items below are in [`WBS.md` v2.0 — Work Breakdown Structure](_DevLog/WBS.md) §2.
+
+- [ ] WBS 1.0 — Backend scaffolding (`app/`): FastAPI structure, SQLAlchemy models for all 8 tables, env config, CORS, early Railway smoke-test deploy
+- [ ] WBS 2.0 — Synthetic test data (parallel w/ 1.0): sample F 5100.31 PDFs across all 3 TS-01 tiers + multi-image label sets (good / hard-failure / allowable / degraded / 14b)
+- [ ] WBS 3.0 — Auth: agent model + seed, JWT login, current-agent dependency, unit tests
+- [ ] WBS 4.0 — Stage 1–2: ingestion endpoints, file validation, persistence, list/detail endpoints, unit tests
+- [ ] WBS 5.0 — Stage 3: form assessment (tiered TS-01 extraction, all 18 Part I fields, normalization, confidence scoring, unit tests)
+- [ ] WBS 6.0 — Stage 4: label assessment (TS-02 — OpenCV + Claude Vision + Tesseract OCR, per-image concurrency, unit tests)
+- [ ] WBS 7.0 — Stage 5: comparison engine (multi-image resolution + 13 comparison rules incl. new FR-066/FR-100–107, unit tests)
+- [ ] WBS 8.0 — Stage 6: determination logic + report schema, unit tests
+- [ ] WBS 9.0 — Pipeline orchestration + Batch Orchestrator (bounded concurrency), unit/integration tests
+- [ ] WBS 10.0 — Overrides, finalize, batch report endpoints, unit tests
+- [ ] WBS 11.0 — Frontend scaffolding (`web/`): Vite + React + TS + Tailwind + shadcn/ui + react-pdf + API client
+- [ ] WBS 12.0 — Agent Dashboard (list, filter, batch select, process, badges, upload modal, unit tests)
+- [ ] WBS 13.0 — Application Detail View (split view, multi-image tabs, annotation overlays, cross-highlight, overrides, finalize, unit tests)
+- [ ] WBS 14.0 — Batch Report view (counts, common failure type, CSV/PDF export, unit tests)
+- [ ] WBS 15.0 — Integration: wire frontend to backend (Dashboard, Detail View, Batch Report, auth, error handling)
+- [ ] WBS 16.0 — Integration testing against synthetic data (per-product-type pipeline, PR-001 timing, batch concurrency, multi-image resolution, override/finalize, annotation placement)
+- [ ] WBS 17.0 — Localhost end-to-end manual testing (full user path, usability UR-001–006, browser compat, edge cases)
+- [ ] WBS 18.0 — Setup & deployment: Railway (API + volume + Tesseract) + Netlify (web), CORS, README live URL
+- [ ] WBS 19.0 — Post-deployment end-to-end testing (re-run user path, timing, cross-browser on deployed URL)
+- [ ] WBS 20.0 — Submission material review & collation: README/DevLog/PRD/WBS consistency, export chat transcripts, repo cleanup, lint/format
+- [ ] WBS 21.0 — Submission: verify form fields, submit, record confirmation in DevLog
 
 ---
 
@@ -74,7 +76,7 @@ Application Detail View (PRD FR-080–090) was designed around a single form-pan
 
 - **Session 3 (cont.) — Comprehensive Extraction Revision.** Flagged that the original FR-010–020 only extracted the subset of form fields needed for comparison — Items 12 (Phone) and 13 (Email) were missing entirely, along with several others. Generalized to an "extract everything in one pass" principle: replaced FR-010–020 → **FR-010–016** (all 18 Part I form items in a single pass, with null-handling, normalization, and confidence scoring) and FR-030–040 → **FR-030–036** (all mandatory + secondary label elements, plus a generic `other_text` catch-all). Updated the Stage 3/4 output schemas and traceability matrix to match.
 
-- **Session 3 (cont.) — Multi-Image Label Processing.** Clarified that **all** label images (not just a "primary" brand label) must be processed and compared — companion labels (back, neck, etc.) exist specifically to satisfy requirements the front label doesn't carry, and provenance (which image) must be tracked. Revised Label Assessment to **FR-030–038** (9 reqs): Stage 4 now runs independently per label image with each element tagged by `label_image_id`, and a form field is satisfied if a matching value is found on **any** image. Updated FR-038/FR-050/FR-053–056 (comparison) accordingly, and PR-001 so the 5-second budget covers concurrent extraction of all of an application's label images. Added assumptions A-10/A-11 (PRD) and A-18/A-19 (DevLog) covering multi-image conflict resolution and concurrency. Updated `README.md` (pipeline steps, Verified Fields note, Detail View description). Flagged the multi-image split-view UI design as an open question for the next systems-engineering session, and created this `TODO.md`.
+- **Session 3 (cont.) — Multi-Image Label Processing.** Clarified that **all** label images (not just a "primary" brand label) must be processed and compared — companion labels (back, neck, etc.) exist specifically to satisfy requirements the front label doesn't carry, and provenance (which image) must be tracked. Revised Label Assessment to **FR-030–038** (9 reqs): Stage 4 now runs independently per label image with each element tagged by `label_image_id`, and a form field is satisfied if a matching value is found on **any** image. Updated FR-038/FR-050/FR-053–056 (comparison) accordingly, and PR-001 so the 5-second budget covers concurrent extraction of all of an application's label images. Added assumptions A-10/A-11 (PRD) and IA-18/IA-19 (DevLog) covering multi-image conflict resolution and concurrency. Updated `README.md` (pipeline steps, Verified Fields note, Detail View description). Flagged the multi-image split-view UI design as an open question for the next systems-engineering session, and created this `TODO.md`.
 
 ---
 
@@ -82,10 +84,54 @@ Application Detail View (PRD FR-080–090) was designed around a single form-pan
 
 - **Session 4 — Trade Studies & COLA Registry Reference.** Before starting the architecture evaluation, conducted two trade studies to test whether "AI for everything" extraction is the most effective design given the 5-second budget — **AI remains a hard requirement and the system's semantic core; the question was whether AI is the best tool for every sub-task, not whether to remove it.**
   - **TS-01 (Stage 3 — Form extraction):** Found `f510031.pdf` is a 44-field fillable AcroForm. Adopted a tiered strategy — AcroForm field read (`pypdf`) → `pdfplumber` text-layer → Claude Vision fallback — with the resolving tier recorded as `extraction_method` (new **FR-017**). Frees most of the 5-second budget for Stage 4 in the common case.
-  - **TS-02 (Stage 4 — Label extraction):** Added OpenCV preprocessing (deskew, contrast, glare suppression) before every Claude Vision call, addressing the previously-unimplemented degraded-image requirement (new **FR-039**), plus a parallel OCR (`pytesseract`/Tesseract) pass that fuzzy-matches Claude's extracted values to recover pixel `bbox`es for SVG annotations and computes a `header_height_ratio` corroborating the Government Warning bold/caps check (new **FR-040**). Both run locally and concurrently — no impact to PR-001 or the per-image concurrency model (A-11/A-19).
-  - **COLA Registry reference (new FR-018, DevLog §6):** At the user's request, researched the TTB COLA Public Registry / COLAs Online data model (TTB ID, Vendor Code, Serial #, Class/Type Code, Origin Code, registry status, Total Bottle Capacity, Formula, Approval Date, Qualifications, repeating Plant Registry/Permit locations, Contact info — REF-07–09) and added 8 forward-compatibility columns to the `applications` table, plus a field-mapping table showing the rest are already covered by the existing EAV `form_parameters`/`label_parameters` tables. **No live connection to ttbonline.gov exists or is planned** — schema-only forward-compatibility (A-03/A-12 unchanged).
-  - Updated `_DevLog/DevLog.md` (new §3.1 Trade Studies, renumbered 3.2–3.5, updated Stage 3/4 schemas, tech stack + Decisions 6/7, resolved A-07/A-13, added A-20–A-22, updated DB schema, new §6 COLA reference, Session 4 engineering log entry, renumbered §6→7 and §7→8) and `_DevLog/PRD.md` (v1.1: revision history, REF-07–09, FR-017/018/039/040, updated FR-010/FR-036, traceability matrix + TS/COLA source codes, A-12–14, updated A-05, glossary terms). Updated `README.md` stack list.
+  - **TS-02 (Stage 4 — Label extraction):** Added OpenCV preprocessing (deskew, contrast, glare suppression) before every Claude Vision call, addressing the previously-unimplemented degraded-image requirement (new **FR-039**), plus a parallel OCR (`pytesseract`/Tesseract) pass that fuzzy-matches Claude's extracted values to recover pixel `bbox`es for SVG annotations and computes a `header_height_ratio` corroborating the Government Warning bold/caps check (new **FR-040**). Both run locally and concurrently — no impact to PR-001 or the per-image concurrency model (A-11/IA-19).
+  - **COLA Registry reference (new FR-018, DevLog §6):** At the user's request, researched the TTB COLA Public Registry / COLAs Online data model (TTB ID, Vendor Code, Serial #, Class/Type Code, Origin Code, registry status, Total Bottle Capacity, Formula, Approval Date, Qualifications, repeating Plant Registry/Permit locations, Contact info — REF-07–09) and added 8 forward-compatibility columns to the `applications` table, plus a field-mapping table showing the rest are already covered by the existing EAV `form_parameters`/`label_parameters` tables. **No live connection to ttbonline.gov exists or is planned** — schema-only forward-compatibility (IA-03/A-12 unchanged).
+  - Updated `_DevLog/DevLog.md` (new §3.1 Trade Studies, renumbered 3.2–3.5, updated Stage 3/4 schemas, tech stack + Decisions 6/7, resolved IA-07/IA-13, added IA-20–IA-22, updated DB schema, new §6 COLA reference, Session 4 engineering log entry, renumbered §6→7 and §7→8) and `_DevLog/PRD.md` (v1.1: revision history, REF-07–09, FR-017/018/039/040, updated FR-010/FR-036, traceability matrix + TS/COLA source codes, A-12–14, updated A-05, glossary terms). Updated `README.md` stack list.
   - **Open items for next session:** the original Session 4 plan (architecture evaluation, Mermaid diagrams, alternatives brainstorm, WBS) remains pending — the trade-study findings (tiered extraction, OpenCV/OCR augmentation, multi-table EAV schema) now feed directly into that evaluation.
+
+- **Session 5 — Architecture Evaluation.** Walked an ideal-scenario application end-to-end through the React+Vite/FastAPI/SQLite/Claude architecture (DevLog §3.2–3.5), confirming each component against alternatives and the comprehensive single-pass / multi-image / TS-01-TS-02 revisions. Added new **DevLog §3.6 Architecture Evaluation** (15-row Executive Summary table, Ideal-Scenario User Path, Resolved Items).
+  - **Resolved the open multi-image selector question** (carried from Sessions 3–4): tabs with thumbnail previews, auto-switching to the relevant tab when an annotation references a specific `label_image_id` (new **PRD FR-091**).
+  - **New finding:** `form_parameters` lacked `bbox_json`/`location_hint` (unlike `label_parameters` from TS-02). Added both columns, populated for free via TS-01's Tier 1 (AcroForm `/Rect`) and Tier 2 (pdfplumber bbox) — new **PRD FR-019**, new **IA-23**.
+  - **Considered and rejected** combining Stage 3 + all Stage 4 calls into one multi-image prompt (breaks `label_image_id` provenance, loses failure isolation, grows with image count) — confirms IA-19/FR-030 as-is; added prompt caching (**IA-25**) to capture the cost benefit instead.
+  - Added **Decision 8** (DevLog §4.2): form-panel bbox (IA-23), bounded batch concurrency (IA-17 revised), concurrent-compute/sequential-persist (IA-24), prompt caching (IA-25), multi-image tabs + shadcn/ui (FR-091/IA-26 covers the Railway volume + SR-003 scoping).
+  - Updated `_DevLog/PRD.md` to **v1.2** (revision history, FR-019, FR-091, revised A-07/FR-074, traceability matrix new "AE" source code, glossary `bbox` entry, footer). Updated `README.md` (shadcn/ui in stack, tabbed multi-image detail view description) and this `TODO.md` (status table, next-session plan).
+  - **Open items for next session:** Mermaid diagrams (system context, block diagram for Stages 1–6, concurrency sequence diagram per IA-19) and Work Breakdown Structure against the June 16 deadline.
+
+- **Session 6 — Diagrams & Work Breakdown Structure.** Closed out the Systems Engineering Pass.
+  - New **DevLog §3.7 System Diagrams**: system context diagram (Agent/LVS/Claude, COLA Registry shown dashed/greyed per IA-03/A-12/CR-001), system block diagram (Stages 1–6 across frontend/backend/local CV-OCR/DB/Claude, including a new **Batch Orchestrator** node for A-07/IA-17), and a sequence diagram for single-application processing showing nested concurrency (outer `par` per IA-19 image-level, inner `par` per TS-02 Claude-vs-OCR) with a note on the IA-24 concurrent-compute/sequential-persist write pattern.
+  - New **Work Breakdown Structure**: 13 top-level WBS items (1.0–13.0) with sub-items, each traced to governing FR/A/Decision IDs, sequenced against the June 16 deadline (~75 hours across 6 days, 2026-06-11 → 2026-06-16). Includes a critical-path diagram and risk/contingency notes — notably a fallback to Claude + `location_hint` (IA-13) if TS-02's OCR bbox work overruns, and a recommendation to smoke-test the Railway/Tesseract deployment path on day 1.
+  - Updated this `TODO.md` (status table, "Remaining Implementation Work" annotated with WBS numbers, next-session plan now points to implementation start per WBS 1.0/2.0/11.0).
+  - **The Systems Engineering Pass (architecture evaluation, diagrams, WBS) is now complete.** Open items for next session: begin implementation — backend scaffolding (WBS 1.0), frontend scaffolding (WBS 2.0), and synthetic test data (WBS 11.0), per the WBS's critical path.
+
+- **Session 7 — Documentation Consistency & Requirements Completeness Pass.** Before starting implementation, audited cross-document ID references and requirements coverage.
+  - Renamed `_DevLog/DevLog.md` §5 "Assumptions" to **"Initial Assumptions"** (IDs **IA-01–IA-26**) to deconflict with PRD §8's **A-01–A-14**, then re-audited every `A-\d+` reference across `DevLog.md`, `PRD.md`, `WBS.md`, and this `TODO.md` against a PRD↔DevLog concordance table, repointing references to the correct namespace (e.g., several "A-03"/"A-07"/"A-10"/"A-11"/"A-13"/"A-14" references actually meant DevLog's IA-03/IA-07/IA-10/IA-11/IA-13/IA-14) and fixing three broken PRD self-references (§5.3, A-12, Glossary).
+  - Audited DevLog §5 (IA-01–IA-26) against PRD §8 (A-01–A-14) for assumption coverage. 23 of 26 IA items were already covered (directly or promoted to binding FR/SR requirements). Updated `_DevLog/PRD.md` to **v1.3**: added **A-15** (overrides don't re-run the AI pipeline, IA-14), **A-16** (SR-003 "active processing session" interpretation + persistent-storage dependency, IA-26), **A-17** (country-of-origin comparison scope, IA-15), and new **FR-066** (country-of-origin comparison, conditional on Item 3 = "imported").
+  - While tracing IA-15, found DevLog §2.5's Parameter Comparison Matrix had 8 rows with no corresponding FR in §6.1.4 (only Brand Name, Government Warning, and "For sale in [STATE]" had been formalized). Updated `_DevLog/PRD.md` to **v1.4**: added **FR-100–107** for Fanciful Name (Item 7), Product Type/class-type consistency (Item 5), Applicant Name (Item 8), Applicant Address (Item 8/8a, with in-state Allowable Revision per Section V), Grape Varietals (Item 10, Wine), Wine Appellation (Item 11, Wine, conditional), ABV (presence + product-type consistency), and Net Contents (presence).
+  - Updated traceability matrix and `_DevLog/DevLog.md` §5 IA table cross-references (IA-14→A-15, IA-15→A-17/FR-066, IA-26→A-16).
+  - **Open item flagged for next session:** WBS 6.0/6.1 (Comparison engine, currently 6/4 hrs, traced to "A-10, IA-18, FR-038, FR-050–056") does not yet account for the new FR-066/FR-100–107 — re-estimate before starting WBS 6.0.
+
+---
+
+### 2026-06-11
+
+- **Session 8 — WBS Re-Baseline (v2.0).** Re-examined and rewrote `_DevLog/WBS.md` per Gabe's request for a verbose, fully-sequenced work plan.
+  - Added **Phase 0** (items 0.1–0.12): every project-definition / systems-engineering activity completed to date (Project Setup, Problem Identification, Resource Collection, Requirement Extraction, Design Brainstorming, Tech Approach Planning, PRD Development, Trade Studies, Architecture Evaluation, WBS Development, Systems Engineering Review, Documentation Review), each mapped to its Engineering Log session and artifact, for completeness.
+  - Rewrote **Phase 1** as a single dependency-ordered sequence, items **1.0–21.0**, expanding the old 13-item plan into ~140 X.Y sub-items spanning backend coding, backend unit testing, frontend coding, frontend unit testing, integration, integration testing, synthetic test data, localhost testing, deployment, post-deployment end-to-end testing, and submission material review/collation/submission. Each backend/frontend coding group ends with its own paired unit-test sub-item.
+  - **Resolved the Session 7 open item**: re-scoped the Stage 5 Comparison Engine (now WBS **7.0**) from 2 sub-items to 16, adding dedicated rules for FR-066 (country of origin) and FR-100–107 (fanciful name, product/class-type, applicant name/address, grape varietals, wine appellation, ABV, net contents), all sharing a single multi-image resolution helper (7.1).
+  - **Re-sequenced synthetic test data** (now WBS **2.0**, was 11.0) to immediately follow backend scaffolding, since it is a hard prerequisite for nearly every unit/integration test in the new sequence.
+  - Added new explicit phases not previously broken out: Auth (3.0), Pipeline Orchestration & Batch (9.0), Overrides/Finalize/Batch Report (10.0), FE↔BE Integration wiring (15.0), Localhost E2E (17.0), Post-Deployment E2E (19.0), Submission Material Collation (20.0), Submission (21.0).
+  - **Per Gabe's direction, removed all hour estimates and target dates** — `WBS.md` v2.0 tracks sequence and dependencies only (§4 Dependency Flow diagram, §5 Sequencing & Technical Risk Notes replace the old hour-based Critical Path / Risk register).
+  - Updated this `TODO.md`: status table (WBS → v2.0, corrected WBS-number cross-references for backend/frontend/synthetic-data/deployment rows), "Next Session" section (now points to WBS 1.0/11.0/2.0 per the new numbering), and "Remaining Implementation Work" checklist (rewritten as 21 items matching `WBS.md` §3 1:1).
+
+- **Session 9 — Documentation Consistency Pass (v2.0 Baseline).** Conducted a full cross-document review of `README.md`, `PRD.md`, `DevLog.md`, `WBS.md`, and this `TODO.md` — re-reading each fresh and cross-checking version numbers, dates, section references, anchors, and naming.
+  - Fixed `PRD.md`'s footer version (v1.2 → v1.4 to match its header) and `DevLog.md` §5 TOC anchor (`#5-assumptions` → `#5-initial-assumptions`).
+  - Fixed this file's WBS section cross-references (`WBS.md §3`/`§4` → `§2`/`§3`) and added Sessions 7 and 8 to DevLog §7 Engineering Log (previously only through Session 6).
+  - Corrected the README `Project Structure` tree (`f510031.pdf` relocated to `_ProblemStatement/`; added `PRD.md`/`WBS.md` to `_DevLog/`).
+  - Fixed `WBS.md` item **0.13** (incomplete from the Session 8 re-baseline) and added new item **0.14** documenting this pass.
+  - Restored `DevLog.md` **§8 Chat Artifact Index** (referenced by `WBS.md` 20.0/20.4 but left without a body), pointing to §7's Engineering Log as the authoritative session record until transcripts are exported per WBS 20.4.
+  - Bumped `PRD.md` to **v2.0** (no functional requirement changes — FR/PR/IR/UR/SR/CR sets unchanged from v1.4).
+  - Added a **Documentation Suite/Baseline: v2.0** marker to `README.md`, `DevLog.md`, and this `TODO.md`.
+  - **The documentation suite is now internally consistent and synchronized at v2.0.** Implementation (WBS 1.0/2.0/11.0) begins next session.
 
 ---
 

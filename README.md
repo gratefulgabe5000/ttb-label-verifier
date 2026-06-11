@@ -4,6 +4,8 @@
 *IT Specialist (AI) · Position 26-DO-12891471-DH*  
 *Submitted by: Matthew Gabriel Sizemore*
 
+*Documentation Suite v2.0 — Systems Engineering & Documentation Reviews complete (see [`_DevLog/`](_DevLog/))*
+
 ---
 
 ## Overview
@@ -80,7 +82,7 @@ npm run dev
 
 ### Application Detail View
 
-- **Split view:** Form PDF (left) · Label image(s) (right, with selector when multiple images are submitted)
+- **Split view:** Form PDF (left) · Label image(s) (right — tabbed selector with thumbnail previews when multiple images are submitted, auto-switching to the relevant tab when an annotation references that image)
 - **Red ellipses** mark mismatched fields on both documents, anchored to whichever label image the field was found on
 - **Mouse-over** on any annotation highlights the corresponding element on the opposite panel
 - Per-parameter results table with match status and notes
@@ -146,7 +148,7 @@ npm run dev
 - AI: Claude claude-sonnet-4-6 (Anthropic) — vision + structured JSON extraction
 - Form extraction: pypdf (AcroForm fields) · pdfplumber (text layer) — tiered fallback before AI vision
 - Label preprocessing: OpenCV (deskew, contrast, glare suppression) · Tesseract/pytesseract (OCR bounding-box assist)
-- Frontend: React · Vite · TypeScript · Tailwind CSS · react-pdf
+- Frontend: React · Vite · TypeScript · Tailwind CSS · shadcn/ui · react-pdf
 - Annotations: Custom SVG overlay for cross-document highlighting
 - Deployment: Railway (API) + Netlify (web)
 
@@ -172,9 +174,19 @@ ttb-label-verifier/
 │   ├── package.json
 │   └── vite.config.ts
 ├── _DevLog/
-│   └── DevLog.md           # Engineering log, requirements, architecture
-├── f510031.pdf             # TTB Form F 5100.31 (04/2023) reference
+│   ├── 3.7.1 System Context Diagram.png
+│   ├── 3.7.2 System Block Diagram.png
+│   ├── 3.7.3 Sequence Diagram.png
+│   ├── DevLog.md           # Engineering log, requirements, architecture
+│   ├── PRD.md              # Product Requirements Document
+│   └── WBS.md              # Work Breakdown Structure
+├── _ProblemStatement/
+│   ├── 1.Notification - IT Specialist (AI) - 26-DO-12891471-DH.pdf
+│   ├── 2.TreasuryTakeHomeTest.pdf
+│   ├── 3.Assessment_README.txt
+│   └── f510031.pdf             # TTB Form F 5100.31 (04/2023) reference
 ├── README.md
+├── TODO.md
 └── .gitignore
 ```
 
@@ -183,6 +195,8 @@ ttb-label-verifier/
 ## Documentation
 
 - [DevLog — Full Engineering Notes, Requirements Analysis & Architecture](_DevLog/DevLog.md)
+- [PRD — Product Requirements Document (TTB-LVS-PRD-001 v2.0)](_DevLog/PRD.md)
+- [WBS — Work Breakdown Structure (TTB-LVS-WBS-001 v2.0)](_DevLog/WBS.md)
 
 ---
 
