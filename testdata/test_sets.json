@@ -1,7 +1,7 @@
 {
-  "wbs_ref": "2.3-2.4",
+  "wbs_ref": "2.3-2.5",
   "generated_at": "2026-06-11",
-  "source_note": "Pairs synthetic F 5100.31 application forms with existing real label image groups from testdata/ (cataloged in manifest.json, WBS 2.1). WBS 2.3 sets (testdata/build_good_sets.py, set_id prefix 'good_') are 'good' (all-fields-match) sets, one per product type: form field values were chosen to match what is printed on each product's label images, so every Sec. 2.5 Parameter Comparison Matrix rule resolves to MATCH (or NOT_APPLICABLE where the form field is intentionally blank for that product type) and the expected pipeline outcome is APPROVE. WBS 2.4 sets (testdata/build_hard_failure_sets.py, set_id prefix 'hf_') are 'hard failure' sets, one per Sec. 2.5 comparison rule: each takes a WBS 2.3 'good' baseline and changes exactly ONE field so that exactly one rule resolves to HARD_FAILURE (every other rule remains MATCH/NOT_APPLICABLE as in the baseline) and the expected pipeline outcome is DENY. Comparison rule references are DevLog.md Sec. 2.5; allowable-revision references are Sec. 2.6; application type references are Sec. 2.4.",
+  "source_note": "Pairs synthetic F 5100.31 application forms with existing real label image groups from testdata/ (cataloged in manifest.json, WBS 2.1). WBS 2.3 sets (testdata/build_good_sets.py, set_id prefix 'good_') are 'good' (all-fields-match) sets, one per product type: form field values were chosen to match what is printed on each product's label images, so every Sec. 2.5 Parameter Comparison Matrix rule resolves to MATCH (or NOT_APPLICABLE where the form field is intentionally blank for that product type) and the expected pipeline outcome is APPROVE. WBS 2.4 sets (testdata/build_hard_failure_sets.py, set_id prefix 'hf_') are 'hard failure' sets, one per Sec. 2.5 comparison rule: each takes a WBS 2.3 'good' baseline and changes exactly ONE field so that exactly one rule resolves to HARD_FAILURE (every other rule remains MATCH/NOT_APPLICABLE as in the baseline) and the expected pipeline outcome is DENY. WBS 2.5 sets (testdata/build_allowable_revision_sets.py, set_id prefix 'ar_') are 'possible allowable revision' sets: each takes a WBS 2.3 'good' baseline and changes exactly ONE field so that exactly one rule resolves to POSSIBLE_ALLOWABLE with a populated section_v_ref (every other rule remains MATCH/NOT_APPLICABLE as in the baseline) and the expected pipeline outcome is RECOMMEND_EXEMPTION_REVIEW. Of the WBS 2.5 row's three named examples, two are covered by dedicated sets: case/punctuation/spacing brand-name differences (Sec. V item 3b, ar_brandname_fortemasso) and in-state applicant-address changes (Sec. V item 19, ar_address_barrilito). The third example, 'color/font differences' (Sec. V items 3a/3b -- also FR-057's literal test case, 'only label colors differ'), describes a label-appearance attribute with no corresponding field on Form F 5100.31, so it cannot be expressed as a form-value-vs-label-value comparison row in this schema; see DevLog.md Sec. 2.5/2.6 outcome notes for this scoping decision. Comparison rule references are DevLog.md Sec. 2.5; allowable-revision references are Sec. 2.6; application type references are Sec. 2.4.",
   "sets": [
     {
       "set_id": "good_spirits_woodford",
@@ -1603,6 +1603,215 @@
           "form_value": "n/a",
           "label_element": "Front label",
           "label_value": "750 mL",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "ar_brandname_fortemasso",
+      "wbs_ref": "2.5",
+      "description": "Imported wine (Forte Masso, Italy), Type 14a -- Item 5 corrected to Wine (vs. the WBS 2.4 hf_producttype_fortemasso fixture's deliberate /Malt conflict), with a single-field possible allowable revision: Item 6 Brand Name 'Forte Masso' (form, two words / Title Case) vs. the label wordmark 'FORTEMASSO' (one word, all caps) -- a spacing/case difference under Sec. V item 3b, not a substantive brand-name difference.",
+      "product_key": "forte_masso",
+      "product_type": "wine",
+      "application_type": "14a",
+      "expected_outcome": "RECOMMEND_EXEMPTION_REVIEW",
+      "form_pdf": "forms/ar_brandname_fortemasso.pdf",
+      "label_images": [
+        {
+          "filename": "Forte Masso beer front.jpg",
+          "label_type": "brand"
+        },
+        {
+          "filename": "Forte Masso beer back.jpg",
+          "label_type": "back"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Forte Masso",
+          "label_element": "Brand wordmark on front label",
+          "label_value": "FORTEMASSO",
+          "expected_result": "POSSIBLE_ALLOWABLE",
+          "section_v_ref": "3b",
+          "note": "Form spells the brand as two words in Title Case ('Forte Masso', per manifest.json); the label wordmark renders it as one word in all-caps stylized lettering ('FORTEMASSO', with decorative star-in-O glyphs). The discrepancy is limited to spacing and case -- not a substantive difference in the brand's identity (FR-052) -- and corresponds to Sec. V item 3b ('change ... type size, font, spelling, case, or punctuation') (FR-057, FR-059)."
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "No fanciful name printed on either label image; left blank on the form."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Imported (Check Box34 = /Import)",
+          "label_element": "Back label",
+          "label_value": "PRODOTTO IN ITALIA / PRODUCT OF ITALY",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Wine (Check Box22 = /Wine)",
+          "label_element": "Back label",
+          "label_value": "BARBERA D'ALBA ... RED WINE",
+          "expected_result": "MATCH",
+          "note": "Corrected from the WBS 2.4 hf_producttype_fortemasso fixture, which deliberately set Check Box22 = /Malt to exercise the Item 5 hard-failure rule. Here Check Box22 = /Wine, matching the label's class/type designation, so this fixture isolates only the Brand Name discrepancy."
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "Due Fratelli Imports, LLC, 88 Marginal Way, Portland, ME 04101",
+          "label_element": "Back label importer block",
+          "label_value": "IMPORTED BY: DUE FRATELLI IMPORTS, LLC PORTLAND MAINE",
+          "expected_result": "MATCH",
+          "note": "Item 8 holds the US importer's permit name/address for imported product, per FAA Act basic permit requirements (consistent with good_wine_lenzmoser)."
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a (label states no specific varietals, only \"Barbera d'Alba\")",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Left blank on the form: no varietal names are printed on the label, so listing any here would be an unverifiable claim (Item 10 requires every listed varietal to appear on the label)."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "Barbera d'Alba",
+          "label_element": "Front and back labels",
+          "label_value": "BARBERA D'ALBA / DENOMINAZIONE DI ORIGINE CONTROLLATA",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE"
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS.",
+          "expected_result": "MATCH",
+          "note": "\"GOVERNMENT WARNING:\" appears in ALL CAPS BOLD per 27 CFR 16.21."
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label",
+          "label_value": "13,5% vol",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Wine."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Back label",
+          "label_value": "750 ML.",
+          "expected_result": "MATCH"
+        }
+      ]
+    },
+    {
+      "set_id": "ar_address_barrilito",
+      "wbs_ref": "2.5",
+      "description": "Imported malt beverage (Cerveza Barrilito, Mexico), Type 14a -- single-field possible allowable revision: Item 8 Applicant Address shows a different street ('200 Brook Avenue') than the label ('141 3RD ST, UNIT #143'), but the same importer name, city, state, and ZIP -- an in-state address change under Sec. V item 19.",
+      "product_key": "barrilito",
+      "product_type": "malt_beverages",
+      "application_type": "14a",
+      "expected_outcome": "RECOMMEND_EXEMPTION_REVIEW",
+      "form_pdf": "forms/ar_address_barrilito.pdf",
+      "label_images": [
+        {
+          "filename": "Cerveza Barrilito.jpg",
+          "label_type": "brand"
+        }
+      ],
+      "comparison_expectations": [
+        {
+          "rule": "Brand Name (Item 6)",
+          "form_value": "Barrilito",
+          "label_element": "Brand logo (\"Cerveza Barrilito\")",
+          "label_value": "Barrilito",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Fanciful Name (Item 7)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "\"Cerveza\" is the generic Spanish term for \"beer\" (i.e., the product type), not a fanciful name; left blank."
+        },
+        {
+          "rule": "Source: Imported (Item 3) -> Country of Origin",
+          "form_value": "Imported (Check Box34 = /Import)",
+          "label_element": "Label",
+          "label_value": "PRODUCT OF MEXICO",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Product Type (Item 5) vs Class/Type Designation",
+          "form_value": "Malt Beverages (Check Box22 = /Malt)",
+          "label_element": "Label (\"Cerveza\" = beer)",
+          "label_value": "Cerveza",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Applicant Name/Address (Item 8)",
+          "form_value": "RR Importaciones Inc., 200 Brook Avenue, Passaic, NJ 07055",
+          "label_element": "Label importer block",
+          "label_value": "IMPORTED BY: RR IMPORTACIONES INC. 141 3RD ST, UNIT #143 PASSAIC, N.J. 07055-0000",
+          "expected_result": "POSSIBLE_ALLOWABLE",
+          "section_v_ref": "19",
+          "note": "Importer name and city/state/ZIP (Passaic, NJ 07055) match the label exactly; only the street address differs ('200 Brook Avenue' on the form vs. '141 3RD ST, UNIT #143' on the label). Per FR-103, an address mismatch limited to an in-state change is POSSIBLE_ALLOWABLE under Sec. V item 19 ('Change ... address within same state'), not HARD_FAILURE."
+        },
+        {
+          "rule": "Grape Varietals (Item 10)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Wine Appellation (Item 11)",
+          "form_value": "",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Wine-only field; not a wine product."
+        },
+        {
+          "rule": "Type 14b \"For sale in [STATE] only\"",
+          "form_value": "Off (Item 14a checked instead)",
+          "label_element": "n/a",
+          "label_value": "n/a",
+          "expected_result": "NOT_APPLICABLE",
+          "note": "Item 14 reference table excludes 14b for malt beverages and imports; 14a is the only valid choice here."
+        },
+        {
+          "rule": "Government Warning Statement (all products)",
+          "form_value": "n/a",
+          "label_element": "Label warning block",
+          "label_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS",
+          "expected_result": "MATCH"
+        },
+        {
+          "rule": "Alcohol by Volume (all products)",
+          "form_value": "n/a",
+          "label_element": "Label",
+          "label_value": "ALC 3.6% BY VOL",
+          "expected_result": "MATCH",
+          "note": "Present and consistent with Malt Beverages."
+        },
+        {
+          "rule": "Net Contents (all products)",
+          "form_value": "n/a",
+          "label_element": "Label",
+          "label_value": "1 QT., 8FL.OZ.",
           "expected_result": "MATCH"
         }
       ]
