@@ -1,9 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from dependencies import get_current_agent
 from schemas.settings import ApiKeyStatusResponse, ApiKeyUpdateRequest
 from services import settings_service
 
-router = APIRouter(prefix="/settings", tags=["settings"])
+router = APIRouter(prefix="/settings", tags=["settings"], dependencies=[Depends(get_current_agent)])
 
 
 @router.get("/api-key", response_model=ApiKeyStatusResponse)

@@ -3,10 +3,10 @@ import os
 from services import settings_service
 
 
-def test_api_key_not_configured_by_default(client):
+def test_api_key_not_configured_by_default(client, auth_headers):
     settings_service.clear_api_key()
 
-    response = client.get("/settings/api-key")
+    response = client.get("/settings/api-key", headers=auth_headers)
 
     assert response.status_code == 200
     body = response.json()
@@ -14,8 +14,10 @@ def test_api_key_not_configured_by_default(client):
     assert body["masked_key"] is None
 
 
-def test_set_api_key_masks_value_and_does_not_persist(client):
-    response = client.put("/settings/api-key", json={"api_key": "sk-ant-api03-fake-key-1234"})
+def test_set_api_key_masks_value_and_does_not_persist(client, auth_headers):
+    response = client.put(
+        "/settings/api-key", json={"api_key": "sk-ant-api03-fake-key-1234"}, headers=auth_headers
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -28,10 +30,10 @@ def test_set_api_key_masks_value_and_does_not_persist(client):
     settings_service.clear_api_key()
 
 
-def test_delete_api_key_clears_env(client):
+def test_delete_api_key_clears_env(client, auth_headers):
     settings_service.set_api_key("sk-ant-api03-fake-key-5678")
 
-    response = client.delete("/settings/api-key")
+    response = client.delete("/settings/api-key", headers=auth_headers)
 
     assert response.status_code == 200
     assert response.json() == {"configured": False, "masked_key": None, "connected": False, "message": None}

@@ -40,6 +40,7 @@ python -m venv .venv
 .venv/Scripts/activate    # Windows; use `source .venv/bin/activate` on macOS/Linux
 pip install -r requirements.txt
 cp .env.example .env
+python seed.py            # creates demo agent accounts (see .env.example)
 uvicorn main:app --reload
 # API runs at http://localhost:8000
 ```
