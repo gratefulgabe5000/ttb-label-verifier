@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from config import get_settings
 from db import init_db
-from routers import applications, auth, batch, health, settings as settings_router
+from routers import applications, auth, batch, determinations, health, settings as settings_router
 
 settings = get_settings()
 
@@ -46,3 +46,4 @@ app.include_router(auth.router)
 app.include_router(settings_router.router)
 app.include_router(applications.router)
 app.include_router(batch.router)
+app.include_router(determinations.router)

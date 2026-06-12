@@ -499,5 +499,34 @@
 
 ---
 
+### Session 20: Backend — Overrides, Finalization & Batch Report — completes WBS 10.0
+
+**Context:** With the pipeline and batch orchestrators in place (WBS 9.0), this session adds the agent-facing review actions on top of a completed determination: per-parameter and overall determination overrides with an audit trail (10.1), a finalize action (10.2), and a batch report including the most common failure type (10.3), per WBS 10.0 (FR-086-097, A-15, SR-004).
+
+**Completed — 10.1 (`POST /determinations/{id}/override`):**
+- `app/models/comparison.py`: added `agent_override`/`override_by`/`override_reason`/`override_at` columns, mirroring the existing overall-override fields already on `determinations` (FR-086-088, SR-004) — `result`/`recommendation` retain the original AI determination; the override fields record the audit trail alongside it.
+- `app/schemas/determination.py` (new): `OverrideIn` (`field: str | None`, `override_value`, `reason` — `field_validator` rejects a blank/whitespace-only `reason`, FR-087) and `OverrideOut` (the FR-088/SR-004 audit record: `application_id`, `field`, `original_value`, `override_value`, `override_by`, `override_reason`, `override_at`).
+- `app/services/override_service.py` (new): `apply_override()` — when `field` is `None`, records an overall-determination override (FR-089) on `determinations`; otherwise looks up the matching `comparisons` row by `field_name` for a per-parameter override (FR-086-088), raising `FieldNotFoundError` if none exists.
+- `app/routers/determinations.py` (new): `POST /{id}/override` — 404s if the determination doesn't exist or its application isn't owned by the calling agent, 404s for an unknown `field`, 422s for a blank `reason`.
+- `app/schemas/application.py`: added the four new override fields to `ComparisonOut`.
+
+**Completed — 10.2 (`POST /determinations/{id}/finalize`):**
+- `override_service.finalize_determination()` sets `determinations.finalized_at` (FR-090); per A-15, does not re-run the Stage 3-6 pipeline. `app/routers/determinations.py`: `POST /{id}/finalize` returns the updated `DeterminationOut`, with the same ownership-based 404s as override.
+- A-16/SR-003 file-retention window (`finalized_at`) is a persistent-storage/deployment requirement (already covered by the Railway volume, IA-26) — no file-deletion logic added, since FR-080/FR-081 still need to render the source files in the Detail View after finalization.
+
+**Completed — 10.3 (`GET /batch/{id}/report`):**
+- `app/schemas/batch.py`: `BatchReportOut(BatchStatusOut)` adds `most_common_failure: str | None`.
+- `app/services/batch_service.py`: `get_batch_report()` (FR-095-097) reuses `get_batch_status()` for the summary counts and per-application list (FR-096), then tallies `HARD_FAILURE` comparisons across the batch's applications by field name (using `determination_engine.FIELD_LABELS` for human-readable names, FR-097) to find the most common failure type.
+- `app/routers/batch.py`: `GET /{batch_id}/report`, 404 for batches not created by the calling agent.
+
+**Completed — 10.4 (Unit tests):**
+- `app/tests/test_determinations.py` (8 tests): per-parameter override records the audit trail while leaving `comparisons.result` (the original AI determination) untouched; overall-determination override likewise leaves `recommendation` untouched; blank `reason` → 422; unknown `field` → 404; ownership 404s for both override and finalize; finalize sets `finalized_at`.
+- `app/tests/test_batch.py` (+3 tests): `GET /batch/{id}/report` returns the same summary counts as `/batch/process`/`/batch/{id}/status` plus `most_common_failure`, and 404s for batches owned by another agent or that don't exist.
+- **172/172 pytest passing** (was 161/161).
+
+**Outcome:** WBS 10.0 complete — `app/services/override_service.py`, `app/routers/determinations.py`, `app/schemas/determination.py`, override columns on `app/models/comparison.py`, `BatchReportOut`/`get_batch_report()`/`GET /batch/{id}/report` for the batch report, 172/172 tests passing. This completes all of WBS Phase 1's backend work (1.0, 3.0-10.0). `TODO.md` updated (status table, checklist, "Next Session" reoriented to WBS 12.0/13.0 Pass 2 per WBS v2.1 §4 Note 7). Pending approval.
+
+---
+
 **TTB Label Verification System**
 *Copyright (c) 2026 Matthew Gabriel Sizemore · Assessment submission: IT Specialist (AI) · 26-DO-12891471-DH*

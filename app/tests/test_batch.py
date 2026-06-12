@@ -155,3 +155,47 @@ def test_batch_status_404_for_unknown_batch(client, auth_headers):
     response = client.get("/batch/999999/status", headers=auth_headers)
 
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# 10.3 -- GET /batch/{id}/report (FR-095-097)
+# ---------------------------------------------------------------------------
+
+
+def test_batch_report_includes_summary_and_failure_type(client, auth_headers):
+    application_ids = [_upload(client, auth_headers) for _ in range(2)]
+    process_response = client.post(
+        "/batch/process", headers=auth_headers, json={"application_ids": application_ids}
+    )
+    batch_id = process_response.json()["id"]
+
+    response = client.get(f"/batch/{batch_id}/report", headers=auth_headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == batch_id
+    assert body["total"] == 2
+    assert body["completed"] == 2
+    assert body["approved_count"] == process_response.json()["approved_count"]
+    assert body["denied_count"] == process_response.json()["denied_count"]
+    assert body["exemption_count"] == process_response.json()["exemption_count"]
+    assert {a["id"] for a in body["applications"]} == set(application_ids)
+    assert body["most_common_failure"] is None or isinstance(body["most_common_failure"], str)
+
+
+def test_batch_report_404_for_other_agents_batch(client, auth_headers, second_auth_headers):
+    application_ids = [_upload(client, auth_headers)]
+    process_response = client.post(
+        "/batch/process", headers=auth_headers, json={"application_ids": application_ids}
+    )
+    batch_id = process_response.json()["id"]
+
+    response = client.get(f"/batch/{batch_id}/report", headers=second_auth_headers)
+
+    assert response.status_code == 404
+
+
+def test_batch_report_404_for_unknown_batch(client, auth_headers):
+    response = client.get("/batch/999999/report", headers=auth_headers)
+
+    assert response.status_code == 404

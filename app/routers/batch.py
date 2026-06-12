@@ -8,7 +8,7 @@ from dependencies import get_current_agent
 from models.agent import Agent
 from models.application import Application
 from models.batch import Batch
-from schemas.batch import BatchProcessIn, BatchStatusOut
+from schemas.batch import BatchProcessIn, BatchReportOut, BatchStatusOut
 from services import batch_service
 
 router = APIRouter(prefix="/batch", tags=["batch"], dependencies=[Depends(get_current_agent)])
@@ -47,3 +47,17 @@ def get_status(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Batch not found.")
 
     return BatchStatusOut(**batch_service.get_batch_status(db, batch))
+
+
+@router.get("/{batch_id}/report", response_model=BatchReportOut)
+def get_report(
+    batch_id: int,
+    agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+) -> BatchReportOut:
+    """FR-095-097: batch summary report, including the most common failure type."""
+    batch = db.get(Batch, batch_id)
+    if batch is None or batch.created_by != agent.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Batch not found.")
+
+    return BatchReportOut(**batch_service.get_batch_report(db, batch))

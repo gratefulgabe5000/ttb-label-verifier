@@ -21,8 +21,10 @@ from sqlalchemy.orm import Session
 
 from models.application import Application
 from models.batch import Batch
+from models.comparison import Comparison
 from models.determination import Determination
 from services import application_service, pipeline, settings_service
+from services.determination_engine import FIELD_LABELS
 
 DEFAULT_BATCH_CONCURRENCY = 4
 
@@ -136,3 +138,21 @@ def get_batch_status(db: Session, batch: Batch) -> dict:
         "created_at": batch.created_at,
         "completed_at": batch.completed_at,
     }
+
+
+def get_batch_report(db: Session, batch: Batch) -> dict:
+    """10.3: FR-095-097 batch report -- status summary plus the most common failure type."""
+    application_ids: list[int] = json.loads(batch.application_ids or "[]")
+
+    failure_counts: dict[str, int] = {}
+    for comparison in (
+        db.query(Comparison)
+        .filter(Comparison.application_id.in_(application_ids), Comparison.result == "HARD_FAILURE")
+        .all()
+    ):
+        label = FIELD_LABELS.get(comparison.field_name or "", comparison.field_name or "Field")
+        failure_counts[label] = failure_counts.get(label, 0) + 1
+
+    most_common_failure = max(failure_counts, key=failure_counts.get) if failure_counts else None
+
+    return {**get_batch_status(db, batch), "most_common_failure": most_common_failure}

@@ -71,6 +71,10 @@ class ComparisonOut(BaseModel):
     note: str | None
     label_image_id: int | None
     created_at: datetime
+    agent_override: str | None
+    override_by: int | None
+    override_reason: str | None
+    override_at: datetime | None
 
 
 class HardFailureOut(BaseModel):

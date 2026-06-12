@@ -124,11 +124,11 @@
 | ✅ | 9.5 | `GET /batch/{id}/status` (polling) | 9.4 | FR-075 |
 | ✅ | 9.6 | `GET /applications/{id}/comparisons` | 7.15 | DevLog §3.5 |
 | ✅ | 9.7 | Unit/integration tests: orchestration — concurrency bounds (9.3), status transitions (9.5), per-application timing against PR-001, using 2.3 | 9.6, 2.3 | PR-001, A-07, IA-17, IA-19, IA-24 |
-| ❌ | **10.0** | **Backend — Overrides, Finalization & Batch Report** | 9.6 | FR-086–097 |
-| ❌ | 10.1 | `POST /determinations/{id}/override` — per-parameter and overall overrides with audit fields (agent, timestamp, reason) | 9.6 | FR-086–089, SR-004 |
-| ❌ | 10.2 | `POST /determinations/{id}/finalize` — overrides do not re-run the AI pipeline (A-15); retention through `finalized_at` (A-16, SR-003) | 10.1 | FR-090, A-15, A-16 |
-| ❌ | 10.3 | `GET /batch/{id}/report` — counts by outcome + most common failure type | 10.2 | FR-095–097 |
-| ❌ | 10.4 | Unit tests: overrides, finalize, batch report, using 2.3/2.4 | 10.3, 2.3, 2.4 | FR-086–090, FR-095–097, SR-004 |
+| ✅ | **10.0** | **Backend — Overrides, Finalization & Batch Report** | 9.6 | FR-086–097 |
+| ✅ | 10.1 | `POST /determinations/{id}/override` — per-parameter and overall overrides with audit fields (agent, timestamp, reason) | 9.6 | FR-086–089, SR-004 |
+| ✅ | 10.2 | `POST /determinations/{id}/finalize` — overrides do not re-run the AI pipeline (A-15); retention through `finalized_at` (A-16, SR-003) | 10.1 | FR-090, A-15, A-16 |
+| ✅ | 10.3 | `GET /batch/{id}/report` — counts by outcome + most common failure type | 10.2 | FR-095–097 |
+| ✅ | 10.4 | Unit tests: overrides, finalize, batch report, using 2.3/2.4 | 10.3, 2.3, 2.4 | FR-086–090, FR-095–097, SR-004 |
 | ✅ | **11.0** | **Frontend Scaffolding & Infrastructure** *(can start in parallel with 1.0)* | Phase 0 | DevLog §4.1 |
 | ✅ | 11.1 | Initialize Vite + React + TS project (`web/`) | 11.0 | DevLog §4.1 |
 | ✅ | 11.2 | Configure Tailwind CSS 4 | 11.1 | DevLog §4.1 |

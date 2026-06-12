@@ -23,3 +23,10 @@ class Comparison(Base):
     # Label image the label_value was resolved from, for annotation placement (FR-038, WBS 7.1/13.5)
     label_image_id: Mapped[int | None] = mapped_column(ForeignKey("label_images.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # Per-parameter agent override (FR-086-088, SR-004) -- `result` retains the
+    # original AI determination; these fields record the override audit trail.
+    agent_override: Mapped[str | None] = mapped_column(String)
+    override_by: Mapped[int | None] = mapped_column(ForeignKey("agents.id"))
+    override_reason: Mapped[str | None] = mapped_column(Text)
+    override_at: Mapped[datetime | None] = mapped_column(DateTime)

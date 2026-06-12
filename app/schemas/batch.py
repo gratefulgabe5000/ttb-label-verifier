@@ -30,3 +30,9 @@ class BatchStatusOut(BaseModel):
     applications: list[BatchApplicationStatusOut]
     created_at: datetime
     completed_at: datetime | None
+
+
+class BatchReportOut(BatchStatusOut):
+    """10.3 -- `GET /batch/{id}/report` response (FR-095-097)."""
+
+    most_common_failure: str | None = None
