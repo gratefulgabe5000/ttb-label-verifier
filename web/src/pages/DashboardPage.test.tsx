@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { DashboardPage } from "./DashboardPage";
 import { applicationsApi, batchApi } from "@/lib/api-client";
 import type { Application, BatchStatus } from "@/lib/types";
@@ -122,6 +122,30 @@ describe("DashboardPage", () => {
     expect(screen.getByText("1 approved")).toBeInTheDocument();
     expect(screen.getByText("1 denied")).toBeInTheDocument();
     expect(screen.getByText("0 exemption review")).toBeInTheDocument();
+  });
+
+  it("links to the batch report once processing completes (14.0 wiring)", async () => {
+    vi.spyOn(batchApi, "process").mockResolvedValue(BATCH_STATUS);
+    vi.spyOn(batchApi, "status").mockResolvedValue(BATCH_STATUS);
+
+    const queryClient = new QueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/batches/:id" element={<p>Batch Report {99}</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    await screen.findByText("Stoll & Wolfe Distillery");
+
+    await userEvent.click(screen.getAllByRole("checkbox")[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Process Selected" }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "View Report" }));
+    expect(await screen.findByText("Batch Report 99")).toBeInTheDocument();
   });
 
   it("shows recommendation result badges for applications in the batch result (12.5)", async () => {

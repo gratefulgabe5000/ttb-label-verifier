@@ -23,6 +23,7 @@
 | 2.2 | 2026-06-12 | M.G. Sizemore | Updated Sections 1 and 2 to include a status column |
 | 2.3 | 2026-06-12 | M.G. Sizemore | Marked WBS 12.0/13.0 (all sub-items, 12.4–12.6/12.8/13.5–13.12) complete — Pass 2 implementation finished (Session 21) |
 | 2.4 | 2026-06-12 | M.G. Sizemore | Session 22 refinements within already-complete 6.2/7.3/7.9/7.10 — Government Warning 3-way split with case/punctuation-tolerant MATCH, importer-vs-bottler matching for Item 8 with ZIP+4-tolerant address comparison; no new line items. Added §4 Note 8 (open product question: importer vs. manufacturer for Item 8 on imported products) |
+| 2.5 | 2026-06-12 | M.G. Sizemore | Marked WBS 14.0 (Frontend — Batch Report View, 14.1–14.5) complete |
 
 ---
 
@@ -161,12 +162,12 @@
 | ✅ | 13.10 | Finalize action *(Pass 2)* | 13.9, 10.2 | FR-090 |
 | ✅ | 13.11 | Auto-tab-switch when an annotation references a specific `label_image_id` *(Pass 2)* | 13.3, 13.6 | FR-091 |
 | ✅ | 13.12 | Unit tests (Vitest): Detail View — annotation rendering, tab switching/auto-switch, cross-highlight, override modal, finalize *(covers 13.1–13.4 from Pass 1, plus 13.5–13.11 from Pass 2 — 13/13 tests passing)* | 13.11 | FR-080–091 |
-| ❌ | **14.0** | **Frontend — Batch Report View** | 11.7, 10.3 | FR-095–097, UR-003 |
-| ❌ | 14.1 | Report layout — counts by outcome | 11.7, 10.3 | FR-095, FR-096 |
-| ❌ | 14.2 | Common-failure-type display | 14.1 | FR-097 |
-| ❌ | 14.3 | CSV export | 14.1 | UR-003 |
-| ❌ | 14.4 | PDF export *(optional / stretch)* | 14.1 | UR-003 |
-| ❌ | 14.5 | Unit tests (Vitest): Batch Report — counts, failure-type display, export | 14.3 | FR-095–097 |
+| ✅ | **14.0** | **Frontend — Batch Report View** — **COMPLETE** (Session 24, `BatchReportPage.tsx`, wired live to `GET /batch/{id}/report`) | 11.7, 10.3 | FR-095–097, UR-003 |
+| ✅ | 14.1 | Report layout — counts by outcome *(summary stat cards: total/approved/denied/exemption review, plus a processing indicator while incomplete)* | 11.7, 10.3 | FR-095, FR-096 |
+| ✅ | 14.2 | Common-failure-type display *(`most_common_failure` shown beneath the summary cards, "None" when absent)* | 14.1 | FR-097 |
+| ✅ | 14.3 | CSV export *(`lib/csv.ts` — `toCsv`/`downloadCsv`; "Export CSV" button writes one row per application incl. applicant, serial #, status, recommendation)* | 14.1 | UR-003 |
+| ✅ | 14.4 | PDF export *(optional / stretch)* — *("Print / Save as PDF" via `window.print()`; `print:hidden` added to AppShell header/API-key banner and the report's action buttons for a clean printout)* | 14.1 | UR-003 |
+| ✅ | 14.5 | Unit tests (Vitest): Batch Report — counts, failure-type display, export *(`BatchReportPage.test.tsx`, 5 tests, plus a Dashboard "View Report" wiring test — 21/21 Vitest passing)* | 14.3 | FR-095–097 |
 | ❌ | **15.0** | **Integration — Frontend ↔ Backend Wiring** | 12.8, 13.12, 14.5, 9.5, 10.2, 10.3, 11.6 | — |
 | ❌ | 15.1 | Wire Dashboard (12.0) to `GET /applications`, `POST /batch/process`, `GET /batch/{id}/status` | 12.8, 9.5 | — |
 | ❌ | 15.2 | Wire Detail View (13.0) to `GET /applications/{id}`, `POST /determinations/{id}/override`, `POST /determinations/{id}/finalize` | 13.12, 10.2 | — |

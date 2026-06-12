@@ -30,7 +30,7 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="flex items-center justify-between border-b px-4 py-3">
+      <header className="flex items-center justify-between border-b px-4 py-3 print:hidden">
         <h1 className="text-lg font-semibold">TTB Label Verification System</h1>
         <div className="flex items-center gap-2">
           <Button
@@ -62,7 +62,9 @@ export function AppShell() {
         </div>
       </header>
 
-      <ApiKeyStatusBanner onOpenSettings={() => setSettingsOpen(true)} />
+      <div className="print:hidden">
+        <ApiKeyStatusBanner onOpenSettings={() => setSettingsOpen(true)} />
+      </div>
 
       <main className="flex-1 p-4">
         <Outlet />

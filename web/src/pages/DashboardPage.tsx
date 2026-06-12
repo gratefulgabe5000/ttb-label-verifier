@@ -134,6 +134,9 @@ export function DashboardPage() {
                 <span className="text-amber-700 dark:text-amber-400">
                   {batchStatus.exemption_count} exemption review
                 </span>
+                <Button variant="outline" size="sm" onClick={() => navigate(`/batches/${batchStatus.id}`)}>
+                  View Report
+                </Button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
