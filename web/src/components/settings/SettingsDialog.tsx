@@ -11,9 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ApiError, settingsApi } from "@/lib/api-client";
-
-const API_KEY_QUERY_KEY = ["settings", "api-key"];
+import { API_KEY_QUERY_KEY, ApiError, settingsApi } from "@/lib/api-client";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -56,7 +54,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -132,6 +130,34 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 : "Failed to save the API key. Please try again."}
             </p>
           )}
+
+          <div className="space-y-2 border-t pt-4">
+            <h3 className="text-sm font-semibold">About...</h3>
+            <p className="text-sm text-muted-foreground">
+              Open product questions that need a decision from the end user /
+              product team. These affect how Stage 5 comparisons are scored,
+              so resolve them before relying on automated determinations for
+              the cases below.
+            </p>
+            <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+              <li>
+                <span className="font-medium text-foreground">
+                  Importer vs. manufacturer for Item 8 (Applicant Name/Address) on
+                  imported products:
+                </span>{" "}
+                For applications marked "Imported", Item 8 is filled in by the
+                U.S. importer, but the label's bottler/producer fields usually
+                identify the foreign manufacturer. The comparison engine now
+                checks Item 8 against both the label's bottler and importer
+                fields (<code>compare_applicant_name</code> /{" "}
+                <code>compare_applicant_address</code> in{" "}
+                <code>comparison_engine.py</code>), but it's not yet confirmed
+                whether Item 8 should always be expected to match the
+                importer, the manufacturer, or either for imported-item
+                applications.
+              </li>
+            </ul>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -6,19 +6,24 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import cv2
+import numpy as np
 import pytesseract
 import pytest
 
 from services import settings_service
 from services.label_extraction import (
     GOVERNMENT_WARNING_TEXT,
+    HEADER_BOLD_STROKE_RATIO_THRESHOLD,
     LABEL_FIELDS,
     LOCATION_HINTS,
     SIMPLE_FIELDS,
     LabelFieldResult,
+    _claude_bbox_to_pixels,
     _decode_image,
     _estimate_skew_angle,
+    _process_label_image,
     compute_header_height_ratio,
+    compute_header_stroke_ratio,
     deskew,
     extract_label_fields,
     fuzzy_match_bbox,
@@ -128,7 +133,8 @@ class TestExtraction:
                 "other_text": [],
             }
         }
-        results = extract_label_fields(b"fake-bytes", client=_mock_client(payload))
+        client = _mock_client(payload)
+        results = extract_label_fields(b"fake-bytes", client=client)
 
         assert results["brand_name"][0].value == "Woodford Reserve"
         assert results["brand_name"][0].confidence == 0.98
@@ -138,6 +144,11 @@ class TestExtraction:
         # Fields with no element on this image -> value None with fallback location_hint (FR-011).
         assert results["fanciful_name"][0].value is None
         assert results["fanciful_name"][0].location_hint == LOCATION_HINTS["fanciful_name"]
+
+        # temperature=0 (FR-035 tuning): Claude's header_bold/header_all_caps
+        # flags proved non-deterministic across repeated calls on the same
+        # image at the default temperature.
+        assert client.messages.create.call_args.kwargs["temperature"] == 0
 
     def test_government_warning_exact_match_true(self):
         payload = {
@@ -290,6 +301,300 @@ class TestOcrFuzzyMatch:
 
         image_bytes = (TESTDATA / "Woodford Reserve burbon front.jpg").read_bytes()
         assert run_ocr(image_bytes) == []
+
+
+# ---------------------------------------------------------------------------
+# 6.5 (cont.) — header_stroke_ratio (FR-040, corroborates FR-035's "bold")
+# ---------------------------------------------------------------------------
+
+
+class TestHeaderStrokeRatio:
+    """`compute_header_stroke_ratio` measures stroke *weight*, not glyph size,
+    so it can corroborate "bold" even when header and body text are the same
+    height (header_height_ratio == 1.0)."""
+
+    @staticmethod
+    def _canvas() -> np.ndarray:
+        return np.full((200, 400), 255, dtype=np.uint8)
+
+    def test_bold_header_yields_ratio_above_one(self):
+        gray = self._canvas()
+        # Header: thick strokes. Body: thin strokes. Same glyph size.
+        cv2.rectangle(gray, (10, 10), (150, 40), 0, thickness=6)
+        cv2.rectangle(gray, (10, 80), (150, 110), 0, thickness=1)
+        cv2.rectangle(gray, (10, 130), (150, 160), 0, thickness=1)
+        ocr_words = [
+            {"text": "GOVERNMENT", "x": 10, "y": 10, "w": 140, "h": 30},
+            {"text": "WARNING:", "x": 10, "y": 80, "w": 140, "h": 30},
+            {"text": "ACCORDING", "x": 10, "y": 130, "w": 140, "h": 30},
+        ]
+        ratio = compute_header_stroke_ratio(gray, ocr_words, header_text="GOVERNMENT")
+        assert ratio > HEADER_BOLD_STROKE_RATIO_THRESHOLD
+
+    def test_thin_header_yields_ratio_below_threshold(self):
+        gray = self._canvas()
+        # Header: thin strokes. Body: thick strokes. Same glyph size.
+        cv2.rectangle(gray, (10, 10), (150, 40), 0, thickness=1)
+        cv2.rectangle(gray, (10, 80), (150, 110), 0, thickness=6)
+        cv2.rectangle(gray, (10, 130), (150, 160), 0, thickness=6)
+        ocr_words = [
+            {"text": "GOVERNMENT", "x": 10, "y": 10, "w": 140, "h": 30},
+            {"text": "WARNING:", "x": 10, "y": 80, "w": 140, "h": 30},
+            {"text": "ACCORDING", "x": 10, "y": 130, "w": 140, "h": 30},
+        ]
+        ratio = compute_header_stroke_ratio(gray, ocr_words, header_text="GOVERNMENT")
+        assert ratio < HEADER_BOLD_STROKE_RATIO_THRESHOLD
+
+    def test_no_header_match_returns_none(self):
+        gray = self._canvas()
+        ocr_words = [{"text": "RANDOM", "x": 10, "y": 10, "w": 140, "h": 30}]
+        assert compute_header_stroke_ratio(gray, ocr_words, header_text="GOVERNMENT") is None
+
+    def test_no_words_returns_none(self):
+        gray = self._canvas()
+        assert compute_header_stroke_ratio(gray, []) is None
+
+
+# ---------------------------------------------------------------------------
+# 6.5 (cont.) — Claude-provided bbox as fallback for OCR-illegible text (FR-040)
+# ---------------------------------------------------------------------------
+
+
+class TestClaudeBboxFallback:
+    def test_converts_normalized_region_to_pixels(self):
+        assert _claude_bbox_to_pixels({"x": 0.1, "y": 0.2, "w": 0.3, "h": 0.25}, 1000, 2000) == {
+            "x": 100,
+            "y": 400,
+            "w": 300,
+            "h": 500,
+        }
+
+    def test_clamps_region_that_overflows_image_bounds(self):
+        result = _claude_bbox_to_pixels({"x": 0.9, "y": 0.9, "w": 0.5, "h": 0.5}, 1000, 1000)
+        assert result == {"x": 900, "y": 900, "w": 100, "h": 100}
+
+    @pytest.mark.parametrize(
+        "bbox",
+        [
+            None,
+            "not a dict",
+            {"x": 0.1, "y": 0.2, "w": 0.3},  # missing "h"
+            {"x": 1.5, "y": 0.2, "w": 0.3, "h": 0.1},  # x out of 0-1 range
+            {"x": 0.1, "y": 0.2, "w": 0, "h": 0.1},  # zero width
+            {"x": "bad", "y": 0.2, "w": 0.3, "h": 0.1},  # non-numeric
+        ],
+    )
+    def test_rejects_malformed_region(self, bbox):
+        assert _claude_bbox_to_pixels(bbox, 1000, 1000) is None
+
+    def test_returns_none_without_image_dimensions(self):
+        assert _claude_bbox_to_pixels({"x": 0.1, "y": 0.2, "w": 0.3, "h": 0.1}, None, None) is None
+
+    def test_extract_label_fields_converts_bbox_when_dimensions_given(self):
+        payload = {
+            "values": {
+                "brand_name": {
+                    "value": "Barrilito",
+                    "confidence": 0.9,
+                    "location_hint": "top-center",
+                    "bbox": {"x": 0.1, "y": 0.05, "w": 0.4, "h": 0.1},
+                },
+            }
+        }
+        results = extract_label_fields(b"x", client=_mock_client(payload), img_w=1000, img_h=2000)
+
+        assert results["brand_name"][0].bbox == {"x": 100, "y": 100, "w": 400, "h": 200}
+
+    def test_extract_label_fields_omits_bbox_without_dimensions(self):
+        payload = {
+            "values": {
+                "brand_name": {
+                    "value": "Barrilito",
+                    "confidence": 0.9,
+                    "location_hint": "top-center",
+                    "bbox": {"x": 0.1, "y": 0.05, "w": 0.4, "h": 0.1},
+                },
+            }
+        }
+        results = extract_label_fields(b"x", client=_mock_client(payload))
+
+        assert results["brand_name"][0].bbox is None
+
+    def test_process_label_image_uses_claude_bbox_when_ocr_has_no_match(self, db_session, monkeypatch):
+        """Stylized/logo text (e.g. 'BARRILITO') that Tesseract can't read at all
+        still gets a (generous, approximate) bbox from Claude's region estimate."""
+        from models.application import Application
+        from models.label_image import LabelImage
+        from services import label_extraction
+
+        application = Application(brand_name="Test")
+        db_session.add(application)
+        db_session.commit()
+        db_session.refresh(application)
+
+        image_path = TESTDATA / "Woodford Reserve burbon front.jpg"
+        label_image = LabelImage(application_id=application.id, image_path=str(image_path), label_type="brand")
+        db_session.add(label_image)
+        db_session.commit()
+        db_session.refresh(label_image)
+
+        img_h, img_w = _decode_image(image_path.read_bytes()).shape[:2]
+        monkeypatch.setattr(label_extraction, "run_ocr", lambda *_a, **_k: [])
+
+        payload = {
+            "values": {
+                "brand_name": {
+                    "value": "Barrilito",
+                    "confidence": 0.9,
+                    "location_hint": "top-center",
+                    "bbox": {"x": 0.1, "y": 0.05, "w": 0.4, "h": 0.1},
+                },
+            }
+        }
+        results = asyncio.run(_process_label_image(label_image, client=_mock_client(payload)))
+
+        assert results["brand_name"][0].bbox == _claude_bbox_to_pixels(
+            payload["values"]["brand_name"]["bbox"], img_w, img_h
+        )
+
+    def test_process_label_image_ocr_match_overrides_claude_bbox(self, db_session, monkeypatch):
+        """When OCR *can* find the text, its pixel-precise bbox wins over Claude's estimate."""
+        from models.application import Application
+        from models.label_image import LabelImage
+        from services import label_extraction
+
+        application = Application(brand_name="Test")
+        db_session.add(application)
+        db_session.commit()
+        db_session.refresh(application)
+
+        image_path = TESTDATA / "Woodford Reserve burbon front.jpg"
+        label_image = LabelImage(application_id=application.id, image_path=str(image_path), label_type="brand")
+        db_session.add(label_image)
+        db_session.commit()
+        db_session.refresh(label_image)
+
+        ocr_words = [
+            {"text": "WOODFORD", "x": 10, "y": 10, "w": 100, "h": 20},
+            {"text": "RESERVE", "x": 115, "y": 10, "w": 90, "h": 20},
+        ]
+        monkeypatch.setattr(label_extraction, "run_ocr", lambda *_a, **_k: ocr_words)
+
+        payload = {
+            "values": {
+                "brand_name": {
+                    "value": "Woodford Reserve",
+                    "confidence": 0.9,
+                    "location_hint": "top-center",
+                    "bbox": {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0},  # deliberately whole-image
+                },
+            }
+        }
+        results = asyncio.run(_process_label_image(label_image, client=_mock_client(payload)))
+
+        assert results["brand_name"][0].bbox == {"x": 10, "y": 10, "w": 195, "h": 20}
+
+
+# ---------------------------------------------------------------------------
+# 6.6 (cont.) — OCR stroke-ratio corroboration of Claude's header_bold (FR-035)
+# ---------------------------------------------------------------------------
+
+
+class TestHeaderBoldCorroboration:
+    """Claude's `header_bold` flag (FR-035) has proven non-deterministic across
+    repeated Stage 4 calls on the same image -- the same "GOVERNMENT WARNING:"
+    header was assessed True on one run and False on the next. When OCR shows
+    the header's stroke weight is not lighter than body text, that
+    corroborates "bold" and promotes a False/null flag to True so a single
+    noisy call doesn't drive a HARD_FAILURE (FR-055)."""
+
+    GW_PAYLOAD = {
+        "values": {
+            "government_warning": {
+                "text_present": True,
+                "text_found": GOVERNMENT_WARNING_TEXT,
+                "header_all_caps": True,
+                "header_bold": False,
+                "confidence": 0.9,
+                "location_hint": "bottom",
+            }
+        }
+    }
+
+    def _label_image(self, db_session):
+        from models.application import Application
+        from models.label_image import LabelImage
+
+        application = Application(brand_name="Test")
+        db_session.add(application)
+        db_session.commit()
+        db_session.refresh(application)
+
+        label_image = LabelImage(
+            application_id=application.id,
+            image_path=str(TESTDATA / "Woodford Reserve burbon front.jpg"),
+            label_type="back",
+        )
+        db_session.add(label_image)
+        db_session.commit()
+        db_session.refresh(label_image)
+        return label_image
+
+    def test_promotes_header_bold_when_stroke_ratio_corroborates(self, db_session, monkeypatch):
+        from services import label_extraction
+
+        label_image = self._label_image(db_session)
+        ocr_words = [{"text": "GOVERNMENT WARNING:", "x": 10, "y": 10, "w": 140, "h": 30}]
+        monkeypatch.setattr(label_extraction, "run_ocr", lambda *_a, **_k: ocr_words)
+        monkeypatch.setattr(label_extraction, "compute_header_stroke_ratio", lambda *_a, **_k: 1.5)
+
+        results = asyncio.run(_process_label_image(label_image, client=_mock_client(self.GW_PAYLOAD)))
+
+        assert results["government_warning"][0].value["header_bold"] is True
+
+    def test_does_not_promote_header_bold_when_stroke_ratio_below_threshold(self, db_session, monkeypatch):
+        from services import label_extraction
+
+        label_image = self._label_image(db_session)
+        ocr_words = [{"text": "GOVERNMENT WARNING:", "x": 10, "y": 10, "w": 140, "h": 30}]
+        monkeypatch.setattr(label_extraction, "run_ocr", lambda *_a, **_k: ocr_words)
+        monkeypatch.setattr(label_extraction, "compute_header_stroke_ratio", lambda *_a, **_k: 0.5)
+
+        results = asyncio.run(_process_label_image(label_image, client=_mock_client(self.GW_PAYLOAD)))
+
+        assert results["government_warning"][0].value["header_bold"] is False
+
+    def test_does_not_promote_header_bold_when_stroke_ratio_none(self, db_session, monkeypatch):
+        from services import label_extraction
+
+        label_image = self._label_image(db_session)
+        ocr_words = [{"text": "GOVERNMENT WARNING:", "x": 10, "y": 10, "w": 140, "h": 30}]
+        monkeypatch.setattr(label_extraction, "run_ocr", lambda *_a, **_k: ocr_words)
+        monkeypatch.setattr(label_extraction, "compute_header_stroke_ratio", lambda *_a, **_k: None)
+
+        results = asyncio.run(_process_label_image(label_image, client=_mock_client(self.GW_PAYLOAD)))
+
+        assert results["government_warning"][0].value["header_bold"] is False
+
+    def test_skips_stroke_ratio_when_claude_already_says_bold(self, db_session, monkeypatch):
+        """No need to spend the extra OCR/CV pass when Claude already said True."""
+        from services import label_extraction
+
+        label_image = self._label_image(db_session)
+        ocr_words = [{"text": "GOVERNMENT WARNING:", "x": 10, "y": 10, "w": 140, "h": 30}]
+        monkeypatch.setattr(label_extraction, "run_ocr", lambda *_a, **_k: ocr_words)
+
+        def _boom(*_a, **_k):
+            raise AssertionError("compute_header_stroke_ratio should not be called")
+
+        monkeypatch.setattr(label_extraction, "compute_header_stroke_ratio", _boom)
+
+        payload = json.loads(json.dumps(self.GW_PAYLOAD))
+        payload["values"]["government_warning"]["header_bold"] = True
+
+        results = asyncio.run(_process_label_image(label_image, client=_mock_client(payload)))
+
+        assert results["government_warning"][0].value["header_bold"] is True
 
 
 # ---------------------------------------------------------------------------

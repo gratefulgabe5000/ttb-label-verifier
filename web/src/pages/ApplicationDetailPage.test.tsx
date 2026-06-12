@@ -120,6 +120,77 @@ const LABEL_PARAMETERS: LabelParameter[] = [
   },
 ];
 
+// A label_parameters row sharing field_name="brand_name" with form_parameters,
+// used to exercise the form -> label cross-highlight (13.5-13.7 field-mapping).
+// field_value is deliberately distinct from the form's so the two SVG <title>
+// elements can be queried independently.
+const BRAND_NAME_LABEL_PARAMETER: LabelParameter = {
+  id: 202,
+  application_id: 1,
+  label_image_id: 10,
+  field_name: "brand_name",
+  field_value: "STOLL & WOLFE",
+  confidence: 0.95,
+  location_hint: null,
+  bbox_json: '{"x":50,"y":50,"w":200,"h":40}',
+  header_height_ratio: 0.2,
+  extracted_at: "2026-06-01T00:00:00Z",
+};
+
+// Post-Session-22 Government Warning 3-way split: three comparison rows
+// (government_warning_text/_caps/_bold) all map to the single
+// label_parameters row field_name="government_warning" (LABEL_PARAMETERS[1]).
+const GW_SPLIT_COMPARISONS: Comparison[] = [
+  {
+    id: 10,
+    application_id: 1,
+    field_name: "government_warning_text",
+    form_value: null,
+    label_value: null,
+    result: "MATCH",
+    section_v_ref: "27 CFR 16.21",
+    note: null,
+    label_image_id: 11,
+    created_at: "2026-06-01T00:10:00Z",
+    agent_override: null,
+    override_by: null,
+    override_reason: null,
+    override_at: null,
+  },
+  {
+    id: 11,
+    application_id: 1,
+    field_name: "government_warning_caps",
+    form_value: null,
+    label_value: null,
+    result: "MATCH",
+    section_v_ref: "27 CFR 16.21",
+    note: null,
+    label_image_id: 11,
+    created_at: "2026-06-01T00:10:00Z",
+    agent_override: null,
+    override_by: null,
+    override_reason: null,
+    override_at: null,
+  },
+  {
+    id: 12,
+    application_id: 1,
+    field_name: "government_warning_bold",
+    form_value: null,
+    label_value: null,
+    result: "MATCH",
+    section_v_ref: "27 CFR 16.21",
+    note: null,
+    label_image_id: 11,
+    created_at: "2026-06-01T00:10:00Z",
+    agent_override: null,
+    override_by: null,
+    override_reason: null,
+    override_at: null,
+  },
+];
+
 const COMPARISONS: Comparison[] = [
   {
     id: 1,
@@ -289,6 +360,84 @@ describe("ApplicationDetailPage", () => {
 
     const title = await screen.findByText("government_warning: (empty)");
     expect(title.closest("g")?.querySelector("rect")).toHaveAttribute("stroke", "#2563eb");
+  });
+
+  it("cross-highlights from the form to the label (red ellipse) and the results table (13.5-13.7 field-mapping, form -> label/table)", async () => {
+    vi.spyOn(applicationsApi, "get").mockResolvedValue({
+      ...APPLICATION,
+      label_parameters: [...LABEL_PARAMETERS, BRAND_NAME_LABEL_PARAMETER],
+    });
+    vi.spyOn(applicationsApi, "comparisons").mockResolvedValue(COMPARISONS);
+    vi.spyOn(applicationsApi, "getFormBlob").mockResolvedValue(new Blob(["%PDF"], { type: "application/pdf" }));
+    vi.spyOn(applicationsApi, "getLabelImageBlob").mockResolvedValue(new Blob(["img"], { type: "image/jpeg" }));
+
+    const { container } = renderDetailPage();
+
+    await screen.findByTestId("pdf-document");
+
+    const brandImage = container.querySelector('img[alt="brand"]') as HTMLImageElement;
+    Object.defineProperty(brandImage, "naturalWidth", { value: 1000, configurable: true });
+    Object.defineProperty(brandImage, "naturalHeight", { value: 800, configurable: true });
+    fireEvent.load(brandImage);
+
+    const formTitle = await screen.findByText("brand_name: Stoll & Wolfe");
+    await userEvent.hover(formTitle.closest("g")!);
+
+    const labelTitle = await screen.findByText("brand_name: STOLL & WOLFE");
+    const labelGroup = labelTitle.closest("g");
+    expect(labelGroup?.querySelector("rect")).toHaveAttribute("stroke", "#2563eb");
+    expect(labelGroup?.querySelector("ellipse")).toHaveAttribute("stroke", "#dc2626");
+
+    expect((await screen.findByText("Brand Name")).closest("tr")).toHaveClass("bg-accent/50");
+  });
+
+  it("cross-highlights all Government Warning rows together and supports click-to-pin (13.6/13.7/13.11 field-mapping, GW 3-way split)", async () => {
+    vi.spyOn(applicationsApi, "get").mockResolvedValue({ ...APPLICATION, label_parameters: LABEL_PARAMETERS });
+    vi.spyOn(applicationsApi, "comparisons").mockResolvedValue(GW_SPLIT_COMPARISONS);
+    vi.spyOn(applicationsApi, "getFormBlob").mockResolvedValue(new Blob(["%PDF"], { type: "application/pdf" }));
+    vi.spyOn(applicationsApi, "getLabelImageBlob").mockResolvedValue(new Blob(["img"], { type: "image/jpeg" }));
+
+    const { container } = renderDetailPage();
+
+    const textRow = (await screen.findByText("Government Warning — statement text (27 CFR § 16.21)")).closest("tr");
+    expect(textRow).not.toBeNull();
+    await userEvent.hover(textRow!);
+
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: /back/i })).toHaveAttribute("aria-selected", "true");
+    });
+
+    const backImage = container.querySelector('img[alt="back"]') as HTMLImageElement;
+    Object.defineProperty(backImage, "naturalWidth", { value: 1000, configurable: true });
+    Object.defineProperty(backImage, "naturalHeight", { value: 800, configurable: true });
+    fireEvent.load(backImage);
+
+    // The label's single government_warning annotation highlights and draws a red ellipse...
+    const title = await screen.findByText("government_warning: (empty)");
+    const g = title.closest("g");
+    expect(g?.querySelector("rect")).toHaveAttribute("stroke", "#2563eb");
+    expect(g?.querySelector("ellipse")).toHaveAttribute("stroke", "#dc2626");
+
+    // ...and all three Government Warning comparison rows are highlighted together.
+    expect(textRow).toHaveClass("bg-accent/50");
+    expect(screen.getByText("Government Warning — header in ALL CAPS").closest("tr")).toHaveClass("bg-accent/50");
+    expect(screen.getByText("Government Warning — header in bold type").closest("tr")).toHaveClass("bg-accent/50");
+
+    // Clicking the row pins the selection so it persists after the mouse leaves.
+    await userEvent.click(textRow!);
+    await userEvent.unhover(textRow!);
+
+    await waitFor(() => {
+      expect(g?.querySelector("ellipse")).toHaveAttribute("stroke", "#dc2626");
+    });
+    expect(textRow).toHaveClass("border-l-primary");
+
+    // Clicking again unpins it.
+    await userEvent.click(textRow!);
+    await userEvent.unhover(textRow!);
+    await waitFor(() => {
+      expect(g?.querySelector("ellipse")).toBeNull();
+    });
   });
 
   it("supports overall determination override and finalize (13.9/13.10)", async () => {

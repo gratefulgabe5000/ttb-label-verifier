@@ -187,18 +187,21 @@ class TestGovernmentWarning:
             }
         )
         label_params = [_lp("government_warning", gw_value, label_image_id=1)]
-        result = compare_government_warning({}, _app(), label_params)
-        assert result.result == "MATCH"
-        assert result.label_image_id == 1
+        results = compare_government_warning({}, _app(), label_params)
+        by_field = {r.field_name: r for r in results}
+        assert by_field["government_warning_text"].result == "MATCH"
+        assert by_field["government_warning_caps"].result == "MATCH"
+        assert by_field["government_warning_bold"].result == "MATCH"
+        assert all(r.label_image_id == 1 for r in results)
 
     def test_hard_failure_when_absent(self):
         absent_value = json.dumps(
             {"text_found": None, "text_present": False, "header_all_caps": None, "header_bold": None, "text_exact_match": None}
         )
         label_params = [_lp("government_warning", absent_value, label_image_id=1)]
-        result = compare_government_warning({}, _app(), label_params)
-        assert result.result == "HARD_FAILURE"
-        assert "not found" in result.note
+        results = compare_government_warning({}, _app(), label_params)
+        assert all(r.result == "HARD_FAILURE" for r in results)
+        assert all("not found" in r.note for r in results)
 
     def test_hard_failure_when_header_not_bold(self):
         gw_value = json.dumps(
@@ -211,9 +214,58 @@ class TestGovernmentWarning:
             }
         )
         label_params = [_lp("government_warning", gw_value, label_image_id=1)]
-        result = compare_government_warning({}, _app(), label_params)
-        assert result.result == "HARD_FAILURE"
-        assert "bold" in result.note
+        results = compare_government_warning({}, _app(), label_params)
+        by_field = {r.field_name: r for r in results}
+        assert by_field["government_warning_text"].result == "MATCH"
+        assert by_field["government_warning_caps"].result == "MATCH"
+        assert by_field["government_warning_bold"].result == "HARD_FAILURE"
+        assert "bold" in by_field["government_warning_bold"].note
+
+    def test_match_on_punctuation_only_text_difference(self):
+        # Label uses a comma before "(2)" and omits the trailing period, where the
+        # statute (27 CFR § 16.21) has a period before "(2)" and ends with one --
+        # text content matches, only punctuation differs, so this is still a MATCH.
+        label_text = GOVERNMENT_WARNING_TEXT.replace("birth defects. (2)", "birth defects, (2)").rstrip(".")
+        gw_value = json.dumps(
+            {
+                "text_found": label_text,
+                "text_present": True,
+                "header_all_caps": True,
+                "header_bold": True,
+                "text_exact_match": False,
+            }
+        )
+        label_params = [_lp("government_warning", gw_value, label_image_id=1)]
+        results = compare_government_warning({}, _app(), label_params)
+        by_field = {r.field_name: r for r in results}
+        assert by_field["government_warning_text"].result == "MATCH"
+        assert by_field["government_warning_text"].section_v_ref is None
+        assert by_field["government_warning_text"].note is None
+        assert by_field["government_warning_caps"].result == "MATCH"
+        assert by_field["government_warning_bold"].result == "MATCH"
+
+    def test_match_on_all_caps_and_punctuation_difference(self):
+        # Real-world label text: rendered in ALL CAPS, a comma before "(2)" where
+        # the statute has a period, and no trailing period -- letter case and
+        # punctuation both differ, content matches, so this is still a MATCH.
+        label_text = (
+            GOVERNMENT_WARNING_TEXT.replace("birth defects. (2)", "birth defects, (2)").rstrip(".").upper()
+        )
+        gw_value = json.dumps(
+            {
+                "text_found": label_text,
+                "text_present": True,
+                "header_all_caps": True,
+                "header_bold": True,
+                "text_exact_match": False,
+            }
+        )
+        label_params = [_lp("government_warning", gw_value, label_image_id=1)]
+        results = compare_government_warning({}, _app(), label_params)
+        by_field = {r.field_name: r for r in results}
+        assert by_field["government_warning_text"].result == "MATCH"
+        assert by_field["government_warning_text"].section_v_ref is None
+        assert by_field["government_warning_text"].note is None
 
 
 # ---------------------------------------------------------------------------
@@ -316,6 +368,18 @@ class TestApplicantName:
         result = compare_applicant_name(form_params, _app(), label_params)
         assert result.result == "HARD_FAILURE"
 
+    def test_match_against_importer_for_imported_product(self):
+        # Item 8 (Applicant Name) names the importer, not the foreign producer --
+        # the label's bottler_name (the foreign producer) won't match, but
+        # importer_name should.
+        form_params = {"applicant_name": _fp("applicant_name", "ABC Imports LLC")}
+        label_params = [
+            _lp("bottler_name", "Cantina Foreign Producer S.r.l.", label_image_id=1),
+            _lp("importer_name", "ABC Imports LLC", label_image_id=1),
+        ]
+        result = compare_applicant_name(form_params, _app(source="imported"), label_params)
+        assert result.result == "MATCH"
+
 
 # ---------------------------------------------------------------------------
 # 7.10 -- Applicant Address (Item 8/8a, FR-103)
@@ -327,6 +391,26 @@ class TestApplicantAddress:
         form_params = {"applicant_address": _fp("applicant_address", "7855 McCracken Pike, Versailles, KY 40383")}
         label_params = [_lp("bottler_address", "7855 McCracken Pike, Versailles, KY 40383", label_image_id=1)]
         result = compare_applicant_address(form_params, _app(), label_params)
+        assert result.result == "MATCH"
+
+    def test_match_ignores_case_punctuation_and_zip4(self):
+        # Label is ALL CAPS with extra periods and a ZIP+4; form is mixed-case
+        # with a plain ZIP5 -- this is a MATCH, not POSSIBLE_ALLOWABLE.
+        form_params = {"applicant_address": _fp("applicant_address", "200 Brook Avenue, Unit 5, Passaic, NJ 07055")}
+        label_params = [_lp("bottler_address", "200 BROOK AVENUE, UNIT. 5, PASSAIC, N.J. 07055-0000", label_image_id=1)]
+        result = compare_applicant_address(form_params, _app(), label_params)
+        assert result.result == "MATCH"
+
+    def test_match_against_importer_for_imported_product(self):
+        # Item 8/8a (Applicant Address) names the importer's address -- the
+        # label's bottler_address (the foreign producer) won't match, but
+        # importer_address should.
+        form_params = {"applicant_address": _fp("applicant_address", "100 Import Way, Newark, NJ 07102")}
+        label_params = [
+            _lp("bottler_address", "Via Roma 1, 12051 Alba (CN), Italy", label_image_id=1),
+            _lp("importer_address", "100 Import Way, Newark, NJ 07102", label_image_id=1),
+        ]
+        result = compare_applicant_address(form_params, _app(source="imported"), label_params)
         assert result.result == "MATCH"
 
     def test_possible_allowable_for_in_state_address_change(self):
@@ -474,7 +558,9 @@ class TestRunComparisons:
             "product_type",
             "applicant_name",
             "applicant_address",
-            "government_warning",
+            "government_warning_text",
+            "government_warning_caps",
+            "government_warning_bold",
             "alcohol_content",
             "net_contents",
         ):

@@ -3,7 +3,7 @@
 **Assessment:** IT Specialist (AI) · 26-DO-12891471-DH
 **Received:** June 9, 2026, 1458 hrs · **Deadline:** June 16, 2026, 1458 hrs
 **Repo:** https://github.com/gratefulgabe5000/ttb-label-verifier
-**Documentation Baseline:** v2.0 — README, PRD (v2.0), DevLog, and TODO are mutually consistent as of Session 9 (2026-06-11); WBS bumped to v2.1 same day for the 12.0/13.0 re-sequencing (§4 Note 7), then to v2.3 (2026-06-12) marking the 12.0/13.0 re-sequencing complete (Session 21)
+**Documentation Baseline:** v2.0 — README, PRD (v2.0), DevLog, and TODO are mutually consistent as of Session 9 (2026-06-11); WBS bumped to v2.1 same day for the 12.0/13.0 re-sequencing (§4 Note 7), then to v2.3 (2026-06-12) marking the 12.0/13.0 re-sequencing complete (Session 21), then to v2.4 (2026-06-12) for Session 22's Stage 5 refinements (Government Warning 3-way split, importer-vs-bottler matching) — no new WBS line items. Session 23 (2026-06-12) added OCR stroke-ratio corroboration for `header_bold` (6.2/6.8) and restructured the Application Detail View into a Results Sidebar (13.0 polish) — also no new WBS line items, WBS.md remains v2.4
 
 ---
 
@@ -19,8 +19,8 @@
 | Architecture evaluation (DevLog §3.6) + alternatives brainstorm | ✅ Complete (2026-06-10) |
 | Mermaid diagrams (system context, block diagram, concurrency sequence) | ✅ Complete (2026-06-10) — DevLog §3.7 |
 | Work Breakdown Structure | ✅ Complete, re-baselined to v2.0 (2026-06-11) — [`WBS.md` v2.0](_DevLog/WBS.md) |
-| Backend (`app/`) | ✅ Complete — Scaffolding + Auth + Ingestion + Form Assessment + Label Assessment + Comparison Engine + Determination & Reporting + Pipeline Orchestration & Batch Processing + Overrides/Finalize/Batch Report (WBS 1.0, 3.0–10.0; 172/172 pytest passing, Railway config) |
-| Frontend (`web/`) | ✅ WBS 11.0–13.0 complete (build & lint passing, 13/13 Vitest). **12.0/13.0 re-sequencing (WBS.md v2.1 §4 Note 7) finished (Session 21, WBS.md v2.3)** — Agent Dashboard + Application Detail View fully wired to the backend; WBS 14.0 (Batch Report view) remains |
+| Backend (`app/`) | ✅ Complete — Scaffolding + Auth + Ingestion + Form Assessment + Label Assessment + Comparison Engine + Determination & Reporting + Pipeline Orchestration & Batch Processing + Overrides/Finalize/Batch Report (WBS 1.0, 3.0–10.0; 198/198 pytest passing, Railway config). **Session 22 (2026-06-12)** refined the Government Warning (7.3) and Applicant Name/Address (7.9/7.10) comparison rules — see [`WBS.md` v2.4](_DevLog/WBS.md) §4 Note 8. **Session 23 (2026-06-12)** added `temperature=0` + OCR stroke-ratio corroboration for `header_bold` (6.2/6.8) |
+| Frontend (`web/`) | ✅ WBS 11.0–13.0 complete (build & lint passing, 15/15 Vitest). **12.0/13.0 re-sequencing (WBS.md v2.1 §4 Note 7) finished (Session 21, WBS.md v2.3)** — Agent Dashboard + Application Detail View fully wired to the backend. **Session 23 (2026-06-12)** restructured the Detail View into a Results Sidebar (13.0 polish, build/lint/tsc clean); WBS 14.0 (Batch Report view) remains |
 | Synthetic test data (sample forms + multi-image label sets) | ✅ 2.1–2.7 complete — ALL OF WBS 2.0 DONE (`testdata/manifest.json` — 45 products / 88 images; `testdata/forms/sample_creek_*.pdf` — TS-01 3-tier fixtures; `testdata/forms/good_*.pdf` + `testdata/forms/hf_*.pdf` + `testdata/forms/ar_*.pdf` + `testdata/forms/type14b_*.pdf` + `testdata/test_sets.json` — 2.3 "good" sets + 2.4 "hard failure" sets + 2.5 "possible allowable revision" sets + 2.7 Type 14b set; `testdata/degraded/*.jpg` + `testdata/degraded_images.json` — 2.6 degraded-image fixtures for FR-039; `testdata/synthetic/*.jpg` — synthetic statement-label fixture for FR-056) |
 | Deployed application URL | ☐ Pending — WBS 18.0 |
 
@@ -28,7 +28,7 @@
 
 ## Next Session — WBS 14.0: Batch Report View
 
-With WBS 1.0, 3.0–13.0 complete (backend 172/172 pytest passing; frontend 13/13 Vitest passing, build & lint clean), the 12.0/13.0 re-sequencing from [`WBS.md` v2.1](_DevLog/WBS.md) §4 Note 7 is finished (WBS.md v2.3, Session 21). Next up is **WBS 14.0** — the Batch Report view: a page showing per-batch counts (approved/denied/exemption review), the most-common-failure-type summary, and CSV/PDF export, backed by the already-implemented `GET /batch/{id}/report` (`BatchReportOut`, Session 20), plus unit tests (14.x coverage).
+With WBS 1.0, 3.0–13.0 complete (backend 198/198 pytest passing; frontend 15/15 Vitest passing, build & lint clean), the 12.0/13.0 re-sequencing from [`WBS.md` v2.1](_DevLog/WBS.md) §4 Note 7 is finished (WBS.md v2.3, Session 21), Session 22 (2026-06-12) refined the Government Warning and Applicant Name/Address comparison rules within already-complete 7.3/7.9/7.10 (WBS.md v2.4, §4 Note 8), and Session 23 (2026-06-12) added `header_bold` OCR corroboration (6.2/6.8) plus a Detail View Results Sidebar restructuring (13.0 polish). Next up is **WBS 14.0** — the Batch Report view: a page showing per-batch counts (approved/denied/exemption review), the most-common-failure-type summary, and CSV/PDF export, backed by the already-implemented `GET /batch/{id}/report` (`BatchReportOut`, Session 20), plus unit tests (14.x coverage).
 
 ---
 

@@ -13,6 +13,11 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5173"
 
+    # Optional override for pytesseract's tesseract binary path (Windows dev
+    # machines where Tesseract isn't on PATH). Unset on Linux/Railway, where
+    # the Tesseract apt package is on PATH (WBS.md Note 7, contingency #1).
+    tesseract_cmd: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @property

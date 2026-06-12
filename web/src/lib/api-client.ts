@@ -93,6 +93,8 @@ export const healthApi = {
 
 // Agent-supplied Anthropic API key — held only in the backend process's
 // environment, never persisted to disk or the database.
+export const API_KEY_QUERY_KEY = ["settings", "api-key"];
+
 export const settingsApi = {
   getApiKeyStatus: () => apiFetch<ApiKeyStatus>("/settings/api-key"),
   setApiKey: (apiKey: string) =>

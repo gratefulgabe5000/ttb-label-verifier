@@ -29,10 +29,14 @@ import pytesseract
 from anthropic import Anthropic
 from sqlalchemy.orm import Session
 
+from config import get_settings
 from models.application import Application
 from models.label_image import LabelImage
 from models.label_parameter import LabelParameter
 from services import settings_service
+
+if get_settings().tesseract_cmd:
+    pytesseract.pytesseract.tesseract_cmd = get_settings().tesseract_cmd
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -55,6 +59,8 @@ SECONDARY_FIELDS = [
     "vintage_date",
     "age_statement",
     "for_sale_in_state",
+    "importer_name",
+    "importer_address",
 ]
 SIMPLE_FIELDS = MANDATORY_FIELDS + SECONDARY_FIELDS
 # "government_warning" (dict value) and "other_text" (list value) are special-cased.
@@ -76,8 +82,24 @@ LOCATION_HINTS = {
     "vintage_date": "front label",
     "age_statement": "front label, near brand or class/type",
     "for_sale_in_state": "back label",
+    "importer_name": "back label, near 'Imported by'",
+    "importer_address": "back label, near importer name",
     "other_text": "anywhere on label",
 }
+
+# Tesseract word-confidence floor (0-100) for FR-040 bbox matching — discards
+# background-texture/artwork noise (typically conf < 40) that would otherwise
+# break fuzzy_match_bbox's contiguous-window search.
+MIN_OCR_WORD_CONFIDENCE = 50.0
+
+# Minimum header-vs-body stroke-weight ratio (compute_header_stroke_ratio,
+# FR-040) for OCR to corroborate "GOVERNMENT WARNING:" being bold (FR-035).
+# A ratio at or above this means the header's ink is at least as heavy as
+# surrounding body text, i.e. not visibly lighter-weight — used only to
+# *promote* Claude's header_bold to True when it comes back False/null, since
+# that flag has proven non-deterministic across repeated Stage 4 calls on the
+# same image.
+HEADER_BOLD_STROKE_RATIO_THRESHOLD = 0.9
 
 # Statutory Government Warning text (27 CFR § 16.21, DevLog §2.2), whitespace-collapsed.
 GOVERNMENT_WARNING_TEXT = (
@@ -99,29 +121,32 @@ no commentary) with this shape:
 
 {
   "values": {
-    "brand_name": {"value": "<string or null>", "confidence": <0.0-1.0>, "location_hint": "<short position, e.g. 'top-center'>"},
-    "fanciful_name": {"value": "<string or null>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "class_type_designation": {"value": "<string or null, e.g. 'Kentucky Straight Bourbon Whiskey'>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "alcohol_content": {"value": "<string or null, e.g. '40% Alc./Vol. (80 Proof)'>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "net_contents": {"value": "<string or null, e.g. '750 mL'>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "bottler_name": {"value": "<string or null>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "bottler_address": {"value": "<string or null>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "country_of_origin": {"value": "<string or null, imported products only>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "grape_varietals": {"value": "<string or null, comma-separated, wine only>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "wine_appellation": {"value": "<string or null, wine only>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "vintage_date": {"value": "<string or null, wine only>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "age_statement": {"value": "<string or null, e.g. 'Aged 12 Years'>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
-    "for_sale_in_state": {"value": "<string or null, e.g. 'FOR SALE IN PENNSYLVANIA ONLY'>", "confidence": <0.0-1.0>, "location_hint": "<...>"},
+    "brand_name": {"value": "<string or null>", "confidence": <0.0-1.0>, "location_hint": "<short position, e.g. 'top-center'>", "bbox": <region or null>},
+    "fanciful_name": {"value": "<string or null>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "class_type_designation": {"value": "<string or null, e.g. 'Kentucky Straight Bourbon Whiskey'>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "alcohol_content": {"value": "<string or null, e.g. '40% Alc./Vol. (80 Proof)'>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "net_contents": {"value": "<string or null, e.g. '750 mL'>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "bottler_name": {"value": "<string or null>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "bottler_address": {"value": "<string or null>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "country_of_origin": {"value": "<string or null, imported products only>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "grape_varietals": {"value": "<string or null, comma-separated, wine only>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "wine_appellation": {"value": "<string or null, wine only>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "vintage_date": {"value": "<string or null, wine only>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "age_statement": {"value": "<string or null, e.g. 'Aged 12 Years'>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "for_sale_in_state": {"value": "<string or null, e.g. 'FOR SALE IN PENNSYLVANIA ONLY'>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "importer_name": {"value": "<string or null, the importer named on the label (e.g. after 'Imported by'), if different from the bottler/producer>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
+    "importer_address": {"value": "<string or null, the importer's address as printed on the label>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>},
     "government_warning": {
       "text_present": <true|false>,
       "text_found": "<exact transcription of the Government Warning text on this image, or null>",
       "header_all_caps": <true|false|null, "is 'GOVERNMENT WARNING:' rendered in all capital letters?">,
       "header_bold": <true|false|null, "is 'GOVERNMENT WARNING:' rendered in bold type?">,
       "confidence": <0.0-1.0>,
-      "location_hint": "<...>"
+      "location_hint": "<...>",
+      "bbox": <region or null>
     },
     "other_text": [
-      {"value": "<any other text visible on this image, e.g. UPC code, allergen statement>", "confidence": <0.0-1.0>, "location_hint": "<...>"}
+      {"value": "<any other text visible on this image, e.g. UPC code, allergen statement>", "confidence": <0.0-1.0>, "location_hint": "<...>", "bbox": <region or null>}
     ]
   }
 }
@@ -130,7 +155,15 @@ Use null for any field with no corresponding element on this image. Do not \
 guess at text that is not actually visible. `location_hint` should be a short \
 relative description such as "top-left", "bottom-center", "neck label", etc. \
 Transcribe `government_warning.text_found` exactly as printed, including \
-punctuation and capitalization — do not paraphrase or correct it."""
+punctuation and capitalization — do not paraphrase or correct it.
+
+`bbox` is a rough bounding region for where this element's text appears on \
+the image, expressed as fractions of the image's full width/height (0.0-1.0, \
+top-left origin): {"x": <left edge>, "y": <top edge>, "w": <width>, "h": <height>}. \
+It does NOT need to be pixel-precise — a box that is somewhat larger than the \
+text and fully encloses it is preferred over a tight crop. This applies even \
+to stylized logo/wordmark text that ordinary OCR cannot read. Set `bbox` to \
+null only when `value` itself is null."""
 
 
 def _normalize_for_comparison(text: str) -> str:
@@ -263,7 +296,32 @@ def _empty_results() -> dict[str, list[LabelFieldResult]]:
     return results
 
 
-def _parse_label_fields(data: dict) -> dict[str, list[LabelFieldResult]]:
+def _claude_bbox_to_pixels(bbox: Any, img_w: int | None, img_h: int | None) -> dict | None:
+    """Convert Claude's normalized (0.0-1.0, top-left origin) region estimate to
+    a pixel bbox in the same coordinate space as `fuzzy_match_bbox`/OCR.
+
+    Returns `None` if `img_w`/`img_h` weren't supplied or `bbox` isn't a
+    well-formed normalized rectangle. This is a fallback estimate only — when
+    OCR fuzzy-matching finds the text (FR-040), its pixel-precise bbox
+    overrides this one (e.g. for stylized logo text Tesseract can't read,
+    Claude's estimate is all we have).
+    """
+    if img_w is None or img_h is None or not isinstance(bbox, dict):
+        return None
+    try:
+        x, y, w, h = (float(bbox[k]) for k in ("x", "y", "w", "h"))
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    if not (0 <= x <= 1 and 0 <= y <= 1 and 0 < w <= 1 and 0 < h <= 1):
+        return None
+
+    w = min(w, 1 - x)
+    h = min(h, 1 - y)
+    return {"x": round(x * img_w), "y": round(y * img_h), "w": round(w * img_w), "h": round(h * img_h)}
+
+
+def _parse_label_fields(data: dict, img_w: int | None = None, img_h: int | None = None) -> dict[str, list[LabelFieldResult]]:
     results = _empty_results()
     values = data.get("values", {}) if isinstance(data, dict) else {}
 
@@ -279,6 +337,7 @@ def _parse_label_fields(data: dict) -> dict[str, list[LabelFieldResult]]:
                 value=value,
                 confidence=entry.get("confidence"),
                 location_hint=entry.get("location_hint") or LOCATION_HINTS.get(field),
+                bbox=_claude_bbox_to_pixels(entry.get("bbox"), img_w, img_h),
             )
         ]
 
@@ -302,6 +361,7 @@ def _parse_label_fields(data: dict) -> dict[str, list[LabelFieldResult]]:
                 value=gw_value,
                 confidence=gw.get("confidence"),
                 location_hint=gw.get("location_hint") or LOCATION_HINTS["government_warning"],
+                bbox=_claude_bbox_to_pixels(gw.get("bbox"), img_w, img_h),
             )
         ]
 
@@ -312,6 +372,7 @@ def _parse_label_fields(data: dict) -> dict[str, list[LabelFieldResult]]:
                 value=item.get("value"),
                 confidence=item.get("confidence"),
                 location_hint=item.get("location_hint") or LOCATION_HINTS["other_text"],
+                bbox=_claude_bbox_to_pixels(item.get("bbox"), img_w, img_h),
             )
             for item in other_text
             if isinstance(item, dict) and item.get("value") not in (None, "")
@@ -320,8 +381,18 @@ def _parse_label_fields(data: dict) -> dict[str, list[LabelFieldResult]]:
     return results
 
 
-def extract_label_fields(image_bytes: bytes, *, client: Anthropic | None = None) -> dict[str, list[LabelFieldResult]]:
+def extract_label_fields(
+    image_bytes: bytes,
+    *,
+    client: Anthropic | None = None,
+    img_w: int | None = None,
+    img_h: int | None = None,
+) -> dict[str, list[LabelFieldResult]]:
     """Run the Stage 4 Claude Vision extraction prompt against one preprocessed label image.
+
+    `img_w`/`img_h` (pixel dimensions of the raw label image) let Claude's
+    normalized `bbox` estimates be converted to pixel space (FR-040 fallback);
+    omit them to skip that conversion (`bbox` stays `None`).
 
     Returns an all-null skeleton (FR-011) if no API key is configured (IA-02)
     or if the call fails for any reason — never raises.
@@ -337,6 +408,7 @@ def extract_label_fields(image_bytes: bytes, *, client: Anthropic | None = None)
         response = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=4096,
+            temperature=0,
             system=[{"type": "text", "text": STAGE4_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages=[
                 {
@@ -362,7 +434,7 @@ def extract_label_fields(image_bytes: bytes, *, client: Anthropic | None = None)
     except Exception:
         return skeleton
 
-    return _parse_label_fields(data)
+    return _parse_label_fields(data, img_w, img_h)
 
 
 # ---------------------------------------------------------------------------
@@ -393,7 +465,7 @@ def run_ocr(image_bytes: bytes) -> list[dict]:
             conf = float(data["conf"][i])
         except (ValueError, TypeError, KeyError, IndexError):
             conf = -1.0
-        if conf < 0:
+        if conf < MIN_OCR_WORD_CONFIDENCE:
             continue
         words.append(
             {
@@ -412,7 +484,37 @@ def run_ocr(image_bytes: bytes) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def fuzzy_match_bbox(value: str, ocr_words: list[dict], threshold: float = 0.7) -> dict | None:
+def _reading_order(ocr_words: list[dict]) -> list[dict]:
+    """Cluster OCR words into visual lines (by y-center proximity) and order
+    each line left-to-right, lines top-to-bottom.
+
+    A plain `(y, x)` sort breaks on short tokens like `"(1)"` whose top-y sits
+    a few pixels above the rest of their line (different glyph height) — they
+    sort to the front of the *next* line, splitting multi-word phrases out of
+    reading order and tanking the SequenceMatcher ratio below threshold.
+    """
+    lines: list[list[dict]] = []
+    for w in sorted(ocr_words, key=lambda w: w["y"]):
+        center = w["y"] + w["h"] / 2
+        for line in lines:
+            line_center = sum(x["y"] + x["h"] / 2 for x in line) / len(line)
+            line_height = sum(x["h"] for x in line) / len(line)
+            # Use the smaller of the two heights so one oversized OCR glyph
+            # (e.g. a misread vertical bar) can't inflate its line's
+            # tolerance enough to absorb an unrelated word below it.
+            tolerance = min(w["h"], line_height) * 0.6
+            if abs(center - line_center) <= tolerance:
+                line.append(w)
+                break
+        else:
+            lines.append([w])
+
+    for line in lines:
+        line.sort(key=lambda w: w["x"])
+    return [w for line in lines for w in line]
+
+
+def fuzzy_match_bbox(value: str, ocr_words: list[dict], threshold: float = 0.75) -> dict | None:
     """Find the contiguous run of OCR words whose text best matches `value`.
 
     Returns the bounding box (top-left origin, pixels) covering that run, or
@@ -426,16 +528,18 @@ def fuzzy_match_bbox(value: str, ocr_words: list[dict], threshold: float = 0.7) 
     if not target_words:
         return None
 
-    ordered = sorted(ocr_words, key=lambda w: (w["y"], w["x"]))
+    ordered = _reading_order(ocr_words)
     best_ratio = 0.0
     best_box: dict | None = None
 
-    max_window = min(len(target_words) + 2, len(ordered))
+    # Window length is capped at len(target_words) + 2 regardless of where it
+    # starts, so a run can be found anywhere in `ordered` — not just near the
+    # front of the (y, x)-sorted list.
+    max_window = len(target_words) + 2
     for start in range(len(ordered)):
-        for length in range(1, max_window - start + 1 if max_window - start > 0 else 0):
+        upper = min(max_window, len(ordered) - start)
+        for length in range(1, upper + 1):
             window = ordered[start : start + length]
-            if not window:
-                continue
             candidate = _normalize_for_comparison(" ".join(w["text"] for w in window))
             ratio = SequenceMatcher(None, candidate, target).ratio()
             if ratio > best_ratio:
@@ -485,6 +589,80 @@ def compute_header_height_ratio(ocr_words: list[dict], header_text: str = "GOVER
     return round(header_height / body_height, 3)
 
 
+def _word_stroke_weight(gray: np.ndarray, word: dict) -> float | None:
+    """Approximate a single OCR word's stroke-width-to-height ratio.
+
+    Thresholds the word's crop to a binary glyph mask, then runs a distance
+    transform: for stroke pixels, the distance to the nearest background
+    pixel is roughly half the local stroke width. The mean of that distance
+    over the glyph's foreground pixels, normalized by the word's height,
+    gives a font-size-independent "ink weight" proxy -- heavier (bolder)
+    strokes yield a larger value.
+
+    `None` if the crop is empty or thresholds to no foreground pixels.
+    """
+    x, y, w, h = word["x"], word["y"], word["w"], word["h"]
+    if w <= 0 or h <= 0:
+        return None
+
+    roi = gray[y : y + h, x : x + w]
+    if roi.size == 0:
+        return None
+
+    _, binary = cv2.threshold(roi, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    if cv2.countNonZero(binary) == 0:
+        return None
+
+    dist = cv2.distanceTransform(binary, cv2.DIST_L2, 3)
+    return float(dist[binary > 0].mean()) / h
+
+
+def compute_header_stroke_ratio(
+    gray: np.ndarray, ocr_words: list[dict], header_text: str = "GOVERNMENT WARNING"
+) -> float | None:
+    """Ratio of the "GOVERNMENT WARNING:" header's mean stroke weight to the
+    median stroke weight of the surrounding body text (FR-040, corroborates
+    FR-035's bold determination).
+
+    A ratio at or above ~1.0 means the header's strokes are at least as heavy
+    as body text -- i.e. not visibly lighter-weight, which corroborates
+    "bold". Unlike `compute_header_height_ratio`, this captures stroke
+    *weight* rather than glyph *size*, which is what "bold" actually means.
+
+    `None` if OCR found no words, could not isolate the header text, or no
+    word yielded a usable stroke measurement.
+    """
+    if not ocr_words:
+        return None
+
+    header_box = fuzzy_match_bbox(header_text, ocr_words, threshold=0.6)
+    if header_box is None or header_box["h"] <= 0:
+        return None
+
+    def _in_header(w: dict) -> bool:
+        return (
+            header_box["x"] <= w["x"] < header_box["x"] + header_box["w"]
+            and header_box["y"] <= w["y"] < header_box["y"] + header_box["h"]
+        )
+
+    header_weights = [r for w in ocr_words if _in_header(w) for r in [_word_stroke_weight(gray, w)] if r is not None]
+    if not header_weights:
+        return None
+
+    body_weights = sorted(
+        r for w in ocr_words if not _in_header(w) for r in [_word_stroke_weight(gray, w)] if r is not None
+    )
+    if not body_weights:
+        return None
+
+    header_mean = sum(header_weights) / len(header_weights)
+    body_median = body_weights[len(body_weights) // 2]
+    if body_median <= 0:
+        return None
+
+    return round(header_mean / body_median, 3)
+
+
 # ---------------------------------------------------------------------------
 # 6.6 — Per-image concurrent execution (IA-19/IA-24)
 # ---------------------------------------------------------------------------
@@ -493,10 +671,17 @@ def compute_header_height_ratio(ocr_words: list[dict], header_text: str = "GOVER
 async def _process_label_image(label_image: LabelImage, *, client: Anthropic | None) -> dict[str, list[LabelFieldResult]]:
     raw_bytes = await asyncio.to_thread(Path(label_image.image_path).read_bytes)
     preprocessed = await asyncio.to_thread(preprocess_image, raw_bytes)
+    img = await asyncio.to_thread(_decode_image, raw_bytes)
+    img_h, img_w = img.shape[:2]
 
+    # OCR runs on the raw bytes, not the FR-039-preprocessed image: glare
+    # suppression/contrast normalization can wipe out whole text blocks that
+    # Tesseract reads fine on the original (preprocess_image preserves pixel
+    # dimensions, so bboxes still line up with the raw image served to the
+    # frontend). Claude Vision still gets the preprocessed image.
     field_results, ocr_words = await asyncio.gather(
-        asyncio.to_thread(extract_label_fields, preprocessed, client=client),
-        asyncio.to_thread(run_ocr, preprocessed),
+        asyncio.to_thread(extract_label_fields, preprocessed, client=client, img_w=img_w, img_h=img_h),
+        asyncio.to_thread(run_ocr, raw_bytes),
     )
 
     for field_name, results in field_results.items():
@@ -507,10 +692,27 @@ async def _process_label_image(label_image: LabelImage, *, client: Anthropic | N
                 text = fr.value if isinstance(fr.value, str) else None
 
             if text and ocr_words:
-                fr.bbox = fuzzy_match_bbox(text, ocr_words)
+                # OCR's pixel-precise match (if found) overrides Claude's
+                # normalized estimate; otherwise the estimate set by
+                # extract_label_fields (possibly None) stands as-is.
+                ocr_bbox = fuzzy_match_bbox(text, ocr_words)
+                if ocr_bbox is not None:
+                    fr.bbox = ocr_bbox
 
             if field_name == "government_warning" and ocr_words:
                 fr.header_height_ratio = compute_header_height_ratio(ocr_words)
+
+                # Claude's header_bold flag (FR-035) has proven non-deterministic
+                # across repeated Stage 4 calls on the same image. If OCR shows
+                # the header's stroke weight is not visibly lighter than body
+                # text, that corroborates "bold" -- promote False/null to True
+                # rather than let a single noisy call drive a HARD_FAILURE
+                # (FR-055).
+                if isinstance(fr.value, dict) and fr.value.get("header_bold") is not True:
+                    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    stroke_ratio = compute_header_stroke_ratio(gray, ocr_words)
+                    if stroke_ratio is not None and stroke_ratio >= HEADER_BOLD_STROKE_RATIO_THRESHOLD:
+                        fr.value["header_bold"] = True
 
     return field_results
 

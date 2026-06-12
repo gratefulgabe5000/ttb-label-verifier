@@ -25,6 +25,9 @@ from models.label_parameter import LabelParameter
 FIELD_LABELS = {
     "brand_name": "Brand Name",
     "government_warning": "Government Warning statement",
+    "government_warning_text": "Government Warning -- statement text (27 CFR § 16.21)",
+    "government_warning_caps": "Government Warning -- header in ALL CAPS",
+    "government_warning_bold": "Government Warning -- header in bold type",
     "for_sale_in_state": 'Type 14b "for sale in [STATE]" statement',
     "country_of_origin": "Country of Origin",
     "fanciful_name": "Fanciful Name",

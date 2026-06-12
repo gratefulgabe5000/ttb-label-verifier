@@ -3,6 +3,7 @@ import { Document, Page, pdfjs } from "react-pdf";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { applicationsApi } from "@/lib/api-client";
+import { comparisonFieldFor, isFieldHighlighted } from "@/lib/field-mappings";
 import type { FormParameter } from "@/lib/types";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -113,12 +114,12 @@ export function FormPdfPanel({ applicationId, formParameters, hoveredField, onHo
               viewBox={`0 0 ${pageSize.originalWidth} ${pageSize.originalHeight}`}
             >
               {overlays.map(({ param, bbox }) => {
-                const isHovered = hoveredField === param.field_name;
+                const isHovered = isFieldHighlighted(hoveredField, param.field_name, "form");
                 return (
                   <g
                     key={param.id}
                     className="pointer-events-auto cursor-pointer"
-                    onMouseEnter={() => onHoverField(param.field_name)}
+                    onMouseEnter={() => onHoverField(comparisonFieldFor(param.field_name))}
                     onMouseLeave={() => onHoverField(null)}
                   >
                     <rect
@@ -126,9 +127,9 @@ export function FormPdfPanel({ applicationId, formParameters, hoveredField, onHo
                       y={bbox.y}
                       width={bbox.w}
                       height={bbox.h}
-                      fill={isHovered ? "rgba(37, 99, 235, 0.25)" : "rgba(250, 204, 21, 0.2)"}
-                      stroke={isHovered ? "#2563eb" : "#d97706"}
-                      strokeWidth={isHovered ? 2.5 : 1.5}
+                      fill={isHovered ? "rgba(37, 99, 235, 0.25)" : "transparent"}
+                      stroke={isHovered ? "#2563eb" : "none"}
+                      strokeWidth={isHovered ? 2.5 : 0}
                     />
                     <title>
                       {param.field_name}: {param.field_value ?? "(empty)"}

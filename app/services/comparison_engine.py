@@ -31,7 +31,7 @@ from models.application import Application
 from models.comparison import Comparison
 from models.form_parameter import FormParameter
 from models.label_parameter import LabelParameter
-from services.label_extraction import _normalize_for_comparison
+from services.label_extraction import GOVERNMENT_WARNING_TEXT, _normalize_for_comparison
 
 # ---------------------------------------------------------------------------
 # Section V Allowable-Revision references this engine can recognize (7.5)
@@ -103,7 +103,7 @@ class ResolvedField:
 
 def resolve_multi_image(
     label_parameters: list[LabelParameter],
-    field_name: str,
+    field_name: str | list[str],
     form_value: str | None,
     *,
     matches,
@@ -117,8 +117,13 @@ def resolve_multi_image(
       field) is classified via `classify_mismatch(form_value, label_value)`, which
       returns `(result, section_v_ref, note)`.
     - If no image reports this field at all, the result is MISSING_FROM_LABEL.
+
+    `field_name` may be a single label-parameter field name, or a list of names to
+    check together (e.g. `["bottler_name", "importer_name"]`) -- a form value
+    matching either is a MATCH.
     """
-    candidates = [lp for lp in label_parameters if lp.field_name == field_name and lp.field_value]
+    field_names = [field_name] if isinstance(field_name, str) else field_name
+    candidates = [lp for lp in label_parameters if lp.field_name in field_names and lp.field_value]
     if not candidates:
         return ResolvedField("MISSING_FROM_LABEL", None, None)
 
@@ -209,6 +214,23 @@ def classify_address_mismatch(form_value: str | None, label_value: str) -> tuple
     return "HARD_FAILURE", None, None
 
 
+_ZIP_PLUS4_RE = re.compile(r"(\d{5})-\d{4}\b")
+
+
+def _normalize_address_for_match(address: str) -> str:
+    """Collapse a ZIP+4 to its 5-digit ZIP, then strip case/spacing/punctuation."""
+    return _strip_punctuation(_ZIP_PLUS4_RE.sub(r"\1", address))
+
+
+def address_matches(form_value: str | None, label_value: str) -> bool:
+    """Case/punctuation-insensitive address match (FR-103) that also treats a
+    ZIP+4 as equivalent to its 5-digit ZIP -- e.g. "123 Main St. Unit. 5,
+    Anytown, NJ 07055-0000" matches "123 Main St Unit 5, Anytown, NJ 07055"."""
+    if not form_value:
+        return False
+    return _normalize_address_for_match(form_value) == _normalize_address_for_match(label_value)
+
+
 # ---------------------------------------------------------------------------
 # 7.2 -- Brand Name comparison (FR-050-052)
 # ---------------------------------------------------------------------------
@@ -235,9 +257,62 @@ def compare_brand_name(
 # ---------------------------------------------------------------------------
 
 
+def _compare_government_warning_text(present: list[tuple[LabelParameter, dict]]) -> FieldComparison:
+    """7.3a -- the Government Warning statement text vs 27 CFR § 16.21 (FR-053).
+
+    A match that differs only in spacing, punctuation, or letter case (e.g. a
+    comma where the statute has a period before "(2)", or a missing trailing
+    period) is still a MATCH -- these differences don't change the substance of
+    the statutory warning. Anything else is HARD_FAILURE.
+    """
+    for lp, data in present:
+        text_found = data.get("text_found")
+        if text_found and _strip_punctuation(text_found) == _strip_punctuation(GOVERNMENT_WARNING_TEXT):
+            return FieldComparison("government_warning_text", None, text_found, "MATCH", None, None, lp.label_image_id)
+
+    best_lp, best_data = max(present, key=lambda pair: pair[0].confidence or 0.0)
+    text_found = best_data.get("text_found")
+    if not text_found:
+        return FieldComparison(
+            "government_warning_text",
+            None,
+            None,
+            "HARD_FAILURE",
+            None,
+            "Government Warning statement (27 CFR § 16.21) not found on any submitted label image.",
+            best_lp.label_image_id,
+        )
+    return FieldComparison(
+        "government_warning_text",
+        None,
+        text_found,
+        "HARD_FAILURE",
+        None,
+        "The Government Warning statement text does not match 27 CFR § 16.21.",
+        best_lp.label_image_id,
+    )
+
+
+def _compare_government_warning_flag(
+    present: list[tuple[LabelParameter, dict]], flag_key: str, field_name: str, failure_description: str
+) -> FieldComparison:
+    """7.3b/7.3c -- a Government Warning header formatting flag (FR-054/055)."""
+    for lp, data in present:
+        if data.get(flag_key) is True:
+            return FieldComparison(field_name, None, data.get("text_found"), "MATCH", None, None, lp.label_image_id)
+
+    best_lp, best_data = max(present, key=lambda pair: pair[0].confidence or 0.0)
+    return FieldComparison(
+        field_name, None, best_data.get("text_found"), "HARD_FAILURE", None, failure_description, best_lp.label_image_id
+    )
+
+
 def compare_government_warning(
     form_params: dict[str, FormParameter], application: Application, label_params: list[LabelParameter]
-) -> FieldComparison:
+) -> list[FieldComparison]:
+    """7.3 -- Government Warning comparison (FR-053-055), split into one row per
+    sub-check so a single formatting issue doesn't obscure an otherwise-correct
+    statement text (or vice versa)."""
     present: list[tuple[LabelParameter, dict]] = []
     for lp in label_params:
         if lp.field_name != "government_warning" or not lp.field_value:
@@ -250,30 +325,24 @@ def compare_government_warning(
             present.append((lp, data))
 
     if not present:
-        return FieldComparison(
-            "government_warning",
-            None,
-            None,
-            "HARD_FAILURE",
-            None,
-            "Government Warning statement (27 CFR § 16.21) not found on any submitted label image.",
-            None,
-        )
+        missing_note = "Government Warning statement (27 CFR § 16.21) not found on any submitted label image."
+        return [
+            FieldComparison("government_warning_text", None, None, "HARD_FAILURE", None, missing_note, None),
+            FieldComparison("government_warning_caps", None, None, "HARD_FAILURE", None, missing_note, None),
+            FieldComparison("government_warning_bold", None, None, "HARD_FAILURE", None, missing_note, None),
+        ]
 
-    for lp, data in present:
-        if data.get("text_exact_match") and data.get("header_all_caps") and data.get("header_bold"):
-            return FieldComparison("government_warning", None, lp.field_value, "MATCH", None, None, lp.label_image_id)
-
-    best_lp, best_data = max(present, key=lambda pair: pair[0].confidence or 0.0)
-    failures = []
-    if not best_data.get("text_exact_match"):
-        failures.append("the statement text does not exactly match 27 CFR § 16.21")
-    if not best_data.get("header_all_caps"):
-        failures.append('"GOVERNMENT WARNING:" is not in all capital letters')
-    if not best_data.get("header_bold"):
-        failures.append('"GOVERNMENT WARNING:" is not bold')
-    note = "; ".join(failures) + "."
-    return FieldComparison("government_warning", None, best_lp.field_value, "HARD_FAILURE", None, note, best_lp.label_image_id)
+    return [
+        _compare_government_warning_text(present),
+        _compare_government_warning_flag(
+            present, "header_all_caps", "government_warning_caps",
+            '"GOVERNMENT WARNING:" is not rendered in all capital letters.',
+        ),
+        _compare_government_warning_flag(
+            present, "header_bold", "government_warning_bold",
+            '"GOVERNMENT WARNING:" is not rendered in bold type.',
+        ),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -426,10 +495,14 @@ def compare_applicant_name(
         return None
 
     resolved = resolve_multi_image(
-        label_params, "bottler_name", form_value, matches=text_matches, classify_mismatch=classify_text_mismatch
+        label_params,
+        ["bottler_name", "importer_name"],
+        form_value,
+        matches=text_matches,
+        classify_mismatch=classify_text_mismatch,
     )
     result, section_v_ref, note = _missing_to_hard_failure(
-        resolved, "No bottler/producer name found on any submitted label image."
+        resolved, "No bottler/producer or importer name found on any submitted label image."
     )
     return FieldComparison("applicant_name", form_value, resolved.label_value, result, section_v_ref, note, resolved.label_image_id)
 
@@ -447,10 +520,14 @@ def compare_applicant_address(
         return None
 
     resolved = resolve_multi_image(
-        label_params, "bottler_address", form_value, matches=text_matches, classify_mismatch=classify_address_mismatch
+        label_params,
+        ["bottler_address", "importer_address"],
+        form_value,
+        matches=address_matches,
+        classify_mismatch=classify_address_mismatch,
     )
     result, section_v_ref, note = _missing_to_hard_failure(
-        resolved, "No bottler/producer address found on any submitted label image."
+        resolved, "No bottler/producer or importer address found on any submitted label image."
     )
     return FieldComparison("applicant_address", form_value, resolved.label_value, result, section_v_ref, note, resolved.label_image_id)
 

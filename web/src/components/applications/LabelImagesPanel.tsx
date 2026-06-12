@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { applicationsApi } from "@/lib/api-client";
+import { comparisonFieldFor, isFieldHighlighted } from "@/lib/field-mappings";
 import type { LabelImage, LabelParameter } from "@/lib/types";
 
 interface LabelBbox {
@@ -125,12 +126,12 @@ export function LabelImagesPanel({
                     preserveAspectRatio="none"
                   >
                     {overlays.map(({ param, bbox }) => {
-                      const isHovered = hoveredField === param.field_name;
+                      const isHovered = isFieldHighlighted(hoveredField, param.field_name, "label");
                       return (
                         <g
                           key={param.id}
                           className="pointer-events-auto cursor-pointer"
-                          onMouseEnter={() => onHoverField(param.field_name)}
+                          onMouseEnter={() => onHoverField(comparisonFieldFor(param.field_name))}
                           onMouseLeave={() => onHoverField(null)}
                         >
                           <rect
@@ -138,10 +139,22 @@ export function LabelImagesPanel({
                             y={bbox.y}
                             width={bbox.w}
                             height={bbox.h}
-                            fill={isHovered ? "rgba(37, 99, 235, 0.25)" : "rgba(250, 204, 21, 0.2)"}
-                            stroke={isHovered ? "#2563eb" : "#d97706"}
-                            strokeWidth={isHovered ? 2.5 : 1.5}
+                            fill={isHovered ? "rgba(37, 99, 235, 0.25)" : "transparent"}
+                            stroke={isHovered ? "#2563eb" : "none"}
+                            strokeWidth={isHovered ? 2.5 : 0}
                           />
+                          {isHovered && (
+                            <ellipse
+                              cx={bbox.x + bbox.w / 2}
+                              cy={bbox.y + bbox.h / 2}
+                              rx={bbox.w / 2 + 10}
+                              ry={bbox.h / 2 + 10}
+                              fill="none"
+                              stroke="#dc2626"
+                              strokeWidth={3}
+                              pointerEvents="none"
+                            />
+                          )}
                           <title>
                             {param.field_name}: {param.field_value ?? "(empty)"}
                           </title>

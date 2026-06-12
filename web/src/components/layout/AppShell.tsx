@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { ApiKeyStatusBanner } from "@/components/settings/ApiKeyStatusBanner";
 import { useAuth } from "@/hooks/useAuth";
 
 function initials(name: string): string {
@@ -60,6 +61,8 @@ export function AppShell() {
           </DropdownMenu>
         </div>
       </header>
+
+      <ApiKeyStatusBanner onOpenSettings={() => setSettingsOpen(true)} />
 
       <main className="flex-1 p-4">
         <Outlet />

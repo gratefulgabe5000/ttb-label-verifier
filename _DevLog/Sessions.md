@@ -574,5 +574,64 @@
 
 ---
 
+### Session 22: Backend — Government Warning 3-way refinement, Importer-vs-bottler matching, AI key status banner (post-12.0/13.0 polish)
+
+**Context:** With WBS 12.0/13.0 complete (Session 21), this session made a set of Stage 5 comparison-engine refinements within already-complete sub-items (7.3, 7.9, 7.10, 6.2) plus two small frontend additions, driven by review of real Claude Vision output for `application_id=2` and direct user feedback on the Government Warning rule.
+
+**Completed — Government Warning 3-way split + case/punctuation-tolerant MATCH (7.3 refinement, FR-053-055):**
+- `compare_government_warning()` now returns `list[FieldComparison]` (3 rows: `government_warning_text`, `government_warning_caps`, `government_warning_bold`) instead of one combined row, so a header-formatting issue no longer obscures an otherwise-correct statement (or vice versa). `run_comparisons()` already handled list-returning rules via `isinstance(outcome, list)`.
+- `_compare_government_warning_text()`: per user direction, label text that differs from 27 CFR § 16.21 only in letter case and/or punctuation (e.g. ALL CAPS rendering, a comma instead of a period before "(2)", a missing trailing period) is now a full **MATCH**, not `POSSIBLE_ALLOWABLE`/Sec. V 3b — collapsed from a two-tier check to a single `_strip_punctuation()` equality check.
+- New `FIELD_LABELS` entries (`app/services/determination_engine.py` + `web/src/lib/field-labels.ts`): "Government Warning — statement text (27 CFR § 16.21)", "— header in ALL CAPS", "— header in bold type". `ParameterResultsTable.tsx`'s Field column switched to `whitespace-normal` to accommodate the longer labels.
+- Tests: renamed `test_possible_allowable_on_punctuation_only_text_difference` → `test_match_on_punctuation_only_text_difference`; added `test_match_on_all_caps_and_punctuation_difference` (real-world case: ALL CAPS + comma + missing trailing period → MATCH).
+
+**Completed — Importer-vs-bottler matching for Item 8 (7.9/7.10 refinement, FR-102/103):**
+- `resolve_multi_image()`'s `field_name` parameter now accepts `str | list[str]`. `compare_applicant_name()`/`compare_applicant_address()` check Item 8 (Applicant Name/Address) against `["bottler_name", "importer_name"]` / `["bottler_address", "importer_address"]` — for imported products, Item 8 is filled in by the U.S. importer, but the label's bottler/producer fields usually identify the foreign manufacturer.
+- New `address_matches()` + `_normalize_address_for_match()` + `_ZIP_PLUS4_RE`: case/punctuation-insensitive address comparison that also treats a ZIP+4 as equivalent to its 5-digit ZIP.
+- `label_extraction.py`: new `importer_name`/`importer_address` SECONDARY_FIELDS, `LOCATION_HINTS`, and Claude Vision prompt schema entries ("back label, near 'Imported by'").
+- Tests: `test_match_against_importer_for_imported_product` (×2, name + address) and `test_match_ignores_case_punctuation_and_zip4`.
+- New "About..." section in `SettingsDialog.tsx` flags this as an open product question — not yet confirmed whether Item 8 should match the importer, the manufacturer, or either, for imported-item applications.
+
+**Completed — AI API key status banner + Windows Tesseract config:**
+- New `ApiKeyStatusBanner.tsx`, wired into `AppShell.tsx` between the header and `<main>`; new `API_KEY_QUERY_KEY` export in `api-client.ts` (shared with `SettingsDialog.tsx`).
+- New optional `tesseract_cmd` setting (`app/config.py`, `app/.env.example`) for Windows dev machines where pytesseract's binary isn't on PATH; `label_extraction.py` sets `pytesseract.pytesseract.tesseract_cmd` from it at import time if configured.
+
+**Verification:**
+- `app/.venv/Scripts/python.exe -m pytest -q` — **177/177 passing** (was 172/172), +5 new tests above.
+- `npx vitest run` (web/) — 13/13 passing (~3.8s, no OOM) — confirms Session 21's `FormPdfPanel`/`LabelImagesPanel` OOM fixes hold.
+- `npm run build` / `npm run lint` (web/) — clean.
+- Re-ran Stage 5/6 for `application_id=2` against its already-persisted Stage 3/4 results (no new Claude Vision calls): `government_warning_text` flipped `POSSIBLE_ALLOWABLE` (Sec. V 3b) → `MATCH`; overall recommendation flipped `RECOMMEND_EXEMPTION_REVIEW` → `APPROVE`.
+
+**Outcome:** Refinements to already-complete WBS items 6.2/7.3/7.9/7.10 — no new WBS line items, but WBS → v2.4 (revision history note + new §4 Note 8 on the open importer-vs-manufacturer question for Item 8). `TODO.md` pytest count updated to 177/177. Pending approval.
+
+---
+
+### Session 23: Government Warning Bold Corroboration (6.2/6.8 refinement) & Detail View Results Sidebar (13.0 polish)
+
+**Context:** Continuing Session 22's Government Warning refinements, re-processing `application_id=2` exposed a separate issue: Claude Vision's `header_bold` flag for the same label image flip-flopped between runs — `True` on an earlier run, `False` on a re-run — flipping `government_warning_bold` to `HARD_FAILURE` even though the header is genuinely bold. Once that was fixed and confirmed, the session moved on to UI feedback on the Application Detail View's visual clutter and information layout (post-WBS 13.0).
+
+**Completed — Government Warning bold-detection corroboration (6.2/6.8 refinement):**
+- `app/services/label_extraction.py`: added `temperature=0` to the Stage 4 `client.messages.create()` call in `extract_label_fields()`, reducing run-to-run non-determinism in Claude's `header_bold` flag.
+- New OCR-based corroboration for when Claude still reports `header_bold: False`: `_word_stroke_weight()` (distance-transform-based stroke-width/height ratio for a single OCR word) and `compute_header_stroke_ratio()` (ratio of the "GOVERNMENT WARNING" header's mean stroke weight to the body text's median stroke weight). New constant `HEADER_BOLD_STROKE_RATIO_THRESHOLD = 0.9`.
+- In `_process_label_image`, when Claude's `header_bold` is not already `True`, the stroke ratio is computed and `header_bold` is promoted to `True` if the ratio meets the threshold — i.e., OCR shows the header isn't lighter-weight than the body, contradicting Claude's "not bold" call.
+- Verified against the real `application_id=2` label image (`image_id=3`): `stroke_ratio = 1.026` ≥ 0.9 → would promote `header_bold` False→True.
+- Tests: `app/tests/test_label_extraction.py` — added a `temperature=0` assertion to `test_parses_simple_fields`; new `TestHeaderStrokeRatio` (4 tests, synthetic thick/thin-stroke canvases) and `TestHeaderBoldCorroboration` (4 tests, via `_process_label_image` with monkeypatched `run_ocr`/`compute_header_stroke_ratio`) — **198/198 pytest passing**.
+- **Confirmed by Gabe**: "it seems to process Application 2 correctly now!"
+
+**Completed — Detail View Results Sidebar (13.0 polish, per Gabe's UI feedback):**
+- `FormPdfPanel.tsx` / `LabelImagesPanel.tsx`: the SVG bounding-box overlay `<rect>`s are now invisible (`fill="transparent"`, `stroke="none"`) by default, becoming visible (blue highlight) only when the corresponding field is hovered or pinned — the form/label panels now render "without embellishment" until a reviewer actively inspects a field. The label panel's red cross-highlight ellipse was already conditional on hover/pin.
+- New `ResultsSidebar.tsx`: a right-hand sidebar (320px) whose top section holds a compact "Application #N — Applicant" title plus `DeterminationPanel` (Approve/Deny/Exemption-Review badge, Override button, Finalize button — moved here from the removed top section), and below it a Field | Status table — one row per comparison, hover/click wired to the same `hoveredField`/`pinnedField` state as the form/label panels (bidirectional cross-highlight + click-to-pin), plus the per-field "Override result..." context menu (moved here from the results table).
+- `ParameterResultsTable.tsx` (bottom table, kept): trimmed from 5 columns to 3 — Form Value | Label Value | Reference/Note. The Field and Result/status columns (and the override context menu) moved to `ResultsSidebar` per Gabe's direction, eliminating duplicate field-name/badge text between the two tables.
+- `DeterminationPanel.tsx`: root `flex items-center gap-2` → `flex flex-wrap items-center gap-2` so the badge/buttons wrap inside the narrow sidebar.
+- `ApplicationDetailPage.tsx`: removed the old top `Card` (the "Application #N — Applicant" title, the `status` outline badge, and `DeterminationPanel` — the status badge dropped entirely, the rest redistributed into the sidebar above). New layout is a `grid-cols-1 lg:grid-cols-[1fr_1fr_320px]` row of Form | Label | `ResultsSidebar`, with the trimmed `ParameterResultsTable` Card retained below.
+
+**Verification:**
+- `npx vitest run` (web/) — **15/15 passing**, no test edits required (the existing 13.x tests' "Application #1" / field-label / badge / `tr` assertions all still resolve correctly against the new sidebar).
+- `npx tsc --noEmit` (web/) — clean.
+- Dev servers (frontend :5173, backend :8000) were already running; `/applications/2` returns 200. No browser-automation tool was available this session to visually confirm hover/pin/cross-highlight behavior in-browser — flagged for Gabe to eyeball before considering this final.
+
+**Outcome:** Government Warning bold-detection now corroborated via OCR stroke-ratio (198/198 pytest, confirmed against real application 2 data). Detail View restructured per Gabe's UI feedback — overlays hidden until hover/pin, new `ResultsSidebar.tsx` consolidating field/status + determination controls, top section removed, `ParameterResultsTable` trimmed to avoid duplication (15/15 Vitest, `tsc` clean). No new WBS line items (refinements within already-complete 6.2/6.8 and 13.0). Pending Gabe's manual browser verification of the new sidebar/overlay behavior.
+
+---
+
 **TTB Label Verification System**
 *Copyright (c) 2026 Matthew Gabriel Sizemore · Assessment submission: IT Specialist (AI) · 26-DO-12891471-DH*

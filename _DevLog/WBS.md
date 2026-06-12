@@ -6,9 +6,9 @@
 | Field | Value |
 |-------|-------|
 | Document ID | TTB-LVS-WBS-001 |
-| Version | 2.2 |
+| Version | 2.4 |
 | Status | Draft |
-| Date | 2026-06-11 |
+| Date | 2026-06-12 |
 | Prepared By | Matthew Gabriel Sizemore |
 | Prepared For | US Department of the Treasury, TTB |
 | Assessment Reference | IT Specialist (AI) · 26-DO-12891471-DH |
@@ -22,6 +22,7 @@
 | 2.1 | 2026-06-11 | M.G. Sizemore | Re-sequenced execution order: pulled **WBS 12.0** (Agent Dashboard) and **13.0** (Application Detail View) forward, ahead of 6.0–10.0, to enable incremental manual UI verification as backend stages land. Split each into **Pass 1** (sub-items buildable now against completed 1.0/3.0/4.0/5.0/11.0 — annotated below) and **Pass 2** (sub-items requiring 6.0–10.0 — deferred and revisited after 10.0, before 14.0). Dependency graph (§2) unchanged; §3 and §4 updated with the new execution order and rationale (§4 Note 7). |
 | 2.2 | 2026-06-12 | M.G. Sizemore | Updated Sections 1 and 2 to include a status column |
 | 2.3 | 2026-06-12 | M.G. Sizemore | Marked WBS 12.0/13.0 (all sub-items, 12.4–12.6/12.8/13.5–13.12) complete — Pass 2 implementation finished (Session 21) |
+| 2.4 | 2026-06-12 | M.G. Sizemore | Session 22 refinements within already-complete 6.2/7.3/7.9/7.10 — Government Warning 3-way split with case/punctuation-tolerant MATCH, importer-vs-bottler matching for Item 8 with ZIP+4-tolerant address comparison; no new line items. Added §4 Note 8 (open product question: importer vs. manufacturer for Item 8 on imported products) |
 
 ---
 
@@ -281,6 +282,8 @@ Rationale: front-loading the buildable frontend surfaces lets the user manually 
 6. **2.0 (Synthetic Test Data) is a hard prerequisite for nearly every test item** (5.7, 6.8, 7.16, 8.5, 9.7, 10.4, 16.1–16.6, 17.4). Completing 2.1–2.7 early — in parallel with 1.0 — avoids any backend coding item stalling at its paired unit-test sub-item for lack of fixtures.
 
 7. **(v2.1) 12.0/13.0 re-sequencing:** WBS 12.0 and 13.0 were pulled forward ahead of 6.0–10.0 (Pass 1: 12.2, 12.3, 13.1–13.4 + `_to_detail()` fix), with the remainder (Pass 2: 12.4–12.6, 13.5–13.11) deferred until 6.0–10.0 land. This is safe because Pass 1 items depend only on 1.0/3.0/4.0/5.0/11.0 (all complete) — the dependency graph in §2 is unchanged, only the execution order. Pass 2 items retain their original dependencies (9.4/9.5, 8.4, 6.7, 7.15/9.6, 10.1/10.2) and cannot start until those land regardless of this re-sequencing.
+
+8. **(v2.4) Open product question — importer vs. manufacturer for Item 8 on imported products:** For "Imported" applications, Item 8 (Applicant Name/Address) is filled in by the U.S. importer, but the label's bottler/producer fields usually identify the foreign manufacturer. 7.9/7.10 now check Item 8 against both the label's bottler and importer fields (`compare_applicant_name`/`compare_applicant_address`, OR-match across `["bottler_name","importer_name"]` / `["bottler_address","importer_address"]`), but it is not yet confirmed whether Item 8 should always be expected to match the importer, the manufacturer, or either. Flagged in the frontend Settings dialog ("About..." section) for end-user/product-team resolution before relying on automated determinations for imported-product applications — relevant to 16.1 (per-product-type pipeline test) and 17.4 (edge-case walkthrough).
 
 ---
 

@@ -46,7 +46,7 @@ export function DeterminationPanel({ application }: DeterminationPanelProps) {
   const isFinalized = determination.finalized_at !== null;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <RecommendationBadge recommendation={effective} />
       {determination.agent_override && (
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
