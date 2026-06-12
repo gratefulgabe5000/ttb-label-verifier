@@ -528,5 +528,51 @@
 
 ---
 
+## 2026-06-12
+
+### Session 21: Frontend — WBS 12.0/13.0 Pass 2 (Dashboard Process/Badges/Summary, Detail View Overlays/Cross-Highlight/Results Table/Overrides/Finalize) — completes WBS 12.0 and 13.0
+
+**Context:** With WBS 10.0 complete (Session 20), this session executed Pass 2 of the 12.0/13.0 re-sequencing (WBS v2.1 §4 Note 7) — completing the Agent Dashboard and Application Detail View against the now-complete backend (`/batch/process`, `/batch/{id}/status`, `/applications/{id}/comparisons`, `/determinations/{id}/override`, `/determinations/{id}/finalize`, `/batch/{id}/report`).
+
+**Completed — Shared frontend updates (prerequisite):**
+- `lib/types.ts`/`lib/api-client.ts`: replaced the placeholder `BatchStatus`/`Batch`/`debugApi` shapes with types matching the actual WBS 9.0/10.0 schemas — `BatchStatus` (`total`/`completed`/`approved_count`/`denied_count`/`exemption_count`/`applications: BatchApplicationStatus[]`), new `BatchReport extends BatchStatus` (`most_common_failure`), `OverrideDeterminationRequest.field` made optional/nullable (overall vs. per-parameter override per FR-086/089), new `OverrideResult` type, and `Comparison` extended with `label_image_id`/`agent_override`/`override_by`/`override_reason`/`override_at`. Removed the TEMPORARY `debugApi`/`/debug/extract` client (superseded by WBS 9.0's `/process`).
+- New `lib/field-labels.ts`: shared `FIELD_LABELS` map + `fieldLabel()` helper, mirroring `app/services/determination_engine.py`'s `FIELD_LABELS` (FR-085/097), used by the Detail View results table and override dialogs.
+- Removed `DebugParametersDialog.tsx` (the TEMPORARY Stage 3/4 manual-run UI from Sessions 15/19) and its usage in `ApplicationDetailPage.tsx`, replaced by the new `DeterminationPanel`.
+
+**Completed — 12.4/12.5/12.6 (Dashboard — Process Selected, badges, batch summary):**
+- `DashboardPage.tsx`: "Process Selected" button calls `batchApi.process()` (FR-074), then polls `batchApi.status(batchId)` via a React Query `refetchInterval` (1s, until `status === "COMPLETE"`, FR-075).
+- New `RecommendationBadge.tsx` — color-coded APPROVE/DENY/RECOMMEND_EXEMPTION_REVIEW badge, added as a "Result" column on the dashboard table (FR-076).
+- Batch summary header: shows live progress ("Processing batch #N: X of Y...") while running, then final approved/denied/exemption-review counts once complete (FR-077).
+
+**Completed — 13.5/13.6/13.11 (Detail View — label panel overlay, cross-highlight, auto-tab-switch):**
+- `LabelImagesPanel.tsx`: added an SVG annotation overlay per label image, positioned via `label_parameters.bbox_json` (FR-083), with hover-driven cross-highlight color (`#2563eb` when hovered, `#d97706` otherwise) shared with the form-panel overlay via `hoveredField`/`onHoverField` (FR-084).
+- `ApplicationDetailPage.tsx`: computes an `effectiveLabelImageId` during render — when the hovered field has a matching comparison with a `label_image_id`, that image's tab becomes active; otherwise falls back to the agent's last manually-selected tab (FR-091/13.11).
+
+**Completed — 13.7/13.8/13.9 (Detail View — results table, per-field override, overall override):**
+- New `ParameterResultsTable.tsx`: renders `comparisons` (FR-085) with a new `ComparisonResultBadge`, a combined section-V-reference/note column, and hover-driven cross-highlight; when `determinationId !== null && !finalized`, each row is wrapped in a `ContextMenu` with an "Override result..." item opening a shared `OverrideDialog` (FR-086/087).
+- New `OverrideDialog.tsx` (shared by per-field and overall overrides): select-new-value + required-reason form, posts to `determinationsApi.override()` (FR-088, SR-004 audit trail), invalidates `["application", id]`/`["comparisons", id]` on success.
+- New `DeterminationPanel.tsx`: shows the overall recommendation (`RecommendationBadge`, with an "overridden from ..." note when `agent_override` is set), an "Override" button opening `OverrideDialog` with `field: null` (FR-089), and a "Finalize" button.
+
+**Completed — 13.10 (Detail View — finalize):**
+- `DeterminationPanel.tsx`: "Finalize" button calls `determinationsApi.finalize(determination.id)` (FR-090); on success swaps the "Override"/"Finalize" buttons for a "Finalized" badge.
+
+**Completed — 12.8/13.12 (Vitest coverage):**
+- `DashboardPage.test.tsx`: +2 tests — "processes selected applications and shows the batch summary header" (12.4/12.6) and "shows recommendation result badges for applications in the batch result" (12.5).
+- `ApplicationDetailPage.test.tsx`: +5 tests — label-panel SVG overlay (13.5), parameter results table from comparisons (13.7), cross-highlight + auto-tab-switch (13.6/13.11), overall override + finalize (13.9/13.10), and context-menu per-field override (13.8). **13/13 tests passing** across both files (~3.9s).
+
+**Bug fixes found via the new tests (real bugs, not test-only):**
+- `FormPdfPanel.tsx`: inline `onLoadSuccess` handlers passed to `<Document>`/`<Page>` got a new function reference every render; combined with `setPageSize({...newObject})` always producing a new object reference, this created an infinite render→effect→setState loop (530s OOM in the test runner). Fixed by memoizing both handlers with `useCallback(fn, [])`.
+- `LabelImagesPanel.tsx`: the `<img onLoad>` handler read `event.currentTarget.naturalWidth`/`naturalHeight` inside a deferred functional `setState` updater — React nulls `currentTarget` after the synchronous handler returns, causing `TypeError: Cannot read properties of null`. Fixed by destructuring `naturalWidth`/`naturalHeight` synchronously before constructing the updater.
+- `OverrideDialog.tsx` / `ApplicationDetailPage.tsx`: ESLint's `react-hooks/set-state-in-effect` flagged two `useEffect`s that called `setState` synchronously on mount/prop-change. `OverrideDialog` now resets `overrideValue`/`reason` via the React-recommended "adjust state during render" pattern (compares `open` against a `prevOpen` state); `ApplicationDetailPage`'s hover→auto-tab-switch logic was removed entirely in favor of the `effectiveLabelImageId` render-time computation above (also resolved a `react-hooks/exhaustive-deps` warning).
+
+**Verification:**
+- `npx vitest run` — 13/13 passing (~3.9s, no hangs/OOM).
+- `npm run build` — clean (`tsc -b && vite build`).
+- `npm run lint` — clean (0 errors, 0 warnings).
+
+**Outcome:** WBS 12.0 and 13.0 **complete in full** (all sub-items, including 12.8/13.12 unit-test coverage) — WBS → v2.3. This completes the 12.0/13.0 re-sequencing from WBS v2.1 §4 Note 7. `TODO.md` updated (status table, checklist, "Next Session" reoriented to WBS 14.0, Batch Report View). Pending approval.
+
+---
+
 **TTB Label Verification System**
 *Copyright (c) 2026 Matthew Gabriel Sizemore · Assessment submission: IT Specialist (AI) · 26-DO-12891471-DH*

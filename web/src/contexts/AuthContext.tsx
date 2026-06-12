@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { AUTH_TOKEN_KEY, authApi } from "@/lib/api-client";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { AUTH_TOKEN_KEY, AUTH_UNAUTHORIZED_EVENT, authApi } from "@/lib/api-client";
 import { AuthContext, type AgentClaims, type AuthContextValue } from "./auth-context";
 
 function decodeAgentClaims(token: string): AgentClaims | null {
@@ -25,6 +25,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     setToken(null);
   }, []);
+
+  // A 401 from any API call means the stored token is expired/invalid —
+  // clear it so ProtectedRoute redirects to /login.
+  useEffect(() => {
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, logout);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, logout);
+  }, [logout]);
 
   const agent = useMemo(() => (token ? decodeAgentClaims(token) : null), [token]);
 

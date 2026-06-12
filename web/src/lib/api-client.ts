@@ -2,19 +2,29 @@ import type {
   ApiKeyStatus,
   Application,
   ApplicationDetail,
-  Batch,
   BatchProcessRequest,
+  BatchReport,
   BatchStatus,
   Comparison,
   Determination,
   LoginRequest,
   LoginResponse,
   OverrideDeterminationRequest,
+  OverrideResult,
 } from "./types";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 export const AUTH_TOKEN_KEY = "ttb_lvs_token";
+
+// Dispatched on any 401 response so AuthContext can clear the (expired/invalid)
+// session and ProtectedRoute can redirect to /login.
+export const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
+
+function handleUnauthorized() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
+}
 
 export class ApiError extends Error {
   status: number;
@@ -40,6 +50,9 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      handleUnauthorized();
+    }
     const body = await response.json().catch(() => null);
     const message =
       (body && typeof body === "object" && "detail" in body && String(body.detail)) ||
@@ -66,6 +79,9 @@ async function apiFetchBlob(path: string): Promise<Blob> {
   const response = await fetch(`${API_BASE_URL}${path}`, { headers });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      handleUnauthorized();
+    }
     throw new ApiError(response.status, response.statusText || "Request failed");
   }
   return response.blob();
@@ -142,19 +158,12 @@ export const batchApi = {
   process: (request: BatchProcessRequest) =>
     apiFetch<BatchStatus>("/batch/process", { method: "POST", body: JSON.stringify(request) }),
   status: (id: number) => apiFetch<BatchStatus>(`/batch/${id}/status`),
-  report: (id: number) => apiFetch<Batch>(`/batch/${id}/report`),
-};
-
-// TEMPORARY (manual verification of WBS 5.0/6.0) — runs Stage 3 + Stage 4
-// extraction and persists the results. Superseded by WBS 9.0 orchestration.
-export const debugApi = {
-  runExtraction: (applicationId: number) =>
-    apiFetch<ApplicationDetail>(`/applications/${applicationId}/debug/extract`, { method: "POST" }),
+  report: (id: number) => apiFetch<BatchReport>(`/batch/${id}/report`),
 };
 
 export const determinationsApi = {
   override: (id: number, request: OverrideDeterminationRequest) =>
-    apiFetch<Determination>(`/determinations/${id}/override`, {
+    apiFetch<OverrideResult>(`/determinations/${id}/override`, {
       method: "POST",
       body: JSON.stringify(request),
     }),

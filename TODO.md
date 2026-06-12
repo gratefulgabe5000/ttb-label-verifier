@@ -3,7 +3,7 @@
 **Assessment:** IT Specialist (AI) · 26-DO-12891471-DH
 **Received:** June 9, 2026, 1458 hrs · **Deadline:** June 16, 2026, 1458 hrs
 **Repo:** https://github.com/gratefulgabe5000/ttb-label-verifier
-**Documentation Baseline:** v2.0 — README, PRD (v2.0), DevLog, and TODO are mutually consistent as of Session 9 (2026-06-11); WBS bumped to v2.1 same day for the 12.0/13.0 re-sequencing (§4 Note 7)
+**Documentation Baseline:** v2.0 — README, PRD (v2.0), DevLog, and TODO are mutually consistent as of Session 9 (2026-06-11); WBS bumped to v2.1 same day for the 12.0/13.0 re-sequencing (§4 Note 7), then to v2.3 (2026-06-12) marking the 12.0/13.0 re-sequencing complete (Session 21)
 
 ---
 
@@ -20,17 +20,15 @@
 | Mermaid diagrams (system context, block diagram, concurrency sequence) | ✅ Complete (2026-06-10) — DevLog §3.7 |
 | Work Breakdown Structure | ✅ Complete, re-baselined to v2.0 (2026-06-11) — [`WBS.md` v2.0](_DevLog/WBS.md) |
 | Backend (`app/`) | ✅ Complete — Scaffolding + Auth + Ingestion + Form Assessment + Label Assessment + Comparison Engine + Determination & Reporting + Pipeline Orchestration & Batch Processing + Overrides/Finalize/Batch Report (WBS 1.0, 3.0–10.0; 172/172 pytest passing, Railway config) |
-| Frontend (`web/`) | 🔶 Scaffolding complete (WBS 11.0 + Settings/API-key UI, build & lint passing). **12.0/13.0 re-sequenced ahead of 6.0 (WBS.md v2.1)** — Pass 1 (12.1–12.3, 12.7, 13.1–13.4) ✅ done, incl. Vitest setup + tests (12.8/13.12 partial); Pass 2 (12.4–12.6, 13.5–13.11) and 14.0 remain |
+| Frontend (`web/`) | ✅ WBS 11.0–13.0 complete (build & lint passing, 13/13 Vitest). **12.0/13.0 re-sequencing (WBS.md v2.1 §4 Note 7) finished (Session 21, WBS.md v2.3)** — Agent Dashboard + Application Detail View fully wired to the backend; WBS 14.0 (Batch Report view) remains |
 | Synthetic test data (sample forms + multi-image label sets) | ✅ 2.1–2.7 complete — ALL OF WBS 2.0 DONE (`testdata/manifest.json` — 45 products / 88 images; `testdata/forms/sample_creek_*.pdf` — TS-01 3-tier fixtures; `testdata/forms/good_*.pdf` + `testdata/forms/hf_*.pdf` + `testdata/forms/ar_*.pdf` + `testdata/forms/type14b_*.pdf` + `testdata/test_sets.json` — 2.3 "good" sets + 2.4 "hard failure" sets + 2.5 "possible allowable revision" sets + 2.7 Type 14b set; `testdata/degraded/*.jpg` + `testdata/degraded_images.json` — 2.6 degraded-image fixtures for FR-039; `testdata/synthetic/*.jpg` — synthetic statement-label fixture for FR-056) |
 | Deployed application URL | ☐ Pending — WBS 18.0 |
 
 ---
 
-## Next Session — WBS 12.0/13.0 Pass 2: Agent Dashboard & Detail View
+## Next Session — WBS 14.0: Batch Report View
 
-With WBS 1.0 and 3.0–10.0 complete, the entire backend (`app/`) is done (172/172 pytest passing). Return to **WBS 12.0/13.0 Pass 2** per [`WBS.md` v2.1](_DevLog/WBS.md) §4 Note 7: Dashboard "Process Selected" action + progress polling against `/batch/process`/`/batch/{id}/status` (12.4), plus 12.5/12.6 and remaining 12.8 coverage; Application Detail View's parameter results table (13.7, against `/applications/{id}/comparisons`), right-click override context menu + modal (13.8, `/determinations/{id}/override`), overall-determination override control (13.9), finalize action (13.10), 13.11, and remaining 13.12 coverage.
-
-After WBS 12.0/13.0 Pass 2 lands, proceed to **WBS 14.0** (Batch Report view, against `/batch/{id}/report`).
+With WBS 1.0, 3.0–13.0 complete (backend 172/172 pytest passing; frontend 13/13 Vitest passing, build & lint clean), the 12.0/13.0 re-sequencing from [`WBS.md` v2.1](_DevLog/WBS.md) §4 Note 7 is finished (WBS.md v2.3, Session 21). Next up is **WBS 14.0** — the Batch Report view: a page showing per-batch counts (approved/denied/exemption review), the most-common-failure-type summary, and CSV/PDF export, backed by the already-implemented `GET /batch/{id}/report` (`BatchReportOut`, Session 20), plus unit tests (14.x coverage).
 
 ---
 
@@ -38,7 +36,7 @@ After WBS 12.0/13.0 Pass 2 lands, proceed to **WBS 14.0** (Batch Report view, ag
 
 > Sequencing, dependencies, and traceability for all items below are in [`WBS.md` v2.1 — Work Breakdown Structure](_DevLog/WBS.md) §2.
 >
-> **Execution order override (v2.1, 2026-06-11):** WBS 12.0/13.0 pulled forward — Pass 1 (12.1–12.3, 12.7, 13.1–13.4) ✅ complete (Session 15), ahead of 6.0; Pass 2 (12.4–12.6, 13.5–13.11) executes after 10.0, before 14.0. See [`WBS.md`](_DevLog/WBS.md) §4 Note 7.
+> **Execution order override (v2.1, 2026-06-11):** WBS 12.0/13.0 pulled forward — Pass 1 (12.1–12.3, 12.7, 13.1–13.4) ✅ complete (Session 15), ahead of 6.0; Pass 2 (12.4–12.6, 13.5–13.11) ✅ complete (Session 21), after 10.0, before 14.0. See [`WBS.md`](_DevLog/WBS.md) §4 Note 7.
 
 - [x] WBS 1.0 — Backend scaffolding (`app/`): FastAPI structure, SQLAlchemy models for all 8 tables, env config, CORS, early Railway smoke-test deploy (Session 10)
 - [x] WBS 2.0 — Synthetic test data (parallel w/ 1.0): sample F 5100.31 PDFs across all 3 TS-01 tiers + multi-image label sets (good / hard-failure / allowable / degraded / 14b) — **2.1–2.7 done, ALL COMPLETE** (`testdata/manifest.json`, Session 10; `testdata/forms/sample_creek_*.pdf`, Session 11; `testdata/forms/good_*.pdf` + `testdata/forms/hf_*.pdf` + `testdata/forms/ar_*.pdf` + `testdata/forms/type14b_*.pdf` + `testdata/test_sets.json`, Session 11; `testdata/degraded/*.jpg` + `testdata/degraded_images.json` + `testdata/synthetic/*.jpg`, Session 11)
@@ -51,8 +49,8 @@ After WBS 12.0/13.0 Pass 2 lands, proceed to **WBS 14.0** (Batch Report view, ag
 - [x] WBS 9.0 — Pipeline orchestration + Batch Orchestrator (bounded concurrency), unit/integration tests — **COMPLETE** (`app/services/pipeline.py` — single-application orchestration, IA-24 concurrent-compute/sequential-persist; `app/services/batch_service.py` — bounded-concurrency batch orchestrator (A-07/IA-17) + batch summary; `app/models/batch.py`, `app/schemas/batch.py`, `app/routers/batch.py`; `POST /applications/{id}/process` + `GET /applications/{id}/comparisons` added to `app/routers/applications.py` (replacing the temporary `/debug/extract` endpoint); `app/tests/test_pipeline.py` + `app/tests/test_batch.py`; 161/161 pytest passing, Session 19)
 - [x] WBS 10.0 — Overrides, finalize, batch report endpoints, unit tests — **COMPLETE** (`app/services/override_service.py` — per-parameter (10.1) and overall (10.1) determination overrides with FR-088/SR-004 audit trail, finalize (10.2, FR-090/A-15); `app/routers/determinations.py` — `POST /determinations/{id}/override` + `POST /determinations/{id}/finalize`; `app/schemas/determination.py`; override columns added to `app/models/comparison.py` + `ComparisonOut`; `app/services/batch_service.get_batch_report()` + `BatchReportOut` + `GET /batch/{id}/report` (10.3, FR-095-097); `app/tests/test_determinations.py` + additions to `app/tests/test_batch.py`; 172/172 pytest passing, Session 20)
 - [x] WBS 11.0 — Frontend scaffolding (`web/`): Vite + React + TS + Tailwind + shadcn/ui + react-pdf + API client, plus new Settings/API-key UI (Session 10)
-- [ ] WBS 12.0 — Agent Dashboard (list, filter, batch select, process, badges, upload modal, unit tests) — **Pass 1 (12.1-12.3, 12.7) ✅ complete**, incl. 12.8 partial (Vitest); Pass 2 (after 10.0): 12.4-12.6, remaining 12.8
-- [ ] WBS 13.0 — Application Detail View (split view, multi-image tabs, annotation overlays, cross-highlight, overrides, finalize, unit tests) — **Pass 1 (13.1-13.4) ✅ complete**, incl. 13.12 partial (Vitest) — verified against the "Test Upload" application from Session 13's WBS 4.0 manual test (1 PDF + 2 label images); Pass 2 (after 10.0): 13.5-13.11, remaining 13.12
+- [x] WBS 12.0 — Agent Dashboard (list, filter, batch select, process, badges, upload modal, unit tests) — **COMPLETE** (Pass 1: 12.1-12.3/12.7, Session 15; Pass 2: 12.4-12.6/12.8, Session 21)
+- [x] WBS 13.0 — Application Detail View (split view, multi-image tabs, annotation overlays, cross-highlight, overrides, finalize, unit tests) — **COMPLETE** (Pass 1: 13.1-13.4, Session 15; Pass 2: 13.5-13.12, Session 21)
 - [ ] WBS 14.0 — Batch Report view (counts, common failure type, CSV/PDF export, unit tests)
 - [ ] WBS 15.0 — Integration: wire frontend to backend (Dashboard, Detail View, Batch Report, auth, error handling)
 - [ ] WBS 16.0 — Integration testing against synthetic data (per-product-type pipeline, PR-001 timing, batch concurrency, multi-image resolution, override/finalize, annotation placement)

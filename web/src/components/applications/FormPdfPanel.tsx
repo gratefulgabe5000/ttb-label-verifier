@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,8 @@ interface PageSize {
 interface FormPdfPanelProps {
   applicationId: number;
   formParameters: FormParameter[];
+  hoveredField: string | null;
+  onHoverField: (field: string | null) => void;
 }
 
 function parseBbox(bboxJson: string | null): FormBbox | null {
@@ -39,12 +41,24 @@ function parseBbox(bboxJson: string | null): FormBbox | null {
   }
 }
 
-export function FormPdfPanel({ applicationId, formParameters }: FormPdfPanelProps) {
+export function FormPdfPanel({ applicationId, formParameters, hoveredField, onHoverField }: FormPdfPanelProps) {
   const [blob, setBlob] = useState<Blob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize | null>(null);
+
+  const handleDocumentLoadSuccess = useCallback((pdf: { numPages: number }) => setNumPages(pdf.numPages), []);
+  const handlePageLoadSuccess = useCallback(
+    (page: { width: number; height: number; originalWidth: number; originalHeight: number }) =>
+      setPageSize({
+        width: page.width,
+        height: page.height,
+        originalWidth: page.originalWidth,
+        originalHeight: page.originalHeight,
+      }),
+    []
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +93,7 @@ export function FormPdfPanel({ applicationId, formParameters }: FormPdfPanelProp
     <div className="space-y-2">
       <Document
         file={blob}
-        onLoadSuccess={(pdf) => setNumPages(pdf.numPages)}
+        onLoadSuccess={handleDocumentLoadSuccess}
         onLoadError={() => setError("Failed to render application form.")}
         loading={<p className="text-sm text-muted-foreground">Rendering form...</p>}
       >
@@ -89,14 +103,7 @@ export function FormPdfPanel({ applicationId, formParameters }: FormPdfPanelProp
             width={520}
             renderTextLayer={false}
             renderAnnotationLayer={false}
-            onLoadSuccess={(page) =>
-              setPageSize({
-                width: page.width,
-                height: page.height,
-                originalWidth: page.originalWidth,
-                originalHeight: page.originalHeight,
-              })
-            }
+            onLoadSuccess={handlePageLoadSuccess}
           />
           {pageSize && overlays.length > 0 && (
             <svg
@@ -105,22 +112,30 @@ export function FormPdfPanel({ applicationId, formParameters }: FormPdfPanelProp
               height={pageSize.height}
               viewBox={`0 0 ${pageSize.originalWidth} ${pageSize.originalHeight}`}
             >
-              {overlays.map(({ param, bbox }) => (
-                <g key={param.id}>
-                  <rect
-                    x={bbox.x}
-                    y={bbox.y}
-                    width={bbox.w}
-                    height={bbox.h}
-                    fill="rgba(250, 204, 21, 0.2)"
-                    stroke="#d97706"
-                    strokeWidth={1.5}
-                  />
-                  <title>
-                    {param.field_name}: {param.field_value ?? "(empty)"}
-                  </title>
-                </g>
-              ))}
+              {overlays.map(({ param, bbox }) => {
+                const isHovered = hoveredField === param.field_name;
+                return (
+                  <g
+                    key={param.id}
+                    className="pointer-events-auto cursor-pointer"
+                    onMouseEnter={() => onHoverField(param.field_name)}
+                    onMouseLeave={() => onHoverField(null)}
+                  >
+                    <rect
+                      x={bbox.x}
+                      y={bbox.y}
+                      width={bbox.w}
+                      height={bbox.h}
+                      fill={isHovered ? "rgba(37, 99, 235, 0.25)" : "rgba(250, 204, 21, 0.2)"}
+                      stroke={isHovered ? "#2563eb" : "#d97706"}
+                      strokeWidth={isHovered ? 2.5 : 1.5}
+                    />
+                    <title>
+                      {param.field_name}: {param.field_value ?? "(empty)"}
+                    </title>
+                  </g>
+                );
+              })}
             </svg>
           )}
         </div>

@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { DashboardPage } from "./DashboardPage";
-import { applicationsApi } from "@/lib/api-client";
-import type { Application } from "@/lib/types";
+import { applicationsApi, batchApi } from "@/lib/api-client";
+import type { Application, BatchStatus } from "@/lib/types";
 
 const BASE_APPLICATION: Omit<Application, "id" | "applicant_name" | "serial_number"> = {
   year: null,
@@ -32,6 +32,22 @@ const APPLICATIONS: Application[] = [
   { ...BASE_APPLICATION, id: 1, applicant_name: "Stoll & Wolfe Distillery", serial_number: "25304001000123" },
   { ...BASE_APPLICATION, id: 2, applicant_name: "Acme Beverage Co", serial_number: "25304001000456" },
 ];
+
+const BATCH_STATUS: BatchStatus = {
+  id: 99,
+  status: "COMPLETE",
+  total: 2,
+  completed: 2,
+  approved_count: 1,
+  denied_count: 1,
+  exemption_count: 0,
+  applications: [
+    { id: 1, status: "COMPLETE", recommendation: "APPROVE" },
+    { id: 2, status: "COMPLETE", recommendation: "DENY" },
+  ],
+  created_at: "2026-06-12T00:00:00Z",
+  completed_at: "2026-06-12T00:01:00Z",
+};
 
 function renderDashboard() {
   const queryClient = new QueryClient();
@@ -86,5 +102,39 @@ describe("DashboardPage", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+  });
+
+  it("processes selected applications and shows the batch summary header (12.4/12.6)", async () => {
+    vi.spyOn(batchApi, "process").mockResolvedValue(BATCH_STATUS);
+    vi.spyOn(batchApi, "status").mockResolvedValue(BATCH_STATUS);
+
+    renderDashboard();
+    await screen.findByText("Stoll & Wolfe Distillery");
+
+    await userEvent.click(screen.getAllByRole("checkbox")[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Process Selected" }));
+
+    await waitFor(() => {
+      expect(batchApi.process).toHaveBeenCalledWith({ application_ids: [1] });
+    });
+
+    expect(await screen.findByText("Batch #99: 2 of 2 processed")).toBeInTheDocument();
+    expect(screen.getByText("1 approved")).toBeInTheDocument();
+    expect(screen.getByText("1 denied")).toBeInTheDocument();
+    expect(screen.getByText("0 exemption review")).toBeInTheDocument();
+  });
+
+  it("shows recommendation result badges for applications in the batch result (12.5)", async () => {
+    vi.spyOn(batchApi, "process").mockResolvedValue(BATCH_STATUS);
+    vi.spyOn(batchApi, "status").mockResolvedValue(BATCH_STATUS);
+
+    renderDashboard();
+    await screen.findByText("Stoll & Wolfe Distillery");
+
+    await userEvent.click(screen.getAllByRole("checkbox")[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Process Selected" }));
+
+    expect(await screen.findByText("Approve")).toBeInTheDocument();
+    expect(screen.getByText("Deny")).toBeInTheDocument();
   });
 });

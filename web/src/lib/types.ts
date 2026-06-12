@@ -102,7 +102,12 @@ export interface Comparison {
   result: ComparisonResult;
   section_v_ref: string | null;
   note: string | null;
+  label_image_id: number | null;
   created_at: string;
+  agent_override: ComparisonResult | null;
+  override_by: number | null;
+  override_reason: string | null;
+  override_at: string | null;
 }
 
 export interface Determination {
@@ -155,17 +160,44 @@ export interface BatchProcessRequest {
   application_ids: number[];
 }
 
+export interface BatchApplicationStatus {
+  id: number;
+  status: ApplicationStatus;
+  recommendation: Recommendation | null;
+}
+
 export interface BatchStatus {
   id: number;
-  status: "PENDING" | "PROCESSING" | "COMPLETE" | "FAILED";
-  application_ids: number[];
-  results: Record<number, ApplicationStatus>;
+  status: "PROCESSING" | "COMPLETE";
+  total: number;
+  completed: number;
+  approved_count: number;
+  denied_count: number;
+  exemption_count: number;
+  applications: BatchApplicationStatus[];
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface BatchReport extends BatchStatus {
+  most_common_failure: string | null;
 }
 
 export interface OverrideDeterminationRequest {
-  field: string;
+  // omitted/null => overall determination override (FR-089); set => per-parameter (FR-086-088)
+  field?: string | null;
   override_value: string;
   reason: string;
+}
+
+export interface OverrideResult {
+  application_id: number;
+  field: string | null;
+  original_value: string | null;
+  override_value: string;
+  override_by: number;
+  override_reason: string;
+  override_at: string;
 }
 
 // --- Settings / API key (runtime-only, never persisted) ---
