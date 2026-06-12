@@ -466,5 +466,38 @@
 
 ---
 
+### Session 19: Backend — Pipeline Orchestration & Batch Processing — completes WBS 9.0
+
+**Context:** With Stages 3-6 implemented as standalone services (WBS 5.0-8.0), this session wires them together into the actual request-handling pipeline — a single-application orchestrator (9.1-9.2), a bounded-concurrency batch orchestrator (9.3-9.5), and the comparisons read endpoint (9.6) — per WBS 9.0 (FR-074-077, A-07, IA-17, IA-24).
+
+**Completed — 9.1 (Single-application orchestrator):**
+- `app/services/pipeline.py`: `run_extraction()` runs Stage 3 (form, via `asyncio.to_thread`) and Stage 4 (label) concurrently via `asyncio.gather` (IA-24 concurrent-compute). `persist_extraction_and_run_stages_5_6()` persists the Stage 3/4 results, then runs and persists Stage 5 (comparison) and Stage 6 (determination) against the persisted rows (IA-24 sequential-persist). `process_application()` ties both together, setting `status = "PROCESSING"` at the start and `status = "ERROR"` if Stage 3/4 extraction raises.
+
+**Completed — 9.2 (`POST /applications/{id}/process`):**
+- `app/routers/applications.py`: new `process_application` endpoint (FR-074) — 404s for applications not owned by the calling agent, otherwise runs `pipeline.process_application()` and returns the full `ApplicationDetailOut`.
+- Removed the TEMPORARY `/debug/extract` endpoint and its test (`test_applications.py`), now superseded by `/process`.
+
+**Completed — 9.3 (Batch Orchestrator — bounded concurrency):**
+- `app/services/batch_service.py`: `run_batch()` — sets all applications to `"PROCESSING"`, then runs each application's Stage 3/4 extraction (`pipeline.run_extraction`) concurrently bounded by an `asyncio.Semaphore` (`DEFAULT_BATCH_CONCURRENCY = 4`, within the 3-5 range of A-07/IA-17). Persistence (`pipeline.persist_extraction_and_run_stages_5_6`, status updates, batch finalization) happens sequentially on a single shared `db: Session` as each application's extraction resolves via `asyncio.as_completed` — completion order may differ from selection order (A-07).
+
+**Completed — 9.4 (`POST /batch/process` + `batches` row):**
+- `app/models/batch.py` (`Batch` model), `app/schemas/batch.py` (`BatchProcessIn`, `BatchStatusOut`, `BatchApplicationStatusOut`), `app/routers/batch.py`: `create_batch()` inserts the `batches` row (`application_ids` as JSON); the endpoint 404s if any requested application isn't owned by the calling agent, runs the batch synchronously, and returns the resulting `BatchStatusOut`.
+- `_finalize_batch()` (FR-077): tallies `approved_count`/`denied_count`/`exemption_count` from each application's `Determination.recommendation`, persists them plus `summary_json` and `completed_at` on the `Batch` row.
+
+**Completed — 9.5 (`GET /batch/{id}/status`):**
+- `batch_service.get_batch_status()` (FR-075/076): per-application status + recommendation, `total`/`completed` counts (`TERMINAL_STATUSES = ("DETERMINED", "ERROR")`), and the same summary counts as 9.4; overall `status` is `"COMPLETE"` once `completed == total`, else `"PROCESSING"`. Endpoint 404s for batches not created by the calling agent.
+
+**Completed — 9.6 (`GET /applications/{id}/comparisons`):**
+- `app/routers/applications.py`: new `get_application_comparisons` endpoint returns `list[ComparisonOut]` via `application_service.list_comparisons()`; 404s for applications not owned by the calling agent; returns `[]` before processing.
+
+**Completed — 9.7 (Unit/integration tests):**
+- `app/tests/test_pipeline.py` (6 tests): end-to-end `/process` reaches `DETERMINED` with all Stage 3/4/5/6 outputs populated, persisted comparisons retrievable via 9.6, 404 ownership checks for both endpoints, empty comparisons before processing, and a PR-001 timing test (single application, Stage 3+4 concurrent, completes well under 5s).
+- `app/tests/test_batch.py` (5 tests): `test_run_batch_bounds_concurrent_extraction` monkeypatches `pipeline.run_extraction` with an instrumented coroutine to assert the semaphore caps concurrent extractions at exactly the configured `concurrency` (A-07/IA-17), then verifies all applications reach `DETERMINED` and the batch summary counts sum correctly; HTTP-level tests cover `POST /batch/process` → `BatchStatusOut` with `status="COMPLETE"` and summary counts, `GET /batch/{id}/status` returning the same summary, and 404s for unowned applications/batches.
+- **161/161 pytest passing** (was 150/150).
+
+**Outcome:** WBS 9.0 complete — `app/services/pipeline.py` (single-application orchestration, IA-24), `app/services/batch_service.py` (bounded-concurrency batch orchestration, A-07/IA-17, batch summary), `app/models/batch.py`, `app/schemas/batch.py`, `app/routers/batch.py`, two new endpoints on `app/routers/applications.py` (9.2, 9.6) replacing the temporary `/debug/extract` endpoint, 161/161 tests passing. `TODO.md` updated (status table, checklist, "Next Session" reoriented to WBS 10.0). Pending approval.
+
+---
+
 **TTB Label Verification System**
 *Copyright (c) 2026 Matthew Gabriel Sizemore · Assessment submission: IT Specialist (AI) · 26-DO-12891471-DH*

@@ -116,14 +116,14 @@
 | ✅ | 8.3 | Per-application determination report schema | 8.2 | FR-065 |
 | ✅ | 8.4 | Persist to `determinations` table | 8.3 | DevLog §3.4 |
 | ✅ | 8.5 | Unit tests: Stage 6 — all 3 determination outcomes plus edge cases (e.g., no hard failures but unresolved possible-allowables), using 2.3/2.4 | 8.4, 2.3, 2.4 | FR-060–065 |
-| ❌ | **9.0** | **Backend — Pipeline Orchestration & Batch Processing** | 5.6, 6.7, 7.15, 8.4 | DevLog §3.7 sequence/block diagrams |
-| ❌ | 9.1 | Single-application orchestrator — runs Stages 3–6 with concurrent-compute / sequential-persist write pattern | 5.6, 6.7, 7.15, 8.4 | IA-24 |
-| ❌ | 9.2 | `POST /applications/{id}/process` | 9.1 | FR-074 |
-| ❌ | 9.3 | Batch Orchestrator — bounded-concurrency semaphore (3–5 applications in flight) | 9.1 | A-07, IA-17, DevLog §3.7 block diagram |
-| ❌ | 9.4 | `POST /batch/process`; insert `batches` row | 9.3 | DevLog §3.5 |
-| ❌ | 9.5 | `GET /batch/{id}/status` (polling) | 9.4 | FR-075 |
-| ❌ | 9.6 | `GET /applications/{id}/comparisons` | 7.15 | DevLog §3.5 |
-| ❌ | 9.7 | Unit/integration tests: orchestration — concurrency bounds (9.3), status transitions (9.5), per-application timing against PR-001, using 2.3 | 9.6, 2.3 | PR-001, A-07, IA-17, IA-19, IA-24 |
+| ✅ | **9.0** | **Backend — Pipeline Orchestration & Batch Processing** | 5.6, 6.7, 7.15, 8.4 | DevLog §3.7 sequence/block diagrams |
+| ✅ | 9.1 | Single-application orchestrator — runs Stages 3–6 with concurrent-compute / sequential-persist write pattern | 5.6, 6.7, 7.15, 8.4 | IA-24 |
+| ✅ | 9.2 | `POST /applications/{id}/process` | 9.1 | FR-074 |
+| ✅ | 9.3 | Batch Orchestrator — bounded-concurrency semaphore (3–5 applications in flight) | 9.1 | A-07, IA-17, DevLog §3.7 block diagram |
+| ✅ | 9.4 | `POST /batch/process`; insert `batches` row | 9.3 | DevLog §3.5 |
+| ✅ | 9.5 | `GET /batch/{id}/status` (polling) | 9.4 | FR-075 |
+| ✅ | 9.6 | `GET /applications/{id}/comparisons` | 7.15 | DevLog §3.5 |
+| ✅ | 9.7 | Unit/integration tests: orchestration — concurrency bounds (9.3), status transitions (9.5), per-application timing against PR-001, using 2.3 | 9.6, 2.3 | PR-001, A-07, IA-17, IA-19, IA-24 |
 | ❌ | **10.0** | **Backend — Overrides, Finalization & Batch Report** | 9.6 | FR-086–097 |
 | ❌ | 10.1 | `POST /determinations/{id}/override` — per-parameter and overall overrides with audit fields (agent, timestamp, reason) | 9.6 | FR-086–089, SR-004 |
 | ❌ | 10.2 | `POST /determinations/{id}/finalize` — overrides do not re-run the AI pipeline (A-15); retention through `finalized_at` (A-16, SR-003) | 10.1 | FR-090, A-15, A-16 |
