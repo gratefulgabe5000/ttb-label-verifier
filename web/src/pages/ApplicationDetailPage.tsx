@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FormPdfPanel } from "@/components/applications/FormPdfPanel";
 import { LabelImagesPanel } from "@/components/applications/LabelImagesPanel";
+import { DebugParametersDialog } from "@/components/applications/DebugParametersDialog";
 import { applicationsApi } from "@/lib/api-client";
 
 export function ApplicationDetailPage() {
@@ -34,7 +35,10 @@ export function ApplicationDetailPage() {
             Application #{application.id}
             {application.applicant_name ? ` — ${application.applicant_name}` : ""}
           </CardTitle>
-          <Badge variant="outline">{application.status}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline">{application.status}</Badge>
+            <DebugParametersDialog application={application} />
+          </div>
         </CardHeader>
       </Card>
 

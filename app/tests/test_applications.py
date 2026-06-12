@@ -293,6 +293,40 @@ def test_get_application_404_for_other_agents_application(client, auth_headers, 
     assert response.status_code == 404
 
 
+def test_debug_extract_runs_stage3_and_stage4_and_persists(client, auth_headers):
+    """TEMPORARY debug endpoint (manual verification of WBS 5.0/6.0 — Section 4 dev tooling)."""
+    from services.form_extraction import PART_I_FIELDS
+    from services.label_extraction import SIMPLE_FIELDS
+
+    upload_response = client.post(
+        "/applications/upload",
+        headers=auth_headers,
+        data={"label_types": ["brand"]},
+        files=[
+            ("form_file", ("form.pdf", _pdf_bytes(), "application/pdf")),
+            ("label_images", ("brand.jpg", _jpeg_bytes(), "image/jpeg")),
+        ],
+    )
+    application_id = upload_response.json()["id"]
+    label_image_id = upload_response.json()["label_images"][0]["id"]
+
+    response = client.post(f"/applications/{application_id}/debug/extract", headers=auth_headers)
+
+    assert response.status_code == 200
+    body = response.json()
+
+    form_parameters = {p["field_name"]: p for p in body["form_parameters"]}
+    assert len(form_parameters) == len(PART_I_FIELDS)
+    assert form_parameters["brand_name"]["field_value"] == "Sample Creek"
+    assert form_parameters["brand_name"]["extraction_method"] == "acroform"
+
+    label_parameters = body["label_parameters"]
+    assert len(label_parameters) == len(SIMPLE_FIELDS) + 1  # + government_warning
+    assert all(p["label_image_id"] == label_image_id for p in label_parameters)
+
+    assert body["status"] == "LABEL_ASSESSED"
+
+
 def test_validate_form_file_enforces_20mb_limit():
     from services.application_service import FileValidationError, validate_form_file
 

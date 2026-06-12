@@ -1,5 +1,6 @@
 """Application ingestion endpoints (DevLog Stages 1-2, §3.5 API surface)."""
 
+import asyncio
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
@@ -19,7 +20,7 @@ from schemas.application import (
     LabelImageOut,
     LabelParameterOut,
 )
-from services import application_service
+from services import application_service, form_extraction, label_extraction
 from services.application_service import FileValidationError
 
 router = APIRouter(prefix="/applications", tags=["applications"], dependencies=[Depends(get_current_agent)])
@@ -142,3 +143,33 @@ def get_application_label_image(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label image file not found.")
 
     return FileResponse(label_image.image_path)
+
+
+# ---------------------------------------------------------------------------
+# TEMPORARY — manual verification of Stage 3/4 AI extraction (WBS 5.0/6.0).
+# Runs the extraction services directly and persists results so the debug
+# panel can show what each stage found and where it came from. Remove once
+# WBS 9.0 wires these stages into the real pipeline orchestration.
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{application_id}/debug/extract", response_model=ApplicationDetailOut)
+async def debug_run_extraction(
+    application_id: int,
+    agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+) -> ApplicationDetailOut:
+    application = db.get(Application, application_id)
+    if application is None or application.assigned_agent_id != agent.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found.")
+
+    if application.form_path:
+        form_results = await asyncio.to_thread(form_extraction.run_stage3_extraction, application.form_path)
+        form_extraction.persist_form_parameters(db, application, form_results)
+
+    label_images = application_service.list_label_images(db, application.id)
+    if label_images:
+        label_results = await label_extraction.run_stage4_extraction(label_images)
+        label_extraction.persist_label_parameters(db, application, label_results)
+
+    return _to_detail(db, application)

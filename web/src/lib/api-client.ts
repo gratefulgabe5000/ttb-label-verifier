@@ -145,6 +145,13 @@ export const batchApi = {
   report: (id: number) => apiFetch<Batch>(`/batch/${id}/report`),
 };
 
+// TEMPORARY (manual verification of WBS 5.0/6.0) — runs Stage 3 + Stage 4
+// extraction and persists the results. Superseded by WBS 9.0 orchestration.
+export const debugApi = {
+  runExtraction: (applicationId: number) =>
+    apiFetch<ApplicationDetail>(`/applications/${applicationId}/debug/extract`, { method: "POST" }),
+};
+
 export const determinationsApi = {
   override: (id: number, request: OverrideDeterminationRequest) =>
     apiFetch<Determination>(`/determinations/${id}/override`, {
