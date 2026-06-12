@@ -198,7 +198,13 @@ export function DashboardPage() {
                   <TableCell>{application.applicant_name}</TableCell>
                   <TableCell>{application.serial_number}</TableCell>
                   <TableCell>{application.product_type}</TableCell>
-                  <TableCell>{application.status}</TableCell>
+                  <TableCell>
+                    {application.finalized_at ? (
+                      <RecommendationBadge recommendation={application.recommendation} />
+                    ) : (
+                      application.status
+                    )}
+                  </TableCell>
                   <TableCell>
                     <RecommendationBadge recommendation={recommendationByAppId.get(application.id)} />
                   </TableCell>

@@ -29,7 +29,7 @@ from services.determination_engine import FIELD_LABELS
 DEFAULT_BATCH_CONCURRENCY = 4
 
 # Terminal application statuses for the purposes of batch progress (FR-075).
-TERMINAL_STATUSES = ("DETERMINED", "ERROR")
+TERMINAL_STATUSES = ("DETERMINED", "FINALIZED", "ERROR")
 
 RECOMMENDATION_COUNT_FIELDS = {
     "APPROVE": "approved_count",

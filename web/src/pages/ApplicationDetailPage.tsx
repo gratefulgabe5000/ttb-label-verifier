@@ -60,38 +60,24 @@ export function ApplicationDetailPage() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_320px]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Application Form</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FormPdfPanel
-              key={application.id}
-              applicationId={application.id}
-              formParameters={application.form_parameters}
-              hoveredField={activeField}
-              onHoverField={setHoveredField}
-            />
-          </CardContent>
-        </Card>
+        <FormPdfPanel
+          key={application.id}
+          applicationId={application.id}
+          formParameters={application.form_parameters}
+          hoveredField={activeField}
+          onHoverField={setHoveredField}
+        />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Label Images</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LabelImagesPanel
-              key={application.id}
-              applicationId={application.id}
-              labelImages={application.label_images}
-              labelParameters={application.label_parameters}
-              hoveredField={activeField}
-              onHoverField={setHoveredField}
-              activeLabelImageId={effectiveLabelImageId}
-              onActiveLabelImageChange={setActiveLabelImageId}
-            />
-          </CardContent>
-        </Card>
+        <LabelImagesPanel
+          key={application.id}
+          applicationId={application.id}
+          labelImages={application.label_images}
+          labelParameters={application.label_parameters}
+          hoveredField={activeField}
+          onHoverField={setHoveredField}
+          activeLabelImageId={effectiveLabelImageId}
+          onActiveLabelImageChange={setActiveLabelImageId}
+        />
 
         <ResultsSidebar
           application={application}

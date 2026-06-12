@@ -123,6 +123,11 @@ class ApplicationOut(BaseModel):
     created_at: datetime
     processed_at: datetime | None
 
+    # Effective determination outcome, if any (FR-090) — surfaced on the
+    # applications list so finalized applications show their recommendation.
+    recommendation: str | None = None
+    finalized_at: datetime | None = None
+
     # COLA Public Registry forward-compatibility fields (IA-22)
     ttb_id: str | None
     vendor_code: str | None

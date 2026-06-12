@@ -52,6 +52,8 @@ const APPLICATION: ApplicationDetail = {
   status: "PENDING",
   created_at: "2026-06-01T00:00:00Z",
   processed_at: null,
+  recommendation: null,
+  finalized_at: null,
   ttb_id: null,
   vendor_code: null,
   class_type_code: null,
@@ -520,6 +522,88 @@ describe("ApplicationDetailPage", () => {
         override_value: "MATCH",
         reason: "Confirmed present on neck label.",
       });
+    });
+  });
+
+  it("labels the recommendation badge with 'Recommended action:'", async () => {
+    vi.spyOn(applicationsApi, "get").mockResolvedValue({ ...APPLICATION, determination: DETERMINATION });
+    vi.spyOn(applicationsApi, "comparisons").mockResolvedValue([]);
+    vi.spyOn(applicationsApi, "getFormBlob").mockResolvedValue(new Blob(["%PDF"], { type: "application/pdf" }));
+    vi.spyOn(applicationsApi, "getLabelImageBlob").mockResolvedValue(new Blob(["img"], { type: "image/jpeg" }));
+
+    renderDetailPage();
+
+    expect(await screen.findByText("Recommended action:")).toBeInTheDocument();
+    expect(screen.getByText("Approve")).toBeInTheDocument();
+  });
+
+  it("reprocesses the full application via the Application card's Reprocess button", async () => {
+    vi.spyOn(applicationsApi, "get").mockResolvedValue({ ...APPLICATION, determination: null });
+    vi.spyOn(applicationsApi, "comparisons").mockResolvedValue([]);
+    vi.spyOn(applicationsApi, "getFormBlob").mockResolvedValue(new Blob(["%PDF"], { type: "application/pdf" }));
+    vi.spyOn(applicationsApi, "getLabelImageBlob").mockResolvedValue(new Blob(["img"], { type: "image/jpeg" }));
+    vi.spyOn(applicationsApi, "process").mockResolvedValue({
+      ...APPLICATION,
+      status: "COMPLETE",
+      processed_at: "2026-06-12T00:00:00Z",
+      determination: DETERMINATION,
+    });
+
+    renderDetailPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Reprocess" }));
+
+    await waitFor(() => {
+      expect(applicationsApi.process).toHaveBeenCalledWith(1);
+    });
+    expect(await screen.findByText("Recommended action:")).toBeInTheDocument();
+  });
+
+  it("reprocesses just the form via the circular button on the Application Form panel", async () => {
+    vi.spyOn(applicationsApi, "get").mockResolvedValue(APPLICATION);
+    vi.spyOn(applicationsApi, "comparisons").mockResolvedValue([]);
+    vi.spyOn(applicationsApi, "getFormBlob").mockResolvedValue(new Blob(["%PDF"], { type: "application/pdf" }));
+    vi.spyOn(applicationsApi, "getLabelImageBlob").mockResolvedValue(new Blob(["img"], { type: "image/jpeg" }));
+    vi.spyOn(applicationsApi, "reprocessForm").mockResolvedValue(APPLICATION);
+
+    renderDetailPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Reprocess form" }));
+
+    await waitFor(() => {
+      expect(applicationsApi.reprocessForm).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it("reprocesses just the label via the circular button on the Label Images panel", async () => {
+    vi.spyOn(applicationsApi, "get").mockResolvedValue(APPLICATION);
+    vi.spyOn(applicationsApi, "comparisons").mockResolvedValue([]);
+    vi.spyOn(applicationsApi, "getFormBlob").mockResolvedValue(new Blob(["%PDF"], { type: "application/pdf" }));
+    vi.spyOn(applicationsApi, "getLabelImageBlob").mockResolvedValue(new Blob(["img"], { type: "image/jpeg" }));
+    vi.spyOn(applicationsApi, "reprocessLabel").mockResolvedValue(APPLICATION);
+
+    renderDetailPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Reprocess label" }));
+
+    await waitFor(() => {
+      expect(applicationsApi.reprocessLabel).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it("reprocesses just the comparison via the circular button on the Results card", async () => {
+    vi.spyOn(applicationsApi, "get").mockResolvedValue(APPLICATION);
+    vi.spyOn(applicationsApi, "comparisons").mockResolvedValue([]);
+    vi.spyOn(applicationsApi, "getFormBlob").mockResolvedValue(new Blob(["%PDF"], { type: "application/pdf" }));
+    vi.spyOn(applicationsApi, "getLabelImageBlob").mockResolvedValue(new Blob(["img"], { type: "image/jpeg" }));
+    vi.spyOn(applicationsApi, "reprocessComparison").mockResolvedValue(APPLICATION);
+
+    renderDetailPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Reprocess comparison" }));
+
+    await waitFor(() => {
+      expect(applicationsApi.reprocessComparison).toHaveBeenCalledWith(1);
     });
   });
 });

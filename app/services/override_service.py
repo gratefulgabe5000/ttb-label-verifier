@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from models.application import Application
 from models.comparison import Comparison
 from models.determination import Determination
 
@@ -55,6 +56,11 @@ def apply_override(
 def finalize_determination(db: Session, determination: Determination) -> Determination:
     """FR-090/A-15: commit the determination as final; does not re-run the AI pipeline."""
     determination.finalized_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    application = db.get(Application, determination.application_id)
+    if application is not None:
+        application.status = "FINALIZED"
+
     db.commit()
     db.refresh(determination)
     return determination

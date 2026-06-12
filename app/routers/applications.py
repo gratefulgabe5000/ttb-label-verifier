@@ -11,6 +11,7 @@ from dependencies import get_current_agent
 from models.agent import Agent
 from models.application import Application
 from models.comparison import Comparison
+from models.determination import Determination
 from models.label_image import LabelImage
 from schemas.application import (
     ApplicationDetailOut,
@@ -27,13 +28,25 @@ from services.application_service import FileValidationError
 router = APIRouter(prefix="/applications", tags=["applications"], dependencies=[Depends(get_current_agent)])
 
 
+def _application_out(application: Application, determination: Determination | None) -> ApplicationOut:
+    """Surface the effective recommendation/finalization (FR-090) on the application."""
+    recommendation = None
+    finalized_at = None
+    if determination:
+        recommendation = determination.agent_override or determination.recommendation
+        finalized_at = determination.finalized_at
+
+    base = ApplicationOut.model_validate(application).model_dump(exclude={"recommendation", "finalized_at"})
+    return ApplicationOut(**base, recommendation=recommendation, finalized_at=finalized_at)
+
+
 def _to_detail(db: Session, application: Application) -> ApplicationDetailOut:
     label_images = application_service.list_label_images(db, application.id)
     form_parameters = application_service.list_form_parameters(db, application.id)
     label_parameters = application_service.list_label_parameters(db, application.id)
     determination = application_service.get_determination(db, application.id)
     return ApplicationDetailOut(
-        **ApplicationOut.model_validate(application).model_dump(),
+        **_application_out(application, determination).model_dump(),
         label_images=[LabelImageOut.model_validate(image) for image in label_images],
         form_parameters=[FormParameterOut.model_validate(param) for param in form_parameters],
         label_parameters=[LabelParameterOut.model_validate(param) for param in label_parameters],
@@ -86,12 +99,22 @@ def list_applications(
     applicant_name: str | None = Query(default=None),
     agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db),
-) -> list[Application]:
+) -> list[ApplicationOut]:
     """FR-070 (own applications only, SR-002), FR-072 (filter by applicant name)."""
     query = db.query(Application).filter(Application.assigned_agent_id == agent.id)
     if applicant_name:
         query = query.filter(Application.applicant_name.ilike(f"%{applicant_name}%"))
-    return query.order_by(Application.created_at.desc()).all()
+    applications = query.order_by(Application.created_at.desc()).all()
+    if not applications:
+        return []
+
+    determinations = {
+        determination.application_id: determination
+        for determination in db.query(Determination)
+        .filter(Determination.application_id.in_([application.id for application in applications]))
+        .all()
+    }
+    return [_application_out(application, determinations.get(application.id)) for application in applications]
 
 
 @router.get("/{application_id}", response_model=ApplicationDetailOut)
@@ -163,6 +186,57 @@ async def process_application(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found.")
 
     await pipeline.process_application(db, application)
+    return _to_detail(db, application)
+
+
+# ---------------------------------------------------------------------------
+# Per-stage reprocessing (Detail View "Reprocess" actions)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{application_id}/reprocess/form", response_model=ApplicationDetailOut)
+async def reprocess_form(
+    application_id: int,
+    agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+) -> ApplicationDetailOut:
+    """Re-run Stage 3 (form assessment) only, then refresh Stage 5/6."""
+    application = db.get(Application, application_id)
+    if application is None or application.assigned_agent_id != agent.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found.")
+
+    await pipeline.reprocess_form(db, application)
+    return _to_detail(db, application)
+
+
+@router.post("/{application_id}/reprocess/label", response_model=ApplicationDetailOut)
+async def reprocess_label(
+    application_id: int,
+    agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+) -> ApplicationDetailOut:
+    """Re-run Stage 4 (label assessment) only, then refresh Stage 5/6."""
+    application = db.get(Application, application_id)
+    if application is None or application.assigned_agent_id != agent.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found.")
+
+    label_images = application_service.list_label_images(db, application.id)
+    await pipeline.reprocess_label(db, application, label_images)
+    return _to_detail(db, application)
+
+
+@router.post("/{application_id}/reprocess/comparison", response_model=ApplicationDetailOut)
+def reprocess_comparison(
+    application_id: int,
+    agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+) -> ApplicationDetailOut:
+    """Re-run Stage 5/6 (comparison + determination) against existing Stage 3/4 results."""
+    application = db.get(Application, application_id)
+    if application is None or application.assigned_agent_id != agent.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found.")
+
+    pipeline.reprocess_comparison(db, application)
     return _to_detail(db, application)
 
 

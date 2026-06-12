@@ -10,6 +10,8 @@ export type ApplicationStatus =
   | "FORM_ASSESSED"
   | "LABEL_ASSESSED"
   | "COMPARED"
+  | "DETERMINED"
+  | "FINALIZED"
   | "COMPLETE";
 export type LabelType = "brand" | "back" | "neck" | "other";
 export type ExtractionMethod = "acroform" | "pdftext" | "ai_vision";
@@ -49,6 +51,9 @@ export interface Application {
   status: ApplicationStatus;
   created_at: string;
   processed_at: string | null;
+  // Effective determination outcome, if any (FR-090).
+  recommendation: Recommendation | null;
+  finalized_at: string | null;
   // COLA Public Registry forward-compat fields (Section 6, IA-22)
   ttb_id: string | null;
   vendor_code: string | null;

@@ -29,8 +29,12 @@ export function DeterminationPanel({ application }: DeterminationPanelProps) {
     onSuccess: (updated) => {
       queryClient.setQueryData(["application", application.id], {
         ...application,
+        status: "FINALIZED",
+        recommendation: updated.agent_override ?? updated.recommendation,
+        finalized_at: updated.finalized_at,
         determination: updated,
       });
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
       toast.success("Determination finalized.");
     },
     onError: (error) => {
@@ -46,26 +50,31 @@ export function DeterminationPanel({ application }: DeterminationPanelProps) {
   const isFinalized = determination.finalized_at !== null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <RecommendationBadge recommendation={effective} />
-      {determination.agent_override && (
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          overridden from <RecommendationBadge recommendation={determination.recommendation} />
-        </span>
-      )}
-      {isFinalized ? (
-        <Badge variant="secondary">Finalized</Badge>
-      ) : (
-        <>
-          <Button variant="outline" size="sm" onClick={() => setOverrideOpen(true)}>
-            Override
-          </Button>
-          <Button size="sm" onClick={() => finalizeMutation.mutate()} disabled={finalizeMutation.isPending}>
-            {finalizeMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Finalize
-          </Button>
-        </>
-      )}
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">Recommended action:</span>
+        <RecommendationBadge recommendation={effective} />
+        {determination.agent_override && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            overridden from <RecommendationBadge recommendation={determination.recommendation} />
+          </span>
+        )}
+      </div>
+      <div className="ml-auto flex items-center gap-2">
+        {isFinalized ? (
+          <Badge variant="secondary">Finalized</Badge>
+        ) : (
+          <>
+            <Button variant="outline" size="sm" onClick={() => setOverrideOpen(true)}>
+              Override
+            </Button>
+            <Button size="sm" onClick={() => finalizeMutation.mutate()} disabled={finalizeMutation.isPending}>
+              {finalizeMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Finalize
+            </Button>
+          </>
+        )}
+      </div>
       <OverrideDialog
         open={overrideOpen}
         onOpenChange={setOverrideOpen}

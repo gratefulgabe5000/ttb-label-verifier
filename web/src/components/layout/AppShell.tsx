@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { ApiKeyStatusBanner } from "@/components/settings/ApiKeyStatusBanner";
+import { ApiKeyStatusBadge } from "@/components/settings/ApiKeyStatusBadge";
 import { useAuth } from "@/hooks/useAuth";
 
 function initials(name: string): string {
@@ -33,6 +33,7 @@ export function AppShell() {
       <header className="flex items-center justify-between border-b px-4 py-3 print:hidden">
         <h1 className="text-lg font-semibold">TTB Label Verification System</h1>
         <div className="flex items-center gap-2">
+          <ApiKeyStatusBadge onOpenSettings={() => setSettingsOpen(true)} />
           <Button
             variant="ghost"
             size="icon"
@@ -61,10 +62,6 @@ export function AppShell() {
           </DropdownMenu>
         </div>
       </header>
-
-      <div className="print:hidden">
-        <ApiKeyStatusBanner onOpenSettings={() => setSettingsOpen(true)} />
-      </div>
 
       <main className="flex-1 p-4">
         <Outlet />

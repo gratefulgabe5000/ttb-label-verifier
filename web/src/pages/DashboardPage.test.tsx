@@ -18,6 +18,8 @@ const BASE_APPLICATION: Omit<Application, "id" | "applicant_name" | "serial_numb
   status: "PENDING",
   created_at: "2026-06-01T00:00:00Z",
   processed_at: null,
+  recommendation: null,
+  finalized_at: null,
   ttb_id: null,
   vendor_code: null,
   class_type_code: null,

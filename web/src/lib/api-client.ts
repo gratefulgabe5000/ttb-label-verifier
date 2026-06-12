@@ -154,6 +154,12 @@ export const applicationsApi = {
   comparisons: (id: number) => apiFetch<Comparison[]>(`/applications/${id}/comparisons`),
   process: (id: number) =>
     apiFetch<ApplicationDetail>(`/applications/${id}/process`, { method: "POST" }),
+  reprocessForm: (id: number) =>
+    apiFetch<ApplicationDetail>(`/applications/${id}/reprocess/form`, { method: "POST" }),
+  reprocessLabel: (id: number) =>
+    apiFetch<ApplicationDetail>(`/applications/${id}/reprocess/label`, { method: "POST" }),
+  reprocessComparison: (id: number) =>
+    apiFetch<ApplicationDetail>(`/applications/${id}/reprocess/comparison`, { method: "POST" }),
 };
 
 export const batchApi = {

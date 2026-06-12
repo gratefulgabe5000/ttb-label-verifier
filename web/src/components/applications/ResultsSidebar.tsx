@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, RotateCw } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -17,6 +21,7 @@ import {
 import { ComparisonResultBadge } from "@/components/applications/ComparisonResultBadge";
 import { DeterminationPanel } from "@/components/applications/DeterminationPanel";
 import { OverrideDialog, type OverrideOption } from "@/components/applications/OverrideDialog";
+import { ApiError, applicationsApi } from "@/lib/api-client";
 import { fieldLabel } from "@/lib/field-labels";
 import { isFieldHighlighted } from "@/lib/field-mappings";
 import { cn } from "@/lib/utils";
@@ -50,19 +55,52 @@ export function ResultsSidebar({
   onSelectField,
 }: ResultsSidebarProps) {
   const [overrideTarget, setOverrideTarget] = useState<Comparison | null>(null);
+  const queryClient = useQueryClient();
 
   const determinationId = application.determination?.id ?? null;
   const finalized = application.determination?.finalized_at != null;
   const canOverride = determinationId !== null && !finalized;
 
+  const reprocessMutation = useMutation({
+    mutationFn: () => applicationsApi.process(application.id),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["application", application.id], updated);
+      queryClient.invalidateQueries({ queryKey: ["comparisons", application.id] });
+      toast.success("Application reprocessed.");
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : "Failed to reprocess application.");
+    },
+  });
+
+  const reprocessComparisonMutation = useMutation({
+    mutationFn: () => applicationsApi.reprocessComparison(application.id),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["application", application.id], updated);
+      queryClient.invalidateQueries({ queryKey: ["comparisons", application.id] });
+      toast.success("Comparison reprocessed.");
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : "Failed to reprocess comparison.");
+    },
+  });
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">
-            Application #{application.id}
-            {application.applicant_name ? ` — ${application.applicant_name}` : ""}
-          </CardTitle>
+          <CardTitle className="text-base">Application #{application.id}</CardTitle>
+          <CardAction>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => reprocessMutation.mutate()}
+              disabled={reprocessMutation.isPending}
+            >
+              {reprocessMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+              Reprocess
+            </Button>
+          </CardAction>
         </CardHeader>
         <CardContent>
           <DeterminationPanel application={application} />
@@ -72,6 +110,20 @@ export function ResultsSidebar({
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Results</CardTitle>
+          <CardAction>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              aria-label="Reprocess comparison"
+              onClick={() => reprocessComparisonMutation.mutate()}
+              disabled={reprocessComparisonMutation.isPending}
+            >
+              <RotateCw
+                className={cn("size-4", reprocessComparisonMutation.isPending && "animate-spin")}
+              />
+            </Button>
+          </CardAction>
         </CardHeader>
         <CardContent>
           {isLoading ? (
