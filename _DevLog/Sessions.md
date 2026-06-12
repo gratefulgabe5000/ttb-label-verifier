@@ -438,5 +438,33 @@
 
 ---
 
+### Session 18: Backend — Stage 6 Determination & Reporting — completes WBS 8.0
+
+**Context:** With Stage 5 (comparison engine) complete, this session implemented Stage 6 — turning the persisted `comparisons` rows for an application into an overall recommendation, the FR-063/064 supporting lists, a per-application determination report, and persistence to `determinations`, per WBS 8.0 (FR-060-065).
+
+**Completed — 8.1 (Determination logic):**
+- `app/services/determination_engine.py`: `determine_recommendation()` — DENY if any comparison is `HARD_FAILURE` (FR-061, takes precedence), else RECOMMEND_EXEMPTION_REVIEW if any `POSSIBLE_ALLOWABLE` (FR-062), else APPROVE (FR-060, including the vacuous case of no comparisons at all).
+
+**Completed — 8.2 (Hard-failure / allowable-revision lists):**
+- `build_hard_failures()` (FR-063): one entry per `HARD_FAILURE` comparison with `field_name`/`form_value`/`label_value` plus a plain-English `description` — uses the comparison's existing `note` where present, and falls back to a generated description (via a `FIELD_LABELS` lookup) for the plain-text-mismatch rules (brand name, fanciful name, applicant name/address, wine appellation) that leave `note` empty.
+- `build_allowable_revisions()` (FR-064): one entry per `POSSIBLE_ALLOWABLE` comparison with `field_name`, `discrepancy` (from `note`), and `section_v_ref`.
+- `run_determination()` combines both into a `DeterminationResult`.
+
+**Completed — 8.3 (Determination report schema):**
+- `build_confidence_scores()`: per-field extraction confidence merging Stage 4 (`label_parameters`) values as a base with Stage 3 (`form_parameters`) values taking precedence where the form supplied the field.
+- `build_determination_report()` / `DeterminationReport` dataclass assembles all FR-065 components: `application_id`, `recommendation`, `comparisons`, `hard_failures`, `allowable_revisions`, `confidence_scores`, `processed_at`.
+- `app/schemas/application.py`: added `ComparisonOut`, `HardFailureOut`, `AllowableRevisionOut`, and `DeterminationReportOut` Pydantic schemas for the eventual API surface (WBS 9.0).
+
+**Completed — 8.4 (Persistence):**
+- `persist_determination()`: upserts the `determinations` row (`recommendation`, `hard_failures_json`, `allowable_json`), sets `application.status = "DETERMINED"` and `application.processed_at`.
+
+**Completed — 8.5 (Unit tests):**
+- Created `app/tests/test_determination_engine.py` — 21 new tests covering all 3 determination outcomes (incl. HARD_FAILURE-takes-precedence-over-POSSIBLE_ALLOWABLE and the no-comparisons-at-all edge case), FR-063/064 list generation (including the generated-description fallback), the confidence-score merge, the full report assembly, and persistence (insert + upsert).
+- **150/150 pytest passing** (was 129/129).
+
+**Outcome:** WBS 8.0 complete — `app/services/determination_engine.py` (determination logic, FR-063/064 list builders, report assembly, persistence), four new Pydantic schemas in `app/schemas/application.py`, 150/150 tests passing. `TODO.md` updated (status table, checklist, "Next Session" reoriented to WBS 9.0). Pending approval.
+
+---
+
 **TTB Label Verification System**
 *Copyright (c) 2026 Matthew Gabriel Sizemore · Assessment submission: IT Specialist (AI) · 26-DO-12891471-DH*

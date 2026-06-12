@@ -58,6 +58,50 @@ class DeterminationOut(BaseModel):
     created_at: datetime
 
 
+class ComparisonOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    application_id: int | None
+    field_name: str | None
+    form_value: str | None
+    label_value: str | None
+    result: str | None
+    section_v_ref: str | None
+    note: str | None
+    label_image_id: int | None
+    created_at: datetime
+
+
+class HardFailureOut(BaseModel):
+    """FR-063 -- one DENY-list entry."""
+
+    field_name: str
+    form_value: str | None
+    label_value: str | None
+    description: str
+
+
+class AllowableRevisionOut(BaseModel):
+    """FR-064 -- one RECOMMEND_EXEMPTION_REVIEW-list entry."""
+
+    field_name: str
+    discrepancy: str
+    section_v_ref: str | None
+
+
+class DeterminationReportOut(BaseModel):
+    """FR-065 -- per-application determination report (WBS 8.3)."""
+
+    application_id: int
+    recommendation: str
+    comparisons: list[ComparisonOut]
+    hard_failures: list[HardFailureOut]
+    allowable_revisions: list[AllowableRevisionOut]
+    confidence_scores: dict[str, float]
+    processed_at: datetime
+
+
 class ApplicationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

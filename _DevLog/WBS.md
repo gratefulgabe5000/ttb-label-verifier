@@ -110,12 +110,12 @@
 | ✅ | 7.14 | Net Contents presence check | 7.1 | FR-107 |
 | ✅ | 7.15 | Persist all results to `comparisons` table | 7.2–7.14 | FR-058, DevLog §3.4 |
 | ✅ | 7.16 | Unit tests: comparison engine — one test per rule (7.2–7.14) covering MATCH/HARD_FAILURE/POSSIBLE_ALLOWABLE outcomes, plus the multi-image resolution helper (7.1), using 2.3/2.4/2.5/2.7 | 7.15, 2.3, 2.4, 2.5, 2.7 | FR-050–059, FR-066, FR-100–107, A-10, IA-18 |
-| ❌ | **8.0** | **Backend — Stage 6: Determination & Reporting** | 7.15 | DevLog §3.2 Stage 6 |
-| ❌ | 8.1 | Determination logic — APPROVE / DENY / RECOMMEND_EXEMPTION_REVIEW | 7.15 | FR-060–062 |
-| ❌ | 8.2 | Hard-failure list and allowable-revision list generation per application | 8.1 | FR-063, FR-064 |
-| ❌ | 8.3 | Per-application determination report schema | 8.2 | FR-065 |
-| ❌ | 8.4 | Persist to `determinations` table | 8.3 | DevLog §3.4 |
-| ❌ | 8.5 | Unit tests: Stage 6 — all 3 determination outcomes plus edge cases (e.g., no hard failures but unresolved possible-allowables), using 2.3/2.4 | 8.4, 2.3, 2.4 | FR-060–065 |
+| ✅ | **8.0** | **Backend — Stage 6: Determination & Reporting** | 7.15 | DevLog §3.2 Stage 6 |
+| ✅ | 8.1 | Determination logic — APPROVE / DENY / RECOMMEND_EXEMPTION_REVIEW | 7.15 | FR-060–062 |
+| ✅ | 8.2 | Hard-failure list and allowable-revision list generation per application | 8.1 | FR-063, FR-064 |
+| ✅ | 8.3 | Per-application determination report schema | 8.2 | FR-065 |
+| ✅ | 8.4 | Persist to `determinations` table | 8.3 | DevLog §3.4 |
+| ✅ | 8.5 | Unit tests: Stage 6 — all 3 determination outcomes plus edge cases (e.g., no hard failures but unresolved possible-allowables), using 2.3/2.4 | 8.4, 2.3, 2.4 | FR-060–065 |
 | ❌ | **9.0** | **Backend — Pipeline Orchestration & Batch Processing** | 5.6, 6.7, 7.15, 8.4 | DevLog §3.7 sequence/block diagrams |
 | ❌ | 9.1 | Single-application orchestrator — runs Stages 3–6 with concurrent-compute / sequential-persist write pattern | 5.6, 6.7, 7.15, 8.4 | IA-24 |
 | ❌ | 9.2 | `POST /applications/{id}/process` | 9.1 | FR-074 |
