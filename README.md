@@ -202,8 +202,9 @@ ttb-label-verifier/
 │   ├── 3.7.1 System Context Diagram.png
 │   ├── 3.7.2 System Block Diagram.png
 │   ├── 3.7.3 Sequence Diagram.png
-│   ├── DevLog.md           # Engineering log, requirements, architecture
+│   ├── DevLog.md           # Requirements, architecture, trade studies
 │   ├── PRD.md              # Product Requirements Document
+│   ├── Sessions.md         # Session-by-session engineering log (historian)
 │   └── WBS.md              # Work Breakdown Structure
 ├── _ProblemStatement/
 │   ├── 1.Notification - IT Specialist (AI) - 26-DO-12891471-DH.pdf
@@ -240,9 +241,10 @@ backend URL.
 
 ## Documentation
 
-- [DevLog — Full Engineering Notes, Requirements Analysis & Architecture](_DevLog/DevLog.md)
+- [DevLog — Requirements Analysis, Architecture & Trade Studies](_DevLog/DevLog.md)
 - [PRD — Product Requirements Document (TTB-LVS-PRD-001 v2.0)](_DevLog/PRD.md)
 - [WBS — Work Breakdown Structure (TTB-LVS-WBS-001 v2.0)](_DevLog/WBS.md)
+- [Sessions — Session-by-Session Engineering Log (TTB-LVS-SESSIONS-001)](_DevLog/Sessions.md)
 
 ---
 
@@ -250,3 +252,6 @@ backend URL.
 
 Copyright (c) 2026 Matthew Gabriel Sizemore. All rights reserved.  
 Submitted as a take-home assessment for the US Department of the Treasury.
+
+**TTB Label Verification System**  
+*Copyright (c) 2026 Matthew Gabriel Sizemore · Assessment submission: IT Specialist (AI) · 26-DO-12891471-DH*
