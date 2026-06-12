@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from config import get_settings
 from models.application import Application
+from models.comparison import Comparison
 from models.determination import Determination
 from models.form_parameter import FormParameter
 from models.label_image import LabelImage
@@ -114,6 +115,15 @@ def list_label_parameters(db: Session, application_id: int) -> list[LabelParamet
         db.query(LabelParameter)
         .filter(LabelParameter.application_id == application_id)
         .order_by(LabelParameter.id)
+        .all()
+    )
+
+
+def list_comparisons(db: Session, application_id: int) -> list[Comparison]:
+    return (
+        db.query(Comparison)
+        .filter(Comparison.application_id == application_id)
+        .order_by(Comparison.id)
         .all()
     )
 

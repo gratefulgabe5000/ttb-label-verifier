@@ -19,42 +19,18 @@
 | Architecture evaluation (DevLog §3.6) + alternatives brainstorm | ✅ Complete (2026-06-10) |
 | Mermaid diagrams (system context, block diagram, concurrency sequence) | ✅ Complete (2026-06-10) — DevLog §3.7 |
 | Work Breakdown Structure | ✅ Complete, re-baselined to v2.0 (2026-06-11) — [`WBS.md` v2.0](_DevLog/WBS.md) |
-| Backend (`app/`) | 🔶 Scaffolding + Auth + Ingestion + Form Assessment + Label Assessment complete (WBS 1.0, 3.0, 4.0, 5.0, 6.0; 81/81 pytest passing, Railway config) — WBS 7.0–10.0 remaining |
+| Backend (`app/`) | 🔶 Scaffolding + Auth + Ingestion + Form Assessment + Label Assessment + Comparison Engine complete (WBS 1.0, 3.0, 4.0, 5.0, 6.0, 7.0; 129/129 pytest passing, Railway config) — WBS 8.0–10.0 remaining |
 | Frontend (`web/`) | 🔶 Scaffolding complete (WBS 11.0 + Settings/API-key UI, build & lint passing). **12.0/13.0 re-sequenced ahead of 6.0 (WBS.md v2.1)** — Pass 1 (12.1–12.3, 12.7, 13.1–13.4) ✅ done, incl. Vitest setup + tests (12.8/13.12 partial); Pass 2 (12.4–12.6, 13.5–13.11) and 14.0 remain |
 | Synthetic test data (sample forms + multi-image label sets) | ✅ 2.1–2.7 complete — ALL OF WBS 2.0 DONE (`testdata/manifest.json` — 45 products / 88 images; `testdata/forms/sample_creek_*.pdf` — TS-01 3-tier fixtures; `testdata/forms/good_*.pdf` + `testdata/forms/hf_*.pdf` + `testdata/forms/ar_*.pdf` + `testdata/forms/type14b_*.pdf` + `testdata/test_sets.json` — 2.3 "good" sets + 2.4 "hard failure" sets + 2.5 "possible allowable revision" sets + 2.7 Type 14b set; `testdata/degraded/*.jpg` + `testdata/degraded_images.json` — 2.6 degraded-image fixtures for FR-039; `testdata/synthetic/*.jpg` — synthetic statement-label fixture for FR-056) |
 | Deployed application URL | ☐ Pending — WBS 18.0 |
 
 ---
 
-## Next Session — WBS 7.0: Backend Stage 5 — Comparison Engine
+## Next Session — WBS 8.0: Backend Stage 6 — Determination & Reporting
 
-> See [`_DevLog/Sessions.md`](_DevLog/Sessions.md) for the full session-by-session narrative (Sessions 1-14), including Sessions 10-14's completion of WBS 1.0, 11.0, 2.0, 3.0, 4.0, and 5.0.
+Proceed to **WBS 8.0 — Backend Stage 6: Determination & Reporting** (`app/`): determination logic producing APPROVE / DENY / RECOMMEND_EXEMPTION_REVIEW from the Stage 5 comparison results (8.1); hard-failure list and allowable-revision list generation per application (8.2); per-application determination report schema (8.3); persistence to `determinations` (8.4); unit tests — all 3 determination outcomes plus edge cases (e.g. no hard failures but unresolved possible-allowables), using 2.3/2.4 (8.5).
 
-**Session 15 completed WBS 12.0/13.0 Pass 1** (re-sequenced ahead of 6.0 per [`WBS.md` v2.1](_DevLog/WBS.md) §4 Note 7):
-
-1. **Backend fix** (`app/routers/applications.py`): `_to_detail()` now queries persisted `FormParameter`/`LabelParameter`/`Determination` rows so `GET /applications/{id}` returns real `form_parameters`/`label_parameters`/`determination`.
-2. **WBS 12.2** — Filter by applicant (`DashboardPage.tsx`)
-3. **WBS 12.3** — Checkbox batch selection (`DashboardPage.tsx`)
-4. **WBS 13.1/13.2** — Split-view layout + react-pdf form renderer in `ApplicationDetailPage.tsx`, backed by two new file-serving endpoints (`GET /applications/{id}/form`, `GET /applications/{id}/label-images/{image_id}`) needed because uploaded files were stored on disk but never exposed over HTTP
-5. **WBS 13.3** — Multi-image tab selector with thumbnails (`LabelImagesPanel.tsx`)
-6. **WBS 13.4** — SVG annotation overlay on the form panel, positioned via `form_parameters.bbox_json`
-7. **WBS 12.8/13.12 (partial)** — Vitest configured in `web/`; unit tests covering 12.1–12.3/12.7 and 13.1–13.4 (6 tests, all passing)
-
-**Manual verification:** open the "Test Upload" application from Session 13's WBS 4.0 manual test (1 PDF + 2 label images) at `/applications/{id}` — the form PDF and label images should render in a split view with tabs. The SVG overlay will show "no extracted fields yet" until Stage 3 extraction (wired up as part of 6.0+) populates `form_parameters` for an application.
-
-**This session completed WBS 6.0 — Backend Stage 4: Label Assessment (TS-02)** (`app/services/label_extraction.py`, `app/tests/test_label_extraction.py`):
-
-1. **6.1** — OpenCV preprocessing pipeline: `deskew()` (Otsu threshold + `minAreaRect` skew estimation/correction), `normalize_contrast()` (CLAHE on the LAB L-channel), `suppress_glare()` (highlight mask + `inpaint`), composed in `preprocess_image()`.
-2. **6.2/6.3** — `STAGE4_SYSTEM_PROMPT` (cached) drives `extract_label_fields()`: the 8 mandatory + 5 secondary fields, `government_warning` (presence/header caps/bold + `text_exact_match` against the statutory 27 CFR § 16.21 text), and a generic `other_text` catch-all.
-3. **6.4** — `run_ocr()` (pytesseract `image_to_data`); degrades gracefully to `[]` per §4 Note 7 contingency #1 (Tesseract binary not installed in this environment — covered by a dedicated test).
-4. **6.5** — `fuzzy_match_bbox()` (difflib `SequenceMatcher` over OCR word windows) and `compute_header_height_ratio()` (FR-040 acceptance case validated at exactly 2.0).
-5. **6.6** — `run_stage4_extraction()`: `asyncio.gather` across an application's label images, with Claude-vs-OCR concurrency within each image.
-6. **6.7** — `persist_label_parameters()`: one `LabelParameter` row per `label_image_id` × field_name (incl. `bbox_json`/`header_height_ratio`), sets `application.status = "LABEL_ASSESSED"`.
-7. **6.8** — 22 new tests (preprocessing against the WBS 2.6 degraded fixtures, extraction parsing incl. government warning, OCR fuzzy-match, orchestration, persistence) — **81/81 pytest passing** (was 59/59).
-
-Proceed to **WBS 7.0 — Backend Stage 5: Comparison Engine** (`app/`, re-scoped for FR-066/FR-100–107): multi-image resolution helper — a form value is "on label" if found on *any* associated label image (7.1); Brand Name (7.2), Government Warning (7.3), and Type 14b "for sale in [STATE]" (7.4) comparisons; Section V Allowable-Revision classification mapping (7.5); Country of Origin (7.6), Fanciful Name (7.7), Product Type/Class-Type (7.8), Applicant Name (7.9), Applicant Address (7.10), Grape Varietals (7.11), Wine Appellation (7.12), ABV (7.13), and Net Contents (7.14) comparisons; persistence to `comparisons` (7.15); unit tests — one per rule covering MATCH/HARD_FAILURE/POSSIBLE_ALLOWABLE outcomes using 2.3/2.4/2.5/2.7 (7.16).
-
-After WBS 7.0–10.0 land, return to **WBS 12.0/13.0 Pass 2** (12.4–12.6, 13.5–13.11, remaining 12.8/13.12 coverage) per [`WBS.md` v2.1](_DevLog/WBS.md) §4 Note 7, before proceeding to 14.0.
+After WBS 8.0–10.0 land, return to **WBS 12.0/13.0 Pass 2** (12.4–12.6, 13.5–13.11, remaining 12.8/13.12 coverage) per [`WBS.md` v2.1](_DevLog/WBS.md) §4 Note 7, before proceeding to 14.0.
 
 ---
 
@@ -70,7 +46,7 @@ After WBS 7.0–10.0 land, return to **WBS 12.0/13.0 Pass 2** (12.4–12.6, 13.5
 - [x] WBS 4.0 — Stage 1–2: ingestion endpoints, file validation, persistence, list/detail endpoints, unit tests — **COMPLETE** (`app/schemas/application.py`, `app/services/application_service.py`, `app/routers/applications.py`, `app/tests/test_applications.py`; 23/23 pytest passing, Session 13)
 - [x] WBS 5.0 — Stage 3: form assessment (tiered TS-01 extraction, all 18 Part I fields, normalization, confidence scoring, unit tests) — **COMPLETE** (`app/services/form_extraction.py`, `app/tests/test_form_extraction.py`; 54/54 pytest passing, Session 14)
 - [x] WBS 6.0 — Stage 4: label assessment (TS-02 — OpenCV + Claude Vision + Tesseract OCR, per-image concurrency, unit tests) — **COMPLETE** (`app/services/label_extraction.py`, `app/tests/test_label_extraction.py`; 81/81 pytest passing, Session 16)
-- [ ] WBS 7.0 — Stage 5: comparison engine (multi-image resolution + 13 comparison rules incl. new FR-066/FR-100–107, unit tests)
+- [x] WBS 7.0 — Stage 5: comparison engine (multi-image resolution + 13 comparison rules incl. new FR-066/FR-100–107, unit tests) — **COMPLETE** (`app/services/comparison_engine.py`, `app/tests/test_comparison_engine.py`; added `label_image_id` to `Comparison` model and `list_comparisons` to `application_service.py`; 129/129 pytest passing, Session 17)
 - [ ] WBS 8.0 — Stage 6: determination logic + report schema, unit tests
 - [ ] WBS 9.0 — Pipeline orchestration + Batch Orchestrator (bounded concurrency), unit/integration tests
 - [ ] WBS 10.0 — Overrides, finalize, batch report endpoints, unit tests

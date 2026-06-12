@@ -274,6 +274,132 @@ The following interfaces are explicitly NOT part of the TTB-LVS system boundary:
 
 **Forward-compatibility note (FR-018):** although no connection to the TTB COLA Public Registry / COLAs Online (ttbonline.gov, REF-07–09) exists or is planned for this prototype, the database schema captures the registry's data fields (TTB ID, Vendor Code, Class/Type Code, Origin Code, registry status, etc. — see DevLog §6) so that a future integration would not require a schema redesign. This is a schema-only accommodation and does not alter the system boundary defined above or assumption A-12.
 
+### 5.4 SYstem Diagrams
+
+These diagrams formalize the architecture confirmed in Section 3.6, reflecting the bounded-concurrency batch model (A-07/IA-17), the per-image concurrent extraction model (IA-19/IA-24), and the TS-01/TS-02 tiered/local-CV additions.
+
+#### 5.4.1 System Context Diagram
+
+```mermaid
+graph TB
+    Agent["TTB Agent<br/>(authenticated user)"]
+    LVS["TTB Label Verification System<br/>(React frontend + FastAPI backend + SQLite)"]
+    Claude["Anthropic Claude API<br/>(claude-sonnet-4-6, vision)"]
+    COLA["TTB COLA Public Registry /<br/>COLAs Online (ttbonline.gov)"]
+
+    Agent -->|"Uploads form PDF + label image(s);<br/>selects/processes batches;<br/>reviews & overrides determinations"| LVS
+    LVS -->|"Form PDF / label image extraction requests<br/>(Stages 3 & 4)"| Claude
+    Claude -->|"Structured JSON: field values,<br/>confidence, bbox/location_hint"| LVS
+    LVS -.->|"No live integration —<br/>schema-only forward-compat (IA-03/A-12/CR-001)"| COLA
+
+    style COLA stroke-dasharray: 5 5,fill:#eee,color:#888
+```
+
+**Notes:** The only live external dependency is the Claude API (A-08). The COLA Registry is shown dashed/greyed to make explicit that it is *not* called — its data model only informs the forward-compatible schema fields (Section 6, IA-22).
+
+#### 5.4.2 System Block Diagram (Stages 1–6)
+
+```mermaid
+graph TB
+    subgraph FE["React + Vite Frontend"]
+        Dash["Agent Dashboard<br/>(FR-070-077)"]
+        Detail["Application Detail View<br/>split view + tabs (FR-080-091)"]
+        Report["Batch Report<br/>(FR-095-097)"]
+    end
+
+    subgraph BE["FastAPI Backend"]
+        Ingest["Stages 1-2: Ingestion<br/>(FR-001-007)"]
+        S3["Stage 3: Form Assessment<br/>tiered, TS-01 (FR-010-019)"]
+        S4["Stage 4: Label Assessment<br/>per-image concurrent, TS-02 (FR-030-040)"]
+        S5["Stage 5: Comparison<br/>(FR-050-059)"]
+        S6["Stage 6: Determination<br/>(FR-060-065)"]
+        Batch["Batch Orchestrator<br/>bounded concurrency (A-07/IA-17)"]
+    end
+
+    subgraph Local["Local CPU — TS-01 / TS-02"]
+        Tier12["pypdf (Tier 1) /<br/>pdfplumber (Tier 2)"]
+        CV["OpenCV preprocessing<br/>(deskew/contrast/glare)"]
+        OCR["Tesseract OCR<br/>bbox + header_height_ratio"]
+    end
+
+    DB[("SQLite<br/>workingfiles DB<br/>(Railway volume, IA-26)")]
+    Claude["Claude Sonnet Vision API<br/>(prompt-cached, IA-25)"]
+
+    Dash -- "REST: /applications, /batch/process" --> Batch
+    Detail -- "REST: /applications/{id}, /determinations/{id}/*" --> S6
+    Report -- "REST: /batch/{id}/report" --> S6
+
+    Batch --> Ingest
+    Ingest --> DB
+    Ingest --> S3
+    S3 --> Tier12
+    Tier12 -. "Tier 3 fallback" .-> Claude
+    S3 --> DB
+    S3 --> S4
+    S4 --> CV
+    CV --> OCR
+    S4 --> Claude
+    S4 --> DB
+    S4 --> S5
+    S5 --> DB
+    S5 --> S6
+    S6 --> DB
+    DB --> Detail
+    DB --> Report
+```
+
+**Notes:** "Batch Orchestrator" is the new A-07/IA-17 bounded-concurrency layer (Decision 8 item 2) — it runs Stages 1–6 for each selected application, capping concurrent applications via a semaphore. Within Stage 4, the per-image fan-out (IA-19/IA-24) is detailed in Section 3.7.3.
+
+#### 5.4.3 Sequence Diagram — Concurrent Per-Image Label Extraction (IA-19/IA-24)
+
+```mermaid
+sequenceDiagram
+    participant FE as Frontend
+    participant API as FastAPI (Stage 4)
+    participant CV as OpenCV
+    participant OCR as Tesseract
+    participant Claude as Claude Vision API
+    participant DB as SQLite
+
+    FE->>API: POST /applications/{id}/process
+    API->>DB: load label_images (N images)
+
+    par Image 1
+        API->>CV: preprocess(image_1)
+        CV-->>API: preprocessed_1
+        par
+            API->>Claude: extract(preprocessed_1) [system prompt cached, IA-25]
+            Claude-->>API: result_1 (fields, confidence, location_hint)
+        and
+            API->>OCR: detect_text + bbox(preprocessed_1)
+            OCR-->>API: ocr_text_1, bboxes_1
+        end
+        API->>API: fuzzy_match(result_1, bboxes_1) -> bbox_json_1, header_height_ratio_1
+    and Image 2
+        API->>CV: preprocess(image_2)
+        CV-->>API: preprocessed_2
+        par
+            API->>Claude: extract(preprocessed_2) [system prompt cached, IA-25]
+            Claude-->>API: result_2
+        and
+            API->>OCR: detect_text + bbox(preprocessed_2)
+            OCR-->>API: ocr_text_2, bboxes_2
+        end
+        API->>API: fuzzy_match(result_2, bboxes_2) -> bbox_json_2, header_height_ratio_2
+    and Image N
+        Note over API,OCR: same pattern, repeated per label image (IA-19)
+    end
+
+    Note over API,DB: IA-24 — concurrent-compute, sequential-persist:<br/>all per-image results held in memory until every image resolves
+    API->>DB: INSERT label_parameters (1 transaction, all images)
+    API->>API: Stage 5 — compare across all label_image_ids (A-10/FR-038)
+    API->>API: Stage 6 — determination (Section V mapping)
+    API->>DB: INSERT comparisons, determinations
+    API-->>FE: status: COMPLETE (poll via GET /batch/{id}/status)
+```
+
+**Notes:** The two `par` blocks per image are nested deliberately: the outer `par` is IA-19's per-image concurrency (N images at once); the inner `par` is TS-02's Claude-vs-OCR concurrency *within* one image. Total wall-clock for Stage 4 is therefore bounded by the slowest single image's `max(Claude, OpenCV+OCR)` — not the sum across images or across Claude/OCR — preserving PR-001's 5-second budget regardless of image count.
+
 ---
 
 ## 6. Requirements

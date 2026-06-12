@@ -358,5 +358,85 @@
 
 ---
 
+### Session 15: Frontend — Agent Dashboard & Detail View, Pass 1 (12.1-12.3, 12.7, 13.1-13.4)
+
+**Context:** Per the WBS v2.1 re-sequencing (§4 Note 7), WBS 12.0 (Agent Dashboard) and 13.0 (Application Detail View) were pulled forward ahead of 6.0-10.0 so the buildable frontend surfaces — those depending only on the already-complete 1.0/3.0/4.0/5.0/11.0 — could be manually verified as each backend stage lands.
+
+**Completed — Backend fix (prerequisite for 13.4):**
+- `app/routers/applications.py`: `_to_detail()` now queries persisted `FormParameter`/`LabelParameter`/`Determination` rows so `GET /applications/{id}` returns real `form_parameters`/`label_parameters`/`determination`.
+
+**Completed — 12.2/12.3 (Dashboard, Pass 1):**
+- **12.2** — Filter by applicant (`DashboardPage.tsx`).
+- **12.3** — Checkbox batch selection (`DashboardPage.tsx`).
+
+**Completed — 13.1-13.4 (Detail View, Pass 1):**
+- **13.1/13.2** — Split-view layout + react-pdf form renderer in `ApplicationDetailPage.tsx`, backed by two new file-serving endpoints (`GET /applications/{id}/form`, `GET /applications/{id}/label-images/{image_id}`) needed because uploaded files were stored on disk but never exposed over HTTP.
+- **13.3** — Multi-image tab selector with thumbnails (`LabelImagesPanel.tsx`).
+- **13.4** — SVG annotation overlay on the form panel, positioned via `form_parameters.bbox_json`.
+
+**Completed — 12.8/13.12 (partial — Vitest setup):**
+- Vitest configured in `web/`; unit tests covering 12.1-12.3/12.7 and 13.1-13.4 (6 tests, all passing).
+
+**Outcome:** WBS 12.0/13.0 Pass 1 complete — Dashboard filter/batch-select, Detail View split layout with form renderer, multi-image tabs, and form-panel annotation overlay, plus the `_to_detail()` fix and two new file-serving endpoints that made the overlay possible. Manually verified against the "Test Upload" application from Session 13's WBS 4.0 manual test (1 PDF + 2 label images) at `/applications/{id}` — the form PDF and label images render in a split view with tabs; the SVG overlay shows "no extracted fields yet" until Stage 3 extraction (wired up as part of 6.0+) populates `form_parameters`. Pass 2 (12.4-12.6, 13.5-13.11, remaining 12.8/13.12 coverage) deferred until after WBS 10.0 per §4 Note 7.
+
+---
+
+### Session 16: Backend — Stage 4 Label Assessment (TS-02) — completes WBS 6.0
+
+**Context:** With Stage 3 (form assessment) complete, this session implemented Stage 4 of the pipeline — extracting and assessing label-image fields using the TS-02 OpenCV/OCR augmentation strategy designed back in Session 4, in `app/services/label_extraction.py`.
+
+**Completed — 6.1 (OpenCV preprocessing pipeline):**
+- `deskew()` (Otsu threshold + `minAreaRect` skew estimation/correction), `normalize_contrast()` (CLAHE on the LAB L-channel), `suppress_glare()` (highlight mask + `inpaint`), composed in `preprocess_image()`.
+
+**Completed — 6.2/6.3 (Claude Vision label extraction + Government Warning detection):**
+- `STAGE4_SYSTEM_PROMPT` (cached) drives `extract_label_fields()`: the 8 mandatory + 5 secondary fields, `government_warning` (presence/header caps/bold + `text_exact_match` against the statutory 27 CFR § 16.21 text), and a generic `other_text` catch-all.
+
+**Completed — 6.4/6.5 (OCR + bbox fuzzy-matching):**
+- `run_ocr()` (pytesseract `image_to_data`); degrades gracefully to `[]` per §4 Note 7 contingency #1 (Tesseract binary not installed in this environment — covered by a dedicated test).
+- `fuzzy_match_bbox()` (difflib `SequenceMatcher` over OCR word windows) and `compute_header_height_ratio()` (FR-040 acceptance case validated at exactly 2.0).
+
+**Completed — 6.6/6.7 (Orchestration & persistence):**
+- `run_stage4_extraction()`: `asyncio.gather` across an application's label images, with Claude-vs-OCR concurrency within each image.
+- `persist_label_parameters()`: one `LabelParameter` row per `label_image_id` × field_name (incl. `bbox_json`/`header_height_ratio`), sets `application.status = "LABEL_ASSESSED"`.
+
+**Completed — 6.8 (Unit tests):**
+- Created `app/tests/test_label_extraction.py` with 22 new tests (preprocessing against the WBS 2.6 degraded fixtures, extraction parsing incl. government warning, OCR fuzzy-match, orchestration, persistence) — **81/81 pytest passing** (was 59/59).
+
+**Outcome:** WBS 6.0 complete — full OpenCV preprocessing pipeline, Claude Vision label extraction with Government Warning compliance check, graceful OCR degradation, fuzzy bbox-matching, per-image concurrent orchestration, and persistence with `LABEL_ASSESSED` status transition. 81/81 tests passing. Pending approval.
+
+---
+
+### Session 17: Backend — Stage 5 Comparison Engine (7.1-7.16) — completes WBS 7.0
+
+**Context:** With Stage 4 (label assessment) complete, this session implemented Stage 5 — comparing the persisted `form_parameters` against `label_parameters` (across all of an application's label images) to produce per-field `MATCH` / `HARD_FAILURE` / `POSSIBLE_ALLOWABLE` comparison results, per the re-scoped 16-sub-item WBS 7.0 (FR-050-059, FR-066, FR-100-107).
+
+**Completed — 7.1 (Multi-image resolution helper):**
+- Shared helper in `app/services/comparison_engine.py` resolving whether a form value is "on label" if found on **any** of the application's label images — used by every comparison rule below (A-10, IA-18, FR-038).
+
+**Completed — 7.2-7.4 (Brand Name, Government Warning, Type 14b):**
+- Brand Name comparison (case/punctuation-tolerant, FR-050-052).
+- Government Warning comparison (exact-text + bold/caps via `header_height_ratio`, FR-053-055).
+- Type 14b "for sale in [STATE]" check (FR-056).
+- **Fix:** removed an errant `.capitalize()` call when building the Government Warning failure note — it was lowercasing the statutory "GOVERNMENT WARNING:" header text in the reported message.
+
+**Completed — 7.5 (Section V Allowable-Revision mapping):**
+- Classification mapping flagging `POSSIBLE_ALLOWABLE` vs `HARD_FAILURE` outcomes for the Brand Name and Applicant Address rules, per §2.6 Allowable Revisions (FR-057, FR-059).
+
+**Completed — 7.6-7.14 (Remaining comparison rules):**
+- Country of Origin (conditional on Item 3 = "imported", A-17/FR-066), Fanciful Name (Item 7, FR-100), Product Type/Class-Type consistency (Item 5, FR-101), Applicant Name (Item 8, FR-102), Applicant Address (Item 8/8a, incl. in-state Allowable Revision, FR-103), Grape Varietals (Item 10, Wine only, FR-104), Wine Appellation (Item 11, Wine only, conditional, FR-105), ABV presence + product-type consistency (FR-106), Net Contents presence (FR-107).
+
+**Completed — 7.15 (Persistence):**
+- `app/models/comparison.py`: added a `label_image_id` foreign-key column to `Comparison`, so each comparison result can record which label image (if any) it was resolved against.
+- `app/services/application_service.py`: added `list_comparisons()`.
+- All 12 rule results persisted to the `comparisons` table (FR-058).
+
+**Completed — 7.16 (Unit tests):**
+- Created `app/tests/test_comparison_engine.py` — 47 new tests covering all 12 comparison rules (MATCH/HARD_FAILURE/POSSIBLE_ALLOWABLE outcomes), the multi-image resolution helper (7.1), and persistence, using 2.3/2.4/2.5/2.7.
+- **129/129 pytest passing** (was 81/81).
+
+**Outcome:** WBS 7.0 complete — `app/services/comparison_engine.py` (430 lines: 12 rule functions, multi-image resolution helper, Section V mapping, orchestration, persistence), `label_image_id` added to `Comparison`, `list_comparisons()` added to `application_service.py`, 129/129 tests passing. `TODO.md` updated (status table, checklist, "Next Session" reoriented to WBS 8.0). Pending approval.
+
+---
+
 **TTB Label Verification System**
 *Copyright (c) 2026 Matthew Gabriel Sizemore · Assessment submission: IT Specialist (AI) · 26-DO-12891471-DH*

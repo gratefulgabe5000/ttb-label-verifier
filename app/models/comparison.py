@@ -20,4 +20,6 @@ class Comparison(Base):
     result: Mapped[str | None] = mapped_column(String)
     section_v_ref: Mapped[str | None] = mapped_column(String)  # e.g. "3b" (FR-059)
     note: Mapped[str | None] = mapped_column(Text)
+    # Label image the label_value was resolved from, for annotation placement (FR-038, WBS 7.1/13.5)
+    label_image_id: Mapped[int | None] = mapped_column(ForeignKey("label_images.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
