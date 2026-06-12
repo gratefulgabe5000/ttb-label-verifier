@@ -1,5 +1,6 @@
 import type {
   ApiKeyStatus,
+  Application,
   ApplicationDetail,
   Batch,
   BatchProcessRequest,
@@ -53,6 +54,23 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return response.json() as Promise<T>;
 }
 
+// Auth is header-based (Bearer token), so files can't be loaded via bare
+// <img src> / <Document file="url"> — fetch them as Blobs instead.
+async function apiFetchBlob(path: string): Promise<Blob> {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+
+  if (!response.ok) {
+    throw new ApiError(response.status, response.statusText || "Request failed");
+  }
+  return response.blob();
+}
+
 export const healthApi = {
   check: () => apiFetch<{ status: string }>("/health"),
 };
@@ -84,6 +102,7 @@ export const authApi = {
 export interface ApplicationListParams {
   agentId?: number;
   status?: string;
+  applicantName?: string;
   page?: number;
   pageSize?: number;
 }
@@ -100,11 +119,20 @@ function toQueryString(params: object = {}): string {
 }
 
 export const applicationsApi = {
-  list: (params?: ApplicationListParams) =>
-    apiFetch<ApplicationDetail[]>(`/applications${toQueryString(params)}`),
+  // GET /applications returns ApplicationOut (no label_images/form_parameters/etc.),
+  // which is what `Application` models — use `get()` for the full detail shape.
+  list: (params?: ApplicationListParams) => {
+    const { applicantName, ...rest } = params ?? {};
+    return apiFetch<Application[]>(
+      `/applications${toQueryString({ ...rest, applicant_name: applicantName })}`
+    );
+  },
   upload: (formData: FormData) =>
     apiFetch<ApplicationDetail>("/applications/upload", { method: "POST", body: formData }),
   get: (id: number) => apiFetch<ApplicationDetail>(`/applications/${id}`),
+  getFormBlob: (id: number) => apiFetchBlob(`/applications/${id}/form`),
+  getLabelImageBlob: (applicationId: number, imageId: number) =>
+    apiFetchBlob(`/applications/${applicationId}/label-images/${imageId}`),
   comparisons: (id: number) => apiFetch<Comparison[]>(`/applications/${id}/comparisons`),
   process: (id: number) =>
     apiFetch<ApplicationDetail>(`/applications/${id}/process`, { method: "POST" }),

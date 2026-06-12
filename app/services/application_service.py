@@ -6,7 +6,10 @@ from sqlalchemy.orm import Session
 
 from config import get_settings
 from models.application import Application
+from models.determination import Determination
+from models.form_parameter import FormParameter
 from models.label_image import LabelImage
+from models.label_parameter import LabelParameter
 
 settings = get_settings()
 
@@ -95,3 +98,25 @@ def list_label_images(db: Session, application_id: int) -> list[LabelImage]:
         .order_by(LabelImage.id)
         .all()
     )
+
+
+def list_form_parameters(db: Session, application_id: int) -> list[FormParameter]:
+    return (
+        db.query(FormParameter)
+        .filter(FormParameter.application_id == application_id)
+        .order_by(FormParameter.id)
+        .all()
+    )
+
+
+def list_label_parameters(db: Session, application_id: int) -> list[LabelParameter]:
+    return (
+        db.query(LabelParameter)
+        .filter(LabelParameter.application_id == application_id)
+        .order_by(LabelParameter.id)
+        .all()
+    )
+
+
+def get_determination(db: Session, application_id: int) -> Determination | None:
+    return db.query(Determination).filter(Determination.application_id == application_id).first()

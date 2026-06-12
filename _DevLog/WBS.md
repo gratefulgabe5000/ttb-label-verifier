@@ -6,7 +6,7 @@
 | Field | Value |
 |-------|-------|
 | Document ID | TTB-LVS-WBS-001 |
-| Version | 2.0 |
+| Version | 2.1 |
 | Status | Draft |
 | Date | 2026-06-11 |
 | Prepared By | Matthew Gabriel Sizemore |
@@ -19,6 +19,7 @@
 |---------|------|--------|-------------|
 | 1.0 | 2026-06-10 | M.G. Sizemore | Initial release — sequenced implementation plan derived from the architecture evaluation (DevLog §3.6) and system diagrams (DevLog §3.7) |
 | 2.0 | 2026-06-11 | M.G. Sizemore | Full re-baseline. Added **Phase 0** (0.1–0.12) covering all completed project-definition and systems-engineering work, for completeness. Rewrote **Phase 1** as a single, dependency-ordered sequence (1.0–21.0) spanning backend coding, backend unit testing, frontend coding, frontend unit testing, integration, integration testing, synthetic test data, localhost testing, deployment, end-to-end testing, and submission collation/submission. Re-scoped the Stage 5 Comparison Engine (7.0) to cover the new FR-066/FR-100–107 (added in PRD v1.3/v1.4). Synthetic test data (2.0) moved earlier so it precedes the unit tests that consume it. **All hour estimates and target dates removed** — this document tracks sequence and dependencies only. |
+| 2.1 | 2026-06-11 | M.G. Sizemore | Re-sequenced execution order: pulled **WBS 12.0** (Agent Dashboard) and **13.0** (Application Detail View) forward, ahead of 6.0–10.0, to enable incremental manual UI verification as backend stages land. Split each into **Pass 1** (sub-items buildable now against completed 1.0/3.0/4.0/5.0/11.0 — annotated below) and **Pass 2** (sub-items requiring 6.0–10.0 — deferred and revisited after 10.0, before 14.0). Dependency graph (§2) unchanged; §3 and §4 updated with the new execution order and rationale (§4 Note 7). |
 
 ---
 
@@ -135,28 +136,28 @@
 | 11.5 | Project structure (`pages/`, `components/`, `hooks/`, `lib/` API client) | 11.1 | — |
 | 11.6 | Auth context/hooks + login page | 11.5, 3.2 | SR-001 |
 | 11.7 | Typed API client matching backend schemas | 11.5, 4.5, 5.6, 6.7, 7.15, 8.4 | DevLog §3.5 |
-| **12.0** | **Frontend — Agent Dashboard** | 11.7, 4.4 | FR-070–077 |
-| 12.1 | Application list table (serial #, applicant, type, status) | 11.7, 4.4 | FR-070, FR-071 |
-| 12.2 | Filter by applicant | 12.1 | FR-072 |
-| 12.3 | Checkbox batch selection | 12.1 | FR-073 |
-| 12.4 | "Process Selected" action + progress indicator (polls 9.5) | 12.3, 9.4, 9.5 | FR-074, FR-075, UR-004 |
-| 12.5 | Result badges (✅/❌/⚠️) | 12.4, 8.4 | FR-076, UR-002 |
-| 12.6 | Batch summary header | 12.4 | FR-077 |
-| 12.7 | Upload-new modal (form PDF + N label images) | 12.1, 4.1 | FR-001–006 |
-| 12.8 | Unit tests (Vitest): Dashboard — list/filter/selection/badges/upload modal | 12.7 | FR-070–077 |
-| **13.0** | **Frontend — Application Detail View** | 11.7, 5.6, 6.7, 7.15 | FR-080–091 |
-| 13.1 | Split-view layout (form PDF left / label image(s) right) | 11.7, 4.5 | FR-080, FR-081 |
-| 13.2 | react-pdf form renderer | 13.1 | FR-080 |
-| 13.3 | Multi-image tab selector with thumbnails | 13.1 | FR-091 |
-| 13.4 | SVG annotation overlay — form panel (positioned via `form_parameters.bbox_json`/`location_hint`) | 13.2, 5.6 | FR-019, FR-082, IA-23 |
-| 13.5 | SVG annotation overlay — label panel (positioned via `label_parameters.bbox_json`/`header_height_ratio`) | 13.3, 6.7 | FR-083 |
-| 13.6 | Mouse-over cross-highlighting between form and label annotations | 13.4, 13.5 | FR-084 |
-| 13.7 | Parameter results table (per-field comparison outcomes) | 13.1, 7.15, 9.6 | FR-085 |
-| 13.8 | Right-click override context menu + modal (per-parameter) | 13.7, 10.1 | FR-086, FR-087 |
-| 13.9 | Overall-determination override control | 13.8, 10.1 | FR-089 |
-| 13.10 | Finalize action | 13.9, 10.2 | FR-090 |
-| 13.11 | Auto-tab-switch when an annotation references a specific `label_image_id` | 13.3, 13.6 | FR-091 |
-| 13.12 | Unit tests (Vitest): Detail View — annotation rendering, tab switching/auto-switch, cross-highlight, override modal, finalize | 13.11 | FR-080–091 |
+| **12.0** | **Frontend — Agent Dashboard** *(re-sequenced ahead of 6.0 — §4 Note 7)* | 11.7, 4.4 | FR-070–077 |
+| 12.1 | Application list table (serial #, applicant, type, status) — ✅ done | 11.7, 4.4 | FR-070, FR-071 |
+| 12.2 | Filter by applicant *(Pass 1)* — ✅ done | 12.1 | FR-072 |
+| 12.3 | Checkbox batch selection *(Pass 1)* — ✅ done | 12.1 | FR-073 |
+| 12.4 | "Process Selected" action + progress indicator (polls 9.5) *(Pass 2 — needs 9.4/9.5)* | 12.3, 9.4, 9.5 | FR-074, FR-075, UR-004 |
+| 12.5 | Result badges (✅/❌/⚠️) *(Pass 2 — needs 8.4)* | 12.4, 8.4 | FR-076, UR-002 |
+| 12.6 | Batch summary header *(Pass 2)* | 12.4 | FR-077 |
+| 12.7 | Upload-new modal (form PDF + N label images) — ✅ done | 12.1, 4.1 | FR-001–006 |
+| 12.8 | Unit tests (Vitest): Dashboard — list/filter/selection/badges/upload modal *(Pass 1 partial — ✅ Vitest configured; covers 12.1–12.3/12.7; 12.4–12.6 coverage added in Pass 2)* | 12.7 | FR-070–077 |
+| **13.0** | **Frontend — Application Detail View** *(re-sequenced ahead of 6.0 — §4 Note 7)* | 11.7, 5.6, 6.7, 7.15 | FR-080–091 |
+| 13.1 | Split-view layout (form PDF left / label image(s) right) *(Pass 1)* — ✅ done | 11.7, 4.5 | FR-080, FR-081 |
+| 13.2 | react-pdf form renderer *(Pass 1)* — ✅ done | 13.1 | FR-080 |
+| 13.3 | Multi-image tab selector with thumbnails *(Pass 1)* — ✅ done | 13.1 | FR-091 |
+| 13.4 | SVG annotation overlay — form panel (positioned via `form_parameters.bbox_json`/`location_hint`) *(Pass 1 — requires `_to_detail()` fix to surface persisted `form_parameters`)* — ✅ done | 13.2, 5.6 | FR-019, FR-082, IA-23 |
+| 13.5 | SVG annotation overlay — label panel (positioned via `label_parameters.bbox_json`/`header_height_ratio`) *(Pass 2 — needs 6.7)* | 13.3, 6.7 | FR-083 |
+| 13.6 | Mouse-over cross-highlighting between form and label annotations *(Pass 2 — needs 13.5)* | 13.4, 13.5 | FR-084 |
+| 13.7 | Parameter results table (per-field comparison outcomes) *(Pass 2 — needs 7.15/9.6)* | 13.1, 7.15, 9.6 | FR-085 |
+| 13.8 | Right-click override context menu + modal (per-parameter) *(Pass 2 — needs 10.1)* | 13.7, 10.1 | FR-086, FR-087 |
+| 13.9 | Overall-determination override control *(Pass 2 — needs 10.1)* | 13.8, 10.1 | FR-089 |
+| 13.10 | Finalize action *(Pass 2 — needs 10.2)* | 13.9, 10.2 | FR-090 |
+| 13.11 | Auto-tab-switch when an annotation references a specific `label_image_id` *(Pass 2 — needs 13.6)* | 13.3, 13.6 | FR-091 |
+| 13.12 | Unit tests (Vitest): Detail View — annotation rendering, tab switching/auto-switch, cross-highlight, override modal, finalize *(Pass 1 partial — ✅ covers 13.1–13.4; 13.5–13.11 coverage added in Pass 2)* | 13.11 | FR-080–091 |
 | **14.0** | **Frontend — Batch Report View** | 11.7, 10.3 | FR-095–097, UR-003 |
 | 14.1 | Report layout — counts by outcome | 11.7, 10.3 | FR-095, FR-096 |
 | 14.2 | Common-failure-type display | 14.1 | FR-097 |
@@ -252,6 +253,15 @@ Phase 0 (complete)
 
 11.0–14.0 (frontend) can begin as soon as 11.7's typed API client has a stable contract to target — in practice this means frontend scaffolding (11.1–11.6) starts immediately alongside 1.0, while 11.7 and the view-specific items (12.0–14.0) wait on the corresponding backend schemas (4.5, 5.6, 6.7, 7.15, 8.4, 9.5, 10.1–10.3) as they land.
 
+**Execution Order Override (v2.1, 2026-06-11):** Per user direction, WBS 12.0 and 13.0 are pulled forward and executed in two passes:
+
+- **Pass 1** (now, before 6.0): 12.2, 12.3, 13.1–13.4, plus a small backend fix to `applications.py::_to_detail()` so `GET /applications/{id}` returns persisted `form_parameters` rows (needed for 13.4), and two new file-serving endpoints — `GET /applications/{id}/form` and `GET /applications/{id}/label-images/{image_id}` — required by 13.2/13.3 since uploaded files were previously stored on disk but never exposed over HTTP. All build against the already-complete 1.0/3.0/4.0/5.0/11.0.
+- **6.0 → 10.0**: backend stages proceed as originally sequenced.
+- **Pass 2** (after 10.0, before 14.0): 12.4–12.6, 13.5–13.11, plus the remaining 12.8/13.12 unit-test coverage — completing 12.0/13.0 into their finished UI.
+- 14.0 onward proceeds unchanged.
+
+Rationale: front-loading the buildable frontend surfaces lets the user manually verify Dashboard and Detail View behavior as each backend stage lands, rather than waiting until 10.0 completes before any UI is testable. Note: 13.4's SVG overlay renders correctly against an empty `form_parameters` array (shows a "no extracted fields yet" message) since no endpoint yet triggers Stage 3 extraction (`run_stage3_extraction`/`persist_form_parameters` — wired up as part of 6.0+). See §4 Note 7.
+
 ---
 
 ## 4. Sequencing & Technical Risk Notes
@@ -267,6 +277,8 @@ Phase 0 (complete)
 5. **18.0 (Setup & Deployment) platform risk is front-loaded into 1.6** (smoke-test deploy). Any Railway/Tesseract/persistent-volume issues should surface there, long before 18.0 depends on that configuration working.
 
 6. **2.0 (Synthetic Test Data) is a hard prerequisite for nearly every test item** (5.7, 6.8, 7.16, 8.5, 9.7, 10.4, 16.1–16.6, 17.4). Completing 2.1–2.7 early — in parallel with 1.0 — avoids any backend coding item stalling at its paired unit-test sub-item for lack of fixtures.
+
+7. **(v2.1) 12.0/13.0 re-sequencing:** WBS 12.0 and 13.0 were pulled forward ahead of 6.0–10.0 (Pass 1: 12.2, 12.3, 13.1–13.4 + `_to_detail()` fix), with the remainder (Pass 2: 12.4–12.6, 13.5–13.11) deferred until 6.0–10.0 land. This is safe because Pass 1 items depend only on 1.0/3.0/4.0/5.0/11.0 (all complete) — the dependency graph in §2 is unchanged, only the execution order. Pass 2 items retain their original dependencies (9.4/9.5, 8.4, 6.7, 7.15/9.6, 10.1/10.2) and cannot start until those land regardless of this re-sequencing.
 
 ---
 

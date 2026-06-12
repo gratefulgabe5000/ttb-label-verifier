@@ -169,6 +169,117 @@ def test_get_application_returns_full_detail(client, auth_headers):
     assert body["determination"] is None
 
 
+def test_get_application_returns_persisted_form_parameters(client, auth_headers):
+    from db import SessionLocal
+    from models.form_parameter import FormParameter
+
+    upload_response = client.post(
+        "/applications/upload",
+        headers=auth_headers,
+        files=[("form_file", ("form.pdf", _pdf_bytes(), "application/pdf"))],
+    )
+    application_id = upload_response.json()["id"]
+
+    db = SessionLocal()
+    try:
+        db.add(
+            FormParameter(
+                application_id=application_id,
+                field_name="brand_name",
+                field_value="Stoll & Wolfe",
+                confidence=0.95,
+                extraction_method="acroform",
+                bbox_json='{"x": 10, "y": 20, "w": 100, "h": 30}',
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get(f"/applications/{application_id}", headers=auth_headers)
+
+    assert response.status_code == 200
+    form_parameters = response.json()["form_parameters"]
+    assert len(form_parameters) == 1
+    assert form_parameters[0]["field_name"] == "brand_name"
+    assert form_parameters[0]["field_value"] == "Stoll & Wolfe"
+    assert form_parameters[0]["bbox_json"] == '{"x": 10, "y": 20, "w": 100, "h": 30}'
+
+
+def test_get_application_form_returns_pdf_bytes(client, auth_headers):
+    upload_response = client.post(
+        "/applications/upload",
+        headers=auth_headers,
+        files=[("form_file", ("form.pdf", _pdf_bytes(), "application/pdf"))],
+    )
+    application_id = upload_response.json()["id"]
+
+    response = client.get(f"/applications/{application_id}/form", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content == _pdf_bytes()
+
+
+def test_get_application_form_404_for_other_agents_application(client, auth_headers, second_auth_headers):
+    upload_response = client.post(
+        "/applications/upload",
+        headers=auth_headers,
+        files=[("form_file", ("form.pdf", _pdf_bytes(), "application/pdf"))],
+    )
+    application_id = upload_response.json()["id"]
+
+    response = client.get(f"/applications/{application_id}/form", headers=second_auth_headers)
+
+    assert response.status_code == 404
+
+
+def test_get_application_label_image_returns_image_bytes(client, auth_headers):
+    upload_response = client.post(
+        "/applications/upload",
+        headers=auth_headers,
+        data={"label_types": ["brand"]},
+        files=[
+            ("form_file", ("form.pdf", _pdf_bytes(), "application/pdf")),
+            ("label_images", ("brand.jpg", _jpeg_bytes(), "image/jpeg")),
+        ],
+    )
+    body = upload_response.json()
+    application_id = body["id"]
+    image_id = body["label_images"][0]["id"]
+
+    response = client.get(f"/applications/{application_id}/label-images/{image_id}", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.content == _jpeg_bytes()
+
+
+def test_get_application_label_image_404_for_mismatched_application(client, auth_headers):
+    first = client.post(
+        "/applications/upload",
+        headers=auth_headers,
+        data={"label_types": ["brand"]},
+        files=[
+            ("form_file", ("form.pdf", _pdf_bytes(), "application/pdf")),
+            ("label_images", ("brand.jpg", _jpeg_bytes(), "image/jpeg")),
+        ],
+    )
+    image_id = first.json()["label_images"][0]["id"]
+
+    second = client.post(
+        "/applications/upload",
+        headers=auth_headers,
+        files=[("form_file", ("form.pdf", _pdf_bytes(), "application/pdf"))],
+    )
+    other_application_id = second.json()["id"]
+
+    response = client.get(
+        f"/applications/{other_application_id}/label-images/{image_id}", headers=auth_headers
+    )
+
+    assert response.status_code == 404
+
+
 def test_get_application_404_for_other_agents_application(client, auth_headers, second_auth_headers):
     upload_response = client.post(
         "/applications/upload",

@@ -1,0 +1,162 @@
+import { useEffect, useState } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { applicationsApi } from "@/lib/api-client";
+import type { FormParameter } from "@/lib/types";
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
+
+interface FormBbox {
+  page?: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+interface PageSize {
+  width: number;
+  height: number;
+  originalWidth: number;
+  originalHeight: number;
+}
+
+interface FormPdfPanelProps {
+  applicationId: number;
+  formParameters: FormParameter[];
+}
+
+function parseBbox(bboxJson: string | null): FormBbox | null {
+  if (!bboxJson) return null;
+  try {
+    return JSON.parse(bboxJson) as FormBbox;
+  } catch {
+    return null;
+  }
+}
+
+export function FormPdfPanel({ applicationId, formParameters }: FormPdfPanelProps) {
+  const [blob, setBlob] = useState<Blob | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState(0);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSize | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    applicationsApi
+      .getFormBlob(applicationId)
+      .then((result) => {
+        if (!cancelled) setBlob(result);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Failed to load application form.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applicationId]);
+
+  if (error) {
+    return <p className="text-sm text-destructive">{error}</p>;
+  }
+  if (!blob) {
+    return <p className="text-sm text-muted-foreground">Loading form...</p>;
+  }
+
+  const overlays = formParameters
+    .map((param) => ({ param, bbox: parseBbox(param.bbox_json) }))
+    .filter((entry): entry is { param: FormParameter; bbox: FormBbox } => entry.bbox !== null)
+    .filter((entry) => (entry.bbox.page ?? 0) === pageNumber - 1);
+
+  return (
+    <div className="space-y-2">
+      <Document
+        file={blob}
+        onLoadSuccess={(pdf) => setNumPages(pdf.numPages)}
+        onLoadError={() => setError("Failed to render application form.")}
+        loading={<p className="text-sm text-muted-foreground">Rendering form...</p>}
+      >
+        <div className="relative inline-block">
+          <Page
+            pageNumber={pageNumber}
+            width={520}
+            renderTextLayer={false}
+            renderAnnotationLayer={false}
+            onLoadSuccess={(page) =>
+              setPageSize({
+                width: page.width,
+                height: page.height,
+                originalWidth: page.originalWidth,
+                originalHeight: page.originalHeight,
+              })
+            }
+          />
+          {pageSize && overlays.length > 0 && (
+            <svg
+              className="pointer-events-none absolute left-0 top-0"
+              width={pageSize.width}
+              height={pageSize.height}
+              viewBox={`0 0 ${pageSize.originalWidth} ${pageSize.originalHeight}`}
+            >
+              {overlays.map(({ param, bbox }) => (
+                <g key={param.id}>
+                  <rect
+                    x={bbox.x}
+                    y={bbox.y}
+                    width={bbox.w}
+                    height={bbox.h}
+                    fill="rgba(250, 204, 21, 0.2)"
+                    stroke="#d97706"
+                    strokeWidth={1.5}
+                  />
+                  <title>
+                    {param.field_name}: {param.field_value ?? "(empty)"}
+                  </title>
+                </g>
+              ))}
+            </svg>
+          )}
+        </div>
+      </Document>
+
+      {formParameters.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No extracted form fields yet — annotations will appear here once form extraction has run.
+        </p>
+      )}
+
+      {numPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pageNumber <= 1}
+            onClick={() => setPageNumber((current) => current - 1)}
+          >
+            <ChevronLeft />
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {pageNumber} of {numPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pageNumber >= numPages}
+            onClick={() => setPageNumber((current) => current + 1)}
+          >
+            Next
+            <ChevronRight />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

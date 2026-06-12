@@ -3,7 +3,7 @@
 **Assessment:** IT Specialist (AI) · 26-DO-12891471-DH
 **Received:** June 9, 2026, 1458 hrs · **Deadline:** June 16, 2026, 1458 hrs
 **Repo:** https://github.com/gratefulgabe5000/ttb-label-verifier
-**Documentation Baseline:** v2.0 — README, PRD (v2.0), DevLog, WBS (v2.0), and TODO are mutually consistent as of Session 9 (2026-06-11)
+**Documentation Baseline:** v2.0 — README, PRD (v2.0), DevLog, and TODO are mutually consistent as of Session 9 (2026-06-11); WBS bumped to v2.1 same day for the 12.0/13.0 re-sequencing (§4 Note 7)
 
 ---
 
@@ -20,23 +20,39 @@
 | Mermaid diagrams (system context, block diagram, concurrency sequence) | ✅ Complete (2026-06-10) — DevLog §3.7 |
 | Work Breakdown Structure | ✅ Complete, re-baselined to v2.0 (2026-06-11) — [`WBS.md` v2.0](_DevLog/WBS.md) |
 | Backend (`app/`) | 🔶 Scaffolding + Auth + Ingestion + Form Assessment complete (WBS 1.0, 3.0, 4.0, 5.0; 54/54 pytest passing, Railway config) — WBS 6.0–10.0 remaining |
-| Frontend (`web/`) | 🔶 Scaffolding complete (WBS 11.0 + Settings/API-key UI, build & lint passing); 12.7 Upload-new modal pulled forward & done — WBS 12.0 (remaining items)–14.0 remaining |
+| Frontend (`web/`) | 🔶 Scaffolding complete (WBS 11.0 + Settings/API-key UI, build & lint passing). **12.0/13.0 re-sequenced ahead of 6.0 (WBS.md v2.1)** — Pass 1 (12.1–12.3, 12.7, 13.1–13.4) ✅ done, incl. Vitest setup + tests (12.8/13.12 partial); Pass 2 (12.4–12.6, 13.5–13.11) and 14.0 remain |
 | Synthetic test data (sample forms + multi-image label sets) | ✅ 2.1–2.7 complete — ALL OF WBS 2.0 DONE (`testdata/manifest.json` — 45 products / 88 images; `testdata/forms/sample_creek_*.pdf` — TS-01 3-tier fixtures; `testdata/forms/good_*.pdf` + `testdata/forms/hf_*.pdf` + `testdata/forms/ar_*.pdf` + `testdata/forms/type14b_*.pdf` + `testdata/test_sets.json` — 2.3 "good" sets + 2.4 "hard failure" sets + 2.5 "possible allowable revision" sets + 2.7 Type 14b set; `testdata/degraded/*.jpg` + `testdata/degraded_images.json` — 2.6 degraded-image fixtures for FR-039; `testdata/synthetic/*.jpg` — synthetic statement-label fixture for FR-056) |
 | Deployed application URL | ☐ Pending — WBS 18.0 |
 
 ---
 
-## Next Session — Label Assessment Backend (6.0)
+## Next Session — WBS 6.0: Backend Stage 4 — Label Assessment (TS-02)
 
 > See [`_DevLog/Sessions.md`](_DevLog/Sessions.md) for the full session-by-session narrative (Sessions 1-14), including Sessions 10-14's completion of WBS 1.0, 11.0, 2.0, 3.0, 4.0, and 5.0.
 
-1. **WBS 6.0 — Backend Stage 4: Label Assessment (TS-02)** (`app/`): OpenCV preprocessing pipeline — deskew, contrast/CLAHE, glare suppression (6.1), Claude Vision label-extraction prompt covering mandatory + secondary elements plus a generic `other_text` catch-all (6.2), Government Warning detection via exact-text + bold/caps check (6.3), Tesseract OCR pass for text + bbox detection (6.4), fuzzy-match Claude-extracted values to OCR bboxes and compute `header_height_ratio` (6.5), per-image concurrent execution via `asyncio.gather` across an application's label images with Claude-vs-OCR concurrency within each image (6.6), persist to `label_parameters` — one row per `label_image_id` × field_name including `bbox_json`/`header_height_ratio` (6.7), unit tests for Stage 4 preprocessing on the 2.6 degraded images, extraction parsing, OCR fuzzy-match, and government warning detection using 2.1/2.4 (6.8).
+**Session 15 completed WBS 12.0/13.0 Pass 1** (re-sequenced ahead of 6.0 per [`WBS.md` v2.1](_DevLog/WBS.md) §4 Note 7):
+
+1. **Backend fix** (`app/routers/applications.py`): `_to_detail()` now queries persisted `FormParameter`/`LabelParameter`/`Determination` rows so `GET /applications/{id}` returns real `form_parameters`/`label_parameters`/`determination`.
+2. **WBS 12.2** — Filter by applicant (`DashboardPage.tsx`)
+3. **WBS 12.3** — Checkbox batch selection (`DashboardPage.tsx`)
+4. **WBS 13.1/13.2** — Split-view layout + react-pdf form renderer in `ApplicationDetailPage.tsx`, backed by two new file-serving endpoints (`GET /applications/{id}/form`, `GET /applications/{id}/label-images/{image_id}`) needed because uploaded files were stored on disk but never exposed over HTTP
+5. **WBS 13.3** — Multi-image tab selector with thumbnails (`LabelImagesPanel.tsx`)
+6. **WBS 13.4** — SVG annotation overlay on the form panel, positioned via `form_parameters.bbox_json`
+7. **WBS 12.8/13.12 (partial)** — Vitest configured in `web/`; unit tests covering 12.1–12.3/12.7 and 13.1–13.4 (6 tests, all passing)
+
+**Manual verification:** open the "Test Upload" application from Session 13's WBS 4.0 manual test (1 PDF + 2 label images) at `/applications/{id}` — the form PDF and label images should render in a split view with tabs. The SVG overlay will show "no extracted fields yet" until Stage 3 extraction (wired up as part of 6.0+) populates `form_parameters` for an application.
+
+Proceed to **WBS 6.0 — Backend Stage 4: Label Assessment (TS-02)** (`app/`): OpenCV preprocessing pipeline — deskew, contrast/CLAHE, glare suppression (6.1), Claude Vision label-extraction prompt covering mandatory + secondary elements plus a generic `other_text` catch-all (6.2), Government Warning detection via exact-text + bold/caps check (6.3), Tesseract OCR pass for text + bbox detection (6.4), fuzzy-match Claude-extracted values to OCR bboxes and compute `header_height_ratio` (6.5), per-image concurrent execution via `asyncio.gather` across an application's label images with Claude-vs-OCR concurrency within each image (6.6), persist to `label_parameters` — one row per `label_image_id` × field_name including `bbox_json`/`header_height_ratio` (6.7), unit tests for Stage 4 preprocessing on the 2.6 degraded images, extraction parsing, OCR fuzzy-match, and government warning detection using 2.1/2.4 (6.8).
+
+After WBS 6.0–10.0 land, return to **WBS 12.0/13.0 Pass 2** (12.4–12.6, 13.5–13.11, remaining 12.8/13.12 coverage) per [`WBS.md` v2.1](_DevLog/WBS.md) §4 Note 7, before proceeding to 14.0.
 
 ---
 
 ## Remaining Implementation Work (post-architecture-review)
 
-> Sequencing, dependencies, and traceability for all items below are in [`WBS.md` v2.0 — Work Breakdown Structure](_DevLog/WBS.md) §2.
+> Sequencing, dependencies, and traceability for all items below are in [`WBS.md` v2.1 — Work Breakdown Structure](_DevLog/WBS.md) §2.
+>
+> **Execution order override (v2.1, 2026-06-11):** WBS 12.0/13.0 pulled forward — Pass 1 (12.1–12.3, 12.7, 13.1–13.4) ✅ complete (Session 15), ahead of 6.0; Pass 2 (12.4–12.6, 13.5–13.11) executes after 10.0, before 14.0. See [`WBS.md`](_DevLog/WBS.md) §4 Note 7.
 
 - [x] WBS 1.0 — Backend scaffolding (`app/`): FastAPI structure, SQLAlchemy models for all 8 tables, env config, CORS, early Railway smoke-test deploy (Session 10)
 - [x] WBS 2.0 — Synthetic test data (parallel w/ 1.0): sample F 5100.31 PDFs across all 3 TS-01 tiers + multi-image label sets (good / hard-failure / allowable / degraded / 14b) — **2.1–2.7 done, ALL COMPLETE** (`testdata/manifest.json`, Session 10; `testdata/forms/sample_creek_*.pdf`, Session 11; `testdata/forms/good_*.pdf` + `testdata/forms/hf_*.pdf` + `testdata/forms/ar_*.pdf` + `testdata/forms/type14b_*.pdf` + `testdata/test_sets.json`, Session 11; `testdata/degraded/*.jpg` + `testdata/degraded_images.json` + `testdata/synthetic/*.jpg`, Session 11)
@@ -49,8 +65,8 @@
 - [ ] WBS 9.0 — Pipeline orchestration + Batch Orchestrator (bounded concurrency), unit/integration tests
 - [ ] WBS 10.0 — Overrides, finalize, batch report endpoints, unit tests
 - [x] WBS 11.0 — Frontend scaffolding (`web/`): Vite + React + TS + Tailwind + shadcn/ui + react-pdf + API client, plus new Settings/API-key UI (Session 10)
-- [ ] WBS 12.0 — Agent Dashboard (list, filter, batch select, process, badges, upload modal, unit tests) — **12.7 (upload modal) pulled forward & complete (Session 13)**; 12.1-12.6, 12.8 remaining
-- [ ] WBS 13.0 — Application Detail View (split view, multi-image tabs, annotation overlays, cross-highlight, overrides, finalize, unit tests) — **13.1 (split-view form/label rendering, FR-080/081) is the planned UI for viewing an application's uploaded files; once built, use it to verify the "Test Upload" application (created during Session 13's WBS 4.0 manual test, 1 PDF + 2 label images) renders correctly**
+- [ ] WBS 12.0 — Agent Dashboard (list, filter, batch select, process, badges, upload modal, unit tests) — **Pass 1 (12.1-12.3, 12.7) ✅ complete**, incl. 12.8 partial (Vitest); Pass 2 (after 10.0): 12.4-12.6, remaining 12.8
+- [ ] WBS 13.0 — Application Detail View (split view, multi-image tabs, annotation overlays, cross-highlight, overrides, finalize, unit tests) — **Pass 1 (13.1-13.4) ✅ complete**, incl. 13.12 partial (Vitest) — verified against the "Test Upload" application from Session 13's WBS 4.0 manual test (1 PDF + 2 label images); Pass 2 (after 10.0): 13.5-13.11, remaining 13.12
 - [ ] WBS 14.0 — Batch Report view (counts, common failure type, CSV/PDF export, unit tests)
 - [ ] WBS 15.0 — Integration: wire frontend to backend (Dashboard, Detail View, Batch Report, auth, error handling)
 - [ ] WBS 16.0 — Integration testing against synthetic data (per-product-type pipeline, PR-001 timing, batch concurrency, multi-image resolution, override/finalize, annotation placement)
