@@ -6,7 +6,7 @@
 | Field | Value |
 |-------|-------|
 | Document ID | TTB-LVS-WBS-001 |
-| Version | 2.4 |
+| Version | 2.6 |
 | Status | Draft |
 | Date | 2026-06-12 |
 | Prepared By | Matthew Gabriel Sizemore |
@@ -24,6 +24,7 @@
 | 2.3 | 2026-06-12 | M.G. Sizemore | Marked WBS 12.0/13.0 (all sub-items, 12.4–12.6/12.8/13.5–13.12) complete — Pass 2 implementation finished (Session 21) |
 | 2.4 | 2026-06-12 | M.G. Sizemore | Session 22 refinements within already-complete 6.2/7.3/7.9/7.10 — Government Warning 3-way split with case/punctuation-tolerant MATCH, importer-vs-bottler matching for Item 8 with ZIP+4-tolerant address comparison; no new line items. Added §4 Note 8 (open product question: importer vs. manufacturer for Item 8 on imported products) |
 | 2.5 | 2026-06-12 | M.G. Sizemore | Marked WBS 14.0 (Frontend — Batch Report View, 14.1–14.5) complete |
+| 2.6 | 2026-06-12 | M.G. Sizemore | Marked WBS 15.0 (Integration — Frontend ↔ Backend Wiring, 15.1–15.5) complete |
 
 ---
 
@@ -168,12 +169,12 @@
 | ✅ | 14.3 | CSV export *(`lib/csv.ts` — `toCsv`/`downloadCsv`; "Export CSV" button writes one row per application incl. applicant, serial #, status, recommendation)* | 14.1 | UR-003 |
 | ✅ | 14.4 | PDF export *(optional / stretch)* — *("Print / Save as PDF" via `window.print()`; `print:hidden` added to AppShell header/API-key banner and the report's action buttons for a clean printout)* | 14.1 | UR-003 |
 | ✅ | 14.5 | Unit tests (Vitest): Batch Report — counts, failure-type display, export *(`BatchReportPage.test.tsx`, 5 tests, plus a Dashboard "View Report" wiring test — 21/21 Vitest passing)* | 14.3 | FR-095–097 |
-| ❌ | **15.0** | **Integration — Frontend ↔ Backend Wiring** | 12.8, 13.12, 14.5, 9.5, 10.2, 10.3, 11.6 | — |
-| ❌ | 15.1 | Wire Dashboard (12.0) to `GET /applications`, `POST /batch/process`, `GET /batch/{id}/status` | 12.8, 9.5 | — |
-| ❌ | 15.2 | Wire Detail View (13.0) to `GET /applications/{id}`, `POST /determinations/{id}/override`, `POST /determinations/{id}/finalize` | 13.12, 10.2 | — |
-| ❌ | 15.3 | Wire Batch Report (14.0) to `GET /batch/{id}/report` | 14.5, 10.3 | — |
-| ❌ | 15.4 | Wire auth flow — login → JWT storage → authenticated requests on all endpoints | 11.6, 3.3 | SR-001, SR-002 |
-| ❌ | 15.5 | Plain-English error handling/surfacing across all wired views | 15.1, 15.2, 15.3, 15.4 | UR-003 |
+| ✅ | **15.0** | **Integration — Frontend ↔ Backend Wiring** — **COMPLETE** (Session 25 — 15.1–15.4 confirmed already wired via 12.0–14.0; 15.5 added the two remaining plain-English error states) | 12.8, 13.12, 14.5, 9.5, 10.2, 10.3, 11.6 | — |
+| ✅ | 15.1 | Wire Dashboard (12.0) to `GET /applications`, `POST /batch/process`, `GET /batch/{id}/status` *(already wired as part of 12.4–12.6; confirmed by audit, no changes needed)* | 12.8, 9.5 | — |
+| ✅ | 15.2 | Wire Detail View (13.0) to `GET /applications/{id}`, `POST /determinations/{id}/override`, `POST /determinations/{id}/finalize` *(already wired as part of 13.8–13.10; confirmed by audit, no changes needed)* | 13.12, 10.2 | — |
+| ✅ | 15.3 | Wire Batch Report (14.0) to `GET /batch/{id}/report` *(already wired as part of 14.1; confirmed by audit, no changes needed)* | 14.5, 10.3 | — |
+| ✅ | 15.4 | Wire auth flow — login → JWT storage → authenticated requests on all endpoints *(already wired via `AuthContext`/`apiFetch`/`ProtectedRoute`; confirmed by audit, no changes needed)* | 11.6, 3.3 | SR-001, SR-002 |
+| ✅ | 15.5 | Plain-English error handling/surfacing across all wired views *(audit found two gaps: `comparisonsQuery.isError` was unhandled in `ResultsSidebar`/`ParameterResultsTable` — "Failed to load comparison results. Please try again."; `batchStatusQuery.isError` was unhandled in `DashboardPage` — added a dismissible retry banner "Failed to load status for batch #{id}...". 2 new Vitest tests, 30/30 passing)* | 15.1, 15.2, 15.3, 15.4 | UR-003 |
 | ❌ | **16.0** | **Integration Testing** *(localhost, against synthetic data)* | 15.5, 2.0 | PR-001, PR-002, PR-004 |
 | ❌ | 16.1 | End-to-end pipeline test per product type (wine/spirits/malt) using 2.3–2.7 | 15.5, 2.0 | §2.5 Comparison Matrix, FR-050–059, FR-066, FR-100–107 |
 | ❌ | 16.2 | PR-001 timing verification (≤5s/application incl. all label images) | 16.1 | PR-001 |
@@ -285,6 +286,8 @@ Rationale: front-loading the buildable frontend surfaces lets the user manually 
 7. **(v2.1) 12.0/13.0 re-sequencing:** WBS 12.0 and 13.0 were pulled forward ahead of 6.0–10.0 (Pass 1: 12.2, 12.3, 13.1–13.4 + `_to_detail()` fix), with the remainder (Pass 2: 12.4–12.6, 13.5–13.11) deferred until 6.0–10.0 land. This is safe because Pass 1 items depend only on 1.0/3.0/4.0/5.0/11.0 (all complete) — the dependency graph in §2 is unchanged, only the execution order. Pass 2 items retain their original dependencies (9.4/9.5, 8.4, 6.7, 7.15/9.6, 10.1/10.2) and cannot start until those land regardless of this re-sequencing.
 
 8. **(v2.4) Open product question — importer vs. manufacturer for Item 8 on imported products:** For "Imported" applications, Item 8 (Applicant Name/Address) is filled in by the U.S. importer, but the label's bottler/producer fields usually identify the foreign manufacturer. 7.9/7.10 now check Item 8 against both the label's bottler and importer fields (`compare_applicant_name`/`compare_applicant_address`, OR-match across `["bottler_name","importer_name"]` / `["bottler_address","importer_address"]`), but it is not yet confirmed whether Item 8 should always be expected to match the importer, the manufacturer, or either. Flagged in the frontend Settings dialog ("About..." section) for end-user/product-team resolution before relying on automated determinations for imported-product applications — relevant to 16.1 (per-product-type pipeline test) and 17.4 (edge-case walkthrough).
+
+9. **(v2.6) 15.0 closeout — 15.1–15.4 required no code changes:** because 12.0–14.0 were built directly against the live typed API client (`lib/api-client.ts`) rather than mocked data, the Dashboard/Detail View/Batch Report/auth wiring was already complete by the time 15.0 started. The Session 25 audit confirmed this against the code (queries/mutations call `applicationsApi`/`batchApi`/`determinationsApi`/`authApi`, `AuthContext` listens for `AUTH_UNAUTHORIZED_EVENT` and `ProtectedRoute` redirects to `/login`) and made no changes for 15.1–15.4. The only substantive 15.0 work was 15.5: two views had query-error states that were silently swallowed (`comparisonsQuery.isError` in the Detail View results panels, `batchStatusQuery.isError` in the Dashboard's batch-status poll) — both now surface a `text-destructive` plain-English message per UR-003, and the Dashboard's also offers Retry/Dismiss so the agent isn't left staring at a stuck "processing" state.
 
 ---
 

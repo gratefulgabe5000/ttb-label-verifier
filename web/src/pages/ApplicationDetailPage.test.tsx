@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ApplicationDetailPage } from "./ApplicationDetailPage";
-import { applicationsApi, determinationsApi } from "@/lib/api-client";
+import { ApiError, applicationsApi, determinationsApi } from "@/lib/api-client";
 import type { ApplicationDetail, Comparison, Determination, LabelParameter } from "@/lib/types";
 
 // react-pdf renders to <canvas> via pdf.js, which jsdom doesn't support —
@@ -605,5 +605,17 @@ describe("ApplicationDetailPage", () => {
     await waitFor(() => {
       expect(applicationsApi.reprocessComparison).toHaveBeenCalledWith(1);
     });
+  });
+
+  it("shows a plain-English error in both results panels when comparisons fail to load (15.5)", async () => {
+    vi.spyOn(applicationsApi, "get").mockResolvedValue(APPLICATION);
+    vi.spyOn(applicationsApi, "comparisons").mockRejectedValue(new ApiError(500, "Internal server error"));
+    vi.spyOn(applicationsApi, "getFormBlob").mockResolvedValue(new Blob(["%PDF"], { type: "application/pdf" }));
+    vi.spyOn(applicationsApi, "getLabelImageBlob").mockResolvedValue(new Blob(["img"], { type: "image/jpeg" }));
+
+    renderDetailPage();
+
+    const errorMessages = await screen.findAllByText("Failed to load comparison results. Please try again.");
+    expect(errorMessages).toHaveLength(2);
   });
 });

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { DashboardPage } from "./DashboardPage";
-import { applicationsApi, batchApi } from "@/lib/api-client";
+import { ApiError, applicationsApi, batchApi } from "@/lib/api-client";
 import type { Application, BatchStatus } from "@/lib/types";
 
 const BASE_APPLICATION: Omit<Application, "id" | "applicant_name" | "serial_number"> = {
@@ -49,6 +49,19 @@ const BATCH_STATUS: BatchStatus = {
   ],
   created_at: "2026-06-12T00:00:00Z",
   completed_at: "2026-06-12T00:01:00Z",
+};
+
+const PROCESSING_BATCH_STATUS: BatchStatus = {
+  id: 99,
+  status: "PROCESSING",
+  total: 2,
+  completed: 0,
+  approved_count: 0,
+  denied_count: 0,
+  exemption_count: 0,
+  applications: [],
+  created_at: "2026-06-12T00:00:00Z",
+  completed_at: null,
 };
 
 function renderDashboard() {
@@ -148,6 +161,25 @@ describe("DashboardPage", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "View Report" }));
     expect(await screen.findByText("Batch Report 99")).toBeInTheDocument();
+  });
+
+  it("shows a plain-English error with retry/dismiss when batch status polling fails (15.5)", async () => {
+    vi.spyOn(batchApi, "process").mockResolvedValue(PROCESSING_BATCH_STATUS);
+    vi.spyOn(batchApi, "status").mockRejectedValue(new ApiError(500, "Internal server error"));
+
+    renderDashboard();
+    await screen.findByText("Stoll & Wolfe Distillery");
+
+    await userEvent.click(screen.getAllByRole("checkbox")[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Process Selected" }));
+
+    expect(await screen.findByText(/Failed to load status for batch #99/)).toBeInTheDocument();
+    const retryButton = screen.getByRole("button", { name: "Retry" });
+    const dismissButton = screen.getByRole("button", { name: "Dismiss" });
+    expect(retryButton).toBeInTheDocument();
+
+    await userEvent.click(dismissButton);
+    expect(screen.queryByText(/Failed to load status for batch/)).not.toBeInTheDocument();
   });
 
   it("shows recommendation result badges for applications in the batch result (12.5)", async () => {

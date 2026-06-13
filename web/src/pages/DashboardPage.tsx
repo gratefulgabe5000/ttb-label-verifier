@@ -119,6 +119,25 @@ export function DashboardPage() {
           )}
         </div>
 
+        {/* 15.5: batch status failed to load — let the agent retry or dismiss rather than
+            leaving the batch silently stuck in a "processing" state. */}
+        {batchStatusQuery.isError && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+            <span>
+              Failed to load status for batch #{activeBatchId}. The batch may still be processing in the
+              background.
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => batchStatusQuery.refetch()}>
+                Retry
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setActiveBatchId(null)}>
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* 12.6: batch summary header — progress while processing, counts once complete */}
         {batchStatus && (
           <div className="rounded-md border bg-muted/50 p-3 text-sm">

@@ -13,6 +13,7 @@ import type { Comparison } from "@/lib/types";
 interface ParameterResultsTableProps {
   comparisons: Comparison[];
   isLoading: boolean;
+  isError: boolean;
   hoveredField: string | null;
   onHoverField: (field: string | null) => void;
   pinnedField: string | null;
@@ -22,6 +23,7 @@ interface ParameterResultsTableProps {
 export function ParameterResultsTable({
   comparisons,
   isLoading,
+  isError,
   hoveredField,
   onHoverField,
   pinnedField,
@@ -29,6 +31,9 @@ export function ParameterResultsTable({
 }: ParameterResultsTableProps) {
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading comparison results...</p>;
+  }
+  if (isError) {
+    return <p className="text-sm text-destructive">Failed to load comparison results. Please try again.</p>;
   }
   if (comparisons.length === 0) {
     return (

@@ -83,6 +83,7 @@ export function ApplicationDetailPage() {
           application={application}
           comparisons={comparisons}
           isLoading={comparisonsQuery.isLoading}
+          isError={comparisonsQuery.isError}
           hoveredField={activeField}
           onHoverField={setHoveredField}
           pinnedField={pinnedField}
@@ -98,6 +99,7 @@ export function ApplicationDetailPage() {
           <ParameterResultsTable
             comparisons={comparisons}
             isLoading={comparisonsQuery.isLoading}
+            isError={comparisonsQuery.isError}
             hoveredField={activeField}
             onHoverField={setHoveredField}
             pinnedField={pinnedField}

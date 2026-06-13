@@ -39,6 +39,7 @@ interface ResultsSidebarProps {
   application: ApplicationDetail;
   comparisons: Comparison[];
   isLoading: boolean;
+  isError: boolean;
   hoveredField: string | null;
   onHoverField: (field: string | null) => void;
   pinnedField: string | null;
@@ -49,6 +50,7 @@ export function ResultsSidebar({
   application,
   comparisons,
   isLoading,
+  isError,
   hoveredField,
   onHoverField,
   pinnedField,
@@ -128,6 +130,8 @@ export function ResultsSidebar({
         <CardContent>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading comparison results...</p>
+          ) : isError ? (
+            <p className="text-sm text-destructive">Failed to load comparison results. Please try again.</p>
           ) : comparisons.length === 0 ? (
             <p className="text-sm text-muted-foreground">No comparison results yet.</p>
           ) : (
