@@ -17,6 +17,7 @@ export const FIELD_LABELS: Record<string, string> = {
   wine_appellation: "Wine Appellation",
   alcohol_content: "Alcohol Content (ABV)",
   net_contents: "Net Contents",
+  label_field_of_vision: "Brand Name / Class-Type / ABV — same field of vision",
 };
 
 export function fieldLabel(fieldName: string): string {

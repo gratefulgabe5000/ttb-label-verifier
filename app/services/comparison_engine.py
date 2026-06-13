@@ -17,6 +17,14 @@ Section V Allowable-Revision mapping (7.5, DevLog Section 2.6): this engine can 
 recognize two of the 41 Section V revision types from image inspection --
 item 3b (spelling/case/punctuation/font, FR-057/059) and item 19 (name/address
 change within the same state, FR-103). Any other mismatch is HARD_FAILURE.
+
+DevLog Section 7 additions (27 CFR mandatory-element/format rules): `compare_brand_name`
+(7.2) falls back to the bottler/importer name-and-address statement when no Brand
+Name appears on the label (27 CFR 1.A.5.64 and analogues, DevLog 7.1); `compare_abv`
+(7.13) checks the matched ABV value's phrasing against the approved formats of 27 CFR
+5.65/7.65/4.36 (DevLog 7.4); and `compare_field_of_vision` checks that Brand Name,
+Class/Type, and ABV appear together on at least one label image (27 CFR 4.38,
+5.63(a), 7.63(a), DevLog 7.3).
 """
 
 from __future__ import annotations
@@ -72,6 +80,15 @@ ABV_RANGES = {
     "distilled_spirits": (20.0, 80.0),
     "malt_beverages": (0.5, 16.0),
 }
+
+# ABV statements must use one of the formats approved by 27 CFR 5.65, 7.65, and 4.36
+# (DevLog 7.4): "X% Alcohol by Volume", "X% alc/vol", "Alc. X percent by vol.", or
+# "Alc X% by vol" -- in any case, with "." and "/" punctuation optional/interchangeable.
+ABV_APPROVED_PHRASING_RE = re.compile(
+    r"\d+(?:[.,]\d+)?\s*%\s*alc(?:ohol)?\.?\s*(?:by\s*vol(?:ume)?|/\s*vol\.?)"
+    r"|alc\.?\s*\d+(?:[.,]\d+)?\s*(?:%|percent)\s*by\s*vol(?:ume)?\.?",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -236,6 +253,17 @@ def address_matches(form_value: str | None, label_value: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _brand_name_fallback_matches(form_value: str, label_value: str) -> bool:
+    """27 CFR 1.A.5.64 (and analogous wine/malt-beverage provisions, DevLog 7.1):
+    when no Brand Name appears on the label, the name of the bottler, distiller,
+    or importer in the mandatory name-and-address statement is treated as the
+    brand name. That statement is typically a longer legal/trade name (e.g. "THE
+    WOODFORD RESERVE DISTILLERY") that *contains* the form's declared brand name
+    ("Woodford Reserve") rather than matching it exactly."""
+    normalized_form = _strip_punctuation(form_value)
+    return bool(normalized_form) and normalized_form in _strip_punctuation(label_value)
+
+
 def compare_brand_name(
     form_params: dict[str, FormParameter], application: Application, label_params: list[LabelParameter]
 ) -> FieldComparison | None:
@@ -246,6 +274,26 @@ def compare_brand_name(
     resolved = resolve_multi_image(
         label_params, "brand_name", form_value, matches=text_matches, classify_mismatch=classify_text_mismatch
     )
+
+    if resolved.result == "MISSING_FROM_LABEL":
+        # 27 CFR 1.A.5.64 fallback (DevLog 7.1): no Brand Name field on the label --
+        # check whether the bottler/importer name-and-address statement (Item 8)
+        # contains the form's brand name.
+        applicant_field = _applicant_label_field(application, "name")
+        for lp in label_params:
+            if lp.field_name == applicant_field and lp.field_value and _brand_name_fallback_matches(form_value, lp.field_value):
+                return FieldComparison(
+                    "brand_name",
+                    form_value,
+                    lp.field_value,
+                    "MATCH",
+                    None,
+                    f'No separate Brand Name field appears on the label; "{form_value}" appears '
+                    f'within the bottler/importer name-and-address statement ("{lp.field_value}"), '
+                    "which 27 CFR 1.A.5.64 treats as the brand name when none is otherwise declared.",
+                    lp.label_image_id,
+                )
+
     result, section_v_ref, note = _missing_to_hard_failure(
         resolved, "Brand name not found on any submitted label image."
     )
@@ -617,10 +665,17 @@ def compare_wine_appellation(
 
 
 def _extract_abv(label_value: str) -> float | None:
-    match = re.search(r"(\d+(?:[.,]\d+)?)\s*%", label_value)
+    match = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:%|percent)", label_value, re.IGNORECASE)
     if not match:
         return None
     return float(match.group(1).replace(",", "."))
+
+
+def _abv_phrasing_ok(label_value: str) -> bool:
+    """27 CFR 5.65/7.65/4.36 (DevLog 7.4): the ABV statement must use one of the
+    approved phrasings, e.g. "X% Alcohol by Volume", "X% alc/vol", "Alc. X percent
+    by vol.", or "Alc X% by vol"."""
+    return bool(ABV_APPROVED_PHRASING_RE.search(label_value))
 
 
 def compare_abv(
@@ -637,7 +692,19 @@ def compare_abv(
     for lp in candidates:
         abv = _extract_abv(lp.field_value)
         if abv is not None and (abv_range is None or abv_range[0] <= abv <= abv_range[1]):
-            return FieldComparison("alcohol_content", None, lp.field_value, "MATCH", None, None, lp.label_image_id)
+            if _abv_phrasing_ok(lp.field_value):
+                return FieldComparison("alcohol_content", None, lp.field_value, "MATCH", None, None, lp.label_image_id)
+            return FieldComparison(
+                "alcohol_content",
+                None,
+                lp.field_value,
+                "POSSIBLE_ALLOWABLE",
+                SECTION_V_SPELLING_CASE_PUNCTUATION,
+                f'ABV value ("{lp.field_value}") is correct, but its phrasing does not use one of the '
+                'formats prescribed by 27 CFR 5.65/7.65/4.36 (e.g. "X% Alcohol by Volume", "X% alc/vol", '
+                '"Alc. X percent by vol.", or "Alc X% by vol").',
+                lp.label_image_id,
+            )
 
     best = max(candidates, key=lambda lp: lp.confidence or 0.0)
     abv = _extract_abv(best.field_value)
@@ -671,6 +738,52 @@ def compare_net_contents(
 
 
 # ---------------------------------------------------------------------------
+# Field of Vision check -- Brand Name / Class-Type / ABV (27 CFR 4.38, 5.63(a),
+# 7.63(a); DevLog 7.3)
+# ---------------------------------------------------------------------------
+
+
+def compare_field_of_vision(
+    form_params: dict[str, FormParameter], application: Application, label_params: list[LabelParameter]
+) -> FieldComparison | None:
+    """27 CFR 4.38/5.63(a)/7.63(a) (DevLog 7.3): Brand Name, Class/Type, and ABV
+    must appear together within the same field of vision -- i.e. on the same
+    label panel/image.
+
+    If any of the three is absent from the label set entirely, this check defers
+    to the HARD_FAILURE already produced by 7.2/7.8/7.13 and returns `None`. The
+    "Brand Name" side honors the 27 CFR 1.A.5.64 fallback (DevLog 7.1): when no
+    `brand_name` field exists on any image, the bottler/importer name-and-address
+    images stand in for it.
+    """
+    brand_images = {lp.label_image_id for lp in label_params if lp.field_name == "brand_name" and lp.field_value}
+    if not brand_images:
+        applicant_field = _applicant_label_field(application, "name")
+        brand_images = {lp.label_image_id for lp in label_params if lp.field_name == applicant_field and lp.field_value}
+
+    class_type_images = {lp.label_image_id for lp in label_params if lp.field_name == "class_type_designation" and lp.field_value}
+    abv_images = {lp.label_image_id for lp in label_params if lp.field_name == "alcohol_content" and lp.field_value}
+
+    if not (brand_images and class_type_images and abv_images):
+        return None
+
+    common = brand_images & class_type_images & abv_images
+    if common:
+        return FieldComparison("label_field_of_vision", None, None, "MATCH", None, None, next(iter(common)))
+
+    note = (
+        "Brand Name, Class/Type, and ABV were each found on the label set, but never together "
+        "on the same image (Brand Name: image "
+        f"{', '.join(str(i) for i in sorted(brand_images, key=lambda x: (x is None, x)))}; "
+        f"Class/Type: image {', '.join(str(i) for i in sorted(class_type_images, key=lambda x: (x is None, x)))}; "
+        f"ABV: image {', '.join(str(i) for i in sorted(abv_images, key=lambda x: (x is None, x)))}). "
+        "27 CFR 4.38/5.63(a)/7.63(a) require these three elements to appear within the same "
+        "field of vision -- confirm their placement on the physical label set."
+    )
+    return FieldComparison("label_field_of_vision", None, None, "POSSIBLE_ALLOWABLE", None, note, next(iter(brand_images)))
+
+
+# ---------------------------------------------------------------------------
 # Orchestration (7.0)
 # ---------------------------------------------------------------------------
 
@@ -687,6 +800,7 @@ COMPARISON_RULES = [
     compare_wine_appellation,
     compare_abv,
     compare_net_contents,
+    compare_field_of_vision,
 ]
 
 

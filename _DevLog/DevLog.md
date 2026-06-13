@@ -19,6 +19,7 @@
 4. [Tools & Technology Rationale](#4-tools--technology-rationale)
 5. [Initial Assumptions](#5-initial-assumptions)
 6. [COLA Registry & Future Integration Reference](#6-cola-registry--future-integration-reference)
+7. [Regulatory Reference — Mandatory Label Elements, Brand Name Fallback, Field of Vision & ABV Formatting](#7-regulatory-reference--mandatory-label-elements-brand-name-fallback-field-of-vision--abv-formatting)
 
 ---
 
@@ -968,6 +969,67 @@ A production TTB-LVS would plausibly:
 3. Offer a "find related COLAs" lookup using the Section 6.2 search fields (date range, brand/fanciful name, class/type code, origin code) — e.g., to surface a prior approval being revised under Section V.
 
 None of this is implemented, called, or stubbed in the prototype — IA-03/IA-22 hold. This section exists solely so the schema additions in Section 3.4 are traceable to a real data model.
+
+---
+
+## 7. Regulatory Reference — Mandatory Label Elements, Brand Name Fallback, Field of Vision & ABV Formatting
+
+This section documents additional 27 CFR requirements identified during agent review of live determinations (application #1, Woodford Reserve; application #5, Lenz Moser "Fête Rosé") and the resulting changes to the Stage 5 Comparison Engine (`app/services/comparison_engine.py`, Section 3.2 Stage 5 / Section 2.5).
+
+### 7.1 Brand Name Fallback When Absent From the Label (27 CFR 1.A.5.64 and analogues)
+
+27 CFR 1.A.5.64 (and the analogous wine/malt-beverage provisions) state that if a label bears no separate "Brand Name," the name of the bottler, distiller, blender, or importer appearing in the mandatory name-and-address statement IS the brand name. Item 6 of F 5100.31 already reflects this on the form side: "if no brand name, use bottler/packer/importer name" (Section 2.3).
+
+**Observed case (application #1, Woodford Reserve):** Stage 4 extracted `brand_name: null` from both label images, but extracted `bottler_name: "THE WOODFORD RESERVE DISTILLERY"` from the back label. The form's Item 6 brand name is "Woodford Reserve" — a substring of that name-and-address statement. Per 27 CFR 1.A.5.64, this is not a missing-brand-name failure; the bottler's name-and-address statement satisfies the Brand Name requirement.
+
+**Implemented:** `compare_brand_name` (7.2) now falls back to the applicant's name-and-address field (`bottler_name`/`importer_name`, selected via the same source-conditional `_applicant_label_field` helper used by 7.9/7.10) when no `brand_name` value is found on any label image. If the form's brand name appears as a substring of that name-and-address statement (case/punctuation-insensitive), the result is `MATCH` with a note citing 27 CFR 1.A.5.64. Otherwise the prior `HARD_FAILURE` ("Brand name not found on any submitted label image") stands.
+
+### 7.2 Mandatory Label Elements by Product Type
+
+| Product Type | Source | Mandatory Elements |
+|---|---|---|
+| Malt Beverages | 27 CFR 1.A.7.63(a) | Brand Name (7.64), Class/Type designation, Alcohol Content/ABV (7.65), Name & Address of bottler or importer (7.66–7.68), Net Contents (7.70) |
+| Wine | 27 CFR 1.A.4.32(a)/(b) | Brand Name (4.33), Class/Type (4.34), Blend Percentage (if applicable), Alcohol Content/ABV (4.36), Name & Address of bottler or importer (4.35), Net Contents (4.37), Declaration of Cochineal Extract or Carmine (if used), Declaration of Sulfites |
+| Distilled Spirits | 27 CFR 1.A.5.63(a)/(b), 5.7 | Brand Name (5.64), Class/Type (Part 5, Subpart I), Blend Percentage (if applicable), Alcohol Content/ABV (5.65), Name & Address of bottler or importer (5.66–5.68), Net Contents (5.70), Health Warning Statement (27 CFR Part 16), Internal Revenue Code requirements (27 CFR 19 Subpart T, 27 CFR 27 Subpart E) |
+
+**Coverage in this prototype** (cross-referenced to Section 2.5's Parameter Comparison Matrix and the 7.x comparison rules):
+
+| Mandatory Element | Status |
+|---|---|
+| Brand Name | Covered — 7.2 `compare_brand_name`, extended by 7.1's §1.A.5.64 fallback |
+| Class/Type | Covered — 7.8 `compare_product_type` |
+| Alcohol Content (ABV) | Covered — 7.13 `compare_abv`, extended by 7.4 below for approved phrasing |
+| Name & Address of bottler/importer | Covered — 7.9/7.10 `compare_applicant_name`/`compare_applicant_address` |
+| Net Contents | Covered — 7.14 `compare_net_contents` |
+| Health/Government Warning Statement (27 CFR Part 16) | Covered for all product types — 7.3 `compare_government_warning` (FR-053-055) |
+| Blend Percentage (Wine/Spirits, if applicable) | **Not implemented** — there is no `blend_percentage` field in the Stage 3/4 extraction schemas (Section 3.2), and F 5100.31 Part I has no dedicated Blend Percentage item, so there is no form-side value to compare against. Flagged as future work, same disposition as IA-16's noted edge cases. |
+| Declaration of Cochineal Extract/Carmine (Wine) | **Not implemented** — same reason as Blend Percentage; would require a new Stage 4 extraction field with no form-side counterpart |
+| Declaration of Sulfites (Wine) | **Not implemented** — same reason |
+| Internal Revenue Code requirements, 27 CFR 19 Subpart T / 27 Subpart E (Spirits) | **Out of scope** — these are bond/tax-payment and plant-registration requirements verified against TTB's permit records, not visual label elements, and are not extractable from a label image. Consistent with IA-22/Section 6 (no live COLA/permit registry integration). |
+
+### 7.3 "Same Field of Vision" Requirement (27 CFR 4.38, 5.63(a), 7.63(a))
+
+Brand Name, Class/Type designation, and Alcohol Content (ABV) must appear together within the same "field of vision" — i.e., on a single label panel visible at one time, without having to turn or rotate the container. This applies to all label types (malt beverages, wine, and distilled spirits alike).
+
+**Implemented:** a new rule, `compare_field_of_vision`, checks whether at least one `label_image_id` reports non-null values for `brand_name` (or its §1.A.5.64 fallback target, `bottler_name`/`importer_name`), `class_type_designation`, and `alcohol_content` together.
+
+- If all three appear on a common image → `MATCH`.
+- If each element is present *somewhere* on the label set but never together on one image → `POSSIBLE_ALLOWABLE`, with a note identifying which image each element was found on and recommending the agent visually confirm placement on the physical label set. Our per-image extraction is a reasonable proxy for "field of vision" but is not authoritative — Stage 4 does not guarantee every visible field is extracted from every image it appears on, so this is reported for human review rather than as a hard denial.
+- If any of the three elements is missing from the label set entirely, this rule produces no row of its own — the existing `HARD_FAILURE` from 7.2/7.8/7.13 already covers "missing entirely."
+
+### 7.4 ABV Strict Formatting Rules (27 CFR 5.65, 7.65, 4.36)
+
+The Alcohol Content statement must use one of the following approved phrasings:
+- "X% Alcohol by Volume"
+- "X% alc/vol"
+- "Alc. X percent by vol."
+- "Alc X% by vol"
+
+**Implemented:** 7.13 `compare_abv` now checks the matched label value against these four patterns (case-insensitive, tolerant of "." and "/" punctuation variants, and of "%" vs. "percent"). A numerically-correct ABV in non-conforming phrasing (e.g. "12% Alcohol" with no "by volume"/"by vol" suffix) downgrades from `MATCH` to `POSSIBLE_ALLOWABLE` under Sec. V item 3b (format/punctuation), with a note citing 27 CFR 5.65/7.65/4.36. A numerically-correct ABV in one of the four approved phrasings remains `MATCH`.
+
+### 7.5 Test Coverage
+
+All four additions are covered in `app/tests/test_comparison_engine.py`: `TestBrandName::test_match_via_bottler_name_fallback_when_brand_name_absent` / `test_match_via_importer_name_fallback_for_imported_product` / `test_hard_failure_when_absent_and_fallback_does_not_match` (7.1); `TestAbv::test_match_for_each_approved_abv_phrasing` / `test_possible_allowable_when_value_correct_but_phrasing_nonconforming` (7.4); and the new `TestFieldOfVision` class (7.3).
 
 ---
 

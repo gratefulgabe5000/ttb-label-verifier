@@ -23,6 +23,7 @@ from services.comparison_engine import (
     compare_brand_name,
     compare_country_of_origin,
     compare_fanciful_name,
+    compare_field_of_vision,
     compare_government_warning,
     compare_grape_varietals,
     compare_net_contents,
@@ -168,6 +169,29 @@ class TestBrandName:
         result = compare_brand_name(form_params, _app(), [])
         assert result.result == "HARD_FAILURE"
         assert result.label_value is None
+
+    def test_match_via_bottler_name_fallback_when_brand_name_absent(self):
+        # 27 CFR 1.A.5.64: when no Brand Name appears on the label, the
+        # bottler/importer name-and-address statement is treated as the brand name.
+        form_params = {"brand_name": _fp("brand_name", "Woodford Reserve")}
+        label_params = [_lp("bottler_name", "The Woodford Reserve Distillery", label_image_id=2)]
+        result = compare_brand_name(form_params, _app(source="domestic"), label_params)
+        assert result.result == "MATCH"
+        assert result.label_image_id == 2
+        assert "1.A.5.64" in result.note
+
+    def test_match_via_importer_name_fallback_for_imported_product(self):
+        form_params = {"brand_name": _fp("brand_name", "Niche")}
+        label_params = [_lp("importer_name", "Niche Import Co.", label_image_id=3)]
+        result = compare_brand_name(form_params, _app(source="imported"), label_params)
+        assert result.result == "MATCH"
+        assert result.label_image_id == 3
+
+    def test_hard_failure_when_absent_and_fallback_does_not_match(self):
+        form_params = {"brand_name": _fp("brand_name", "Eagle Ridge")}
+        label_params = [_lp("bottler_name", "Some Other Distillery LLC", label_image_id=1)]
+        result = compare_brand_name(form_params, _app(source="domestic"), label_params)
+        assert result.result == "HARD_FAILURE"
 
 
 # ---------------------------------------------------------------------------
@@ -543,6 +567,27 @@ class TestAbv:
         result = compare_abv({}, _app(product_type="wine"), label_params)
         assert result.result == "HARD_FAILURE"
 
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "12% Alcohol by Volume",
+            "12% alc/vol",
+            "Alc. 12 percent by vol.",
+            "Alc 12% by vol",
+        ],
+    )
+    def test_match_for_each_approved_abv_phrasing(self, text):
+        # 27 CFR 5.65/7.65/4.36 -- any of these four formats is acceptable.
+        label_params = [_lp("alcohol_content", text, label_image_id=1)]
+        result = compare_abv({}, _app(product_type="wine"), label_params)
+        assert result.result == "MATCH"
+
+    def test_possible_allowable_when_value_correct_but_phrasing_nonconforming(self):
+        label_params = [_lp("alcohol_content", "12% Alcohol", label_image_id=1)]
+        result = compare_abv({}, _app(product_type="wine"), label_params)
+        assert result.result == "POSSIBLE_ALLOWABLE"
+        assert result.section_v_ref == "3b"
+
 
 # ---------------------------------------------------------------------------
 # 7.14 -- Net Contents presence check (FR-107)
@@ -558,6 +603,41 @@ class TestNetContents:
     def test_hard_failure_when_absent(self):
         result = compare_net_contents({}, _app(), [])
         assert result.result == "HARD_FAILURE"
+
+
+# ---------------------------------------------------------------------------
+# Field of Vision check -- Brand Name / Class-Type / ABV (27 CFR 4.38, 5.63(a),
+# 7.63(a))
+# ---------------------------------------------------------------------------
+
+
+class TestFieldOfVision:
+    def test_match_when_brand_class_and_abv_share_an_image(self):
+        label_params = [
+            _lp("brand_name", "Woodford Reserve", label_image_id=1),
+            _lp("class_type_designation", "Kentucky Straight Bourbon Whiskey", label_image_id=1),
+            _lp("alcohol_content", "45.2% ALC/VOL", label_image_id=1),
+        ]
+        result = compare_field_of_vision({}, _app(source="domestic"), label_params)
+        assert result.result == "MATCH"
+        assert result.label_image_id == 1
+
+    def test_possible_allowable_when_elements_are_on_different_images(self):
+        label_params = [
+            _lp("bottler_name", "The Woodford Reserve Distillery", label_image_id=2),
+            _lp("class_type_designation", "Kentucky Straight Bourbon Whiskey", label_image_id=1),
+            _lp("alcohol_content", "45.2% ALC/VOL", label_image_id=1),
+        ]
+        result = compare_field_of_vision({}, _app(source="domestic"), label_params)
+        assert result.result == "POSSIBLE_ALLOWABLE"
+        assert "field of vision" in result.note
+
+    def test_none_when_an_element_is_missing_from_label_entirely(self):
+        label_params = [
+            _lp("brand_name", "Woodford Reserve", label_image_id=1),
+            _lp("class_type_designation", "Kentucky Straight Bourbon Whiskey", label_image_id=1),
+        ]
+        assert compare_field_of_vision({}, _app(source="domestic"), label_params) is None
 
 
 # ---------------------------------------------------------------------------
