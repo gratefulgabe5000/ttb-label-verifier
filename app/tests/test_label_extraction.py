@@ -16,6 +16,7 @@ from services.label_extraction import (
     HEADER_BOLD_STROKE_RATIO_THRESHOLD,
     LABEL_FIELDS,
     LOCATION_HINTS,
+    MAX_GLARE_AREA_FRACTION,
     SIMPLE_FIELDS,
     LabelFieldResult,
     _claude_bbox_to_pixels,
@@ -86,8 +87,12 @@ class TestPreprocessing:
 
         assert angle_after < angle_before
 
-    def test_suppress_glare_reduces_blowout(self):
-        img = _decode_image((DEGRADED / "woodford_front_glare.jpg").read_bytes())
+    def test_suppress_glare_reduces_localized_blowout(self):
+        """A small, localized glare hot-spot (camera-flash reflection) on an
+        otherwise dark/colored label is inpainted away."""
+        img = np.full((200, 200, 3), 60, dtype=np.uint8)
+        cv2.circle(img, (100, 100), 15, (255, 255, 255), -1)  # ~1.8% of the image
+
         gray_before = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         before = int((gray_before >= 250).sum())
 
@@ -96,6 +101,19 @@ class TestPreprocessing:
         after = int((gray_after >= 250).sum())
 
         assert after < before
+
+    def test_suppress_glare_skips_large_bright_regions(self):
+        """A predominantly white/light label background must be left alone --
+        inpainting over it destroys legible text instead of removing glare
+        (regression: real wine labels with white backgrounds were being
+        reduced to illegible blotches)."""
+        img = _decode_image((DEGRADED / "woodford_front_glare.jpg").read_bytes())
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        assert (gray >= 235).sum() / gray.size > MAX_GLARE_AREA_FRACTION  # fixture sanity check
+
+        suppressed = suppress_glare(img)
+
+        assert np.array_equal(suppressed, img)
 
     def test_normalize_contrast_increases_spread(self):
         img = _decode_image((DEGRADED / "woodford_front_lowlight.jpg").read_bytes())

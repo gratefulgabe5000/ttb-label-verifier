@@ -324,6 +324,14 @@ class TestFancifulName:
         result = compare_fanciful_name(form_params, _app(), label_params)
         assert result.result == "MATCH"
 
+    def test_match_ignores_diacritics(self):
+        # Forms are routinely typed without accent marks even when the label
+        # itself carries them -- "Fete Rose" vs "Fête Rosé" is a MATCH.
+        form_params = {"fanciful_name": _fp("fanciful_name", "Fete Rose")}
+        label_params = [_lp("fanciful_name", "Fête Rosé", label_image_id=1)]
+        result = compare_fanciful_name(form_params, _app(), label_params)
+        assert result.result == "MATCH"
+
     def test_hard_failure_when_absent_from_label(self):
         form_params = {"fanciful_name": _fp("fanciful_name", "Double Oaked")}
         result = compare_fanciful_name(form_params, _app(), [])
@@ -380,6 +388,26 @@ class TestApplicantName:
         result = compare_applicant_name(form_params, _app(source="imported"), label_params)
         assert result.result == "MATCH"
 
+    def test_mismatch_for_imported_product_classified_against_importer_not_bottler(self):
+        # Even when neither label value matches exactly and the bottler has
+        # higher OCR/Vision confidence than the importer, an imported
+        # product's mismatch must be classified against importer_name (the
+        # actual Item 8 applicant) -- not the foreign bottler/producer.
+        form_params = {"applicant_name": _fp("applicant_name", "Niche Import Co.")}
+        label_params = [
+            _lp("bottler_name", "Weinkellerei Lenz Moser AG", label_image_id=1, confidence=0.98),
+            _lp("importer_name", "Niche W. & S.", label_image_id=1, confidence=0.95),
+        ]
+        result = compare_applicant_name(form_params, _app(source="imported"), label_params)
+        assert result.label_value == "Niche W. & S."
+
+    def test_hard_failure_when_importer_absent_for_imported_product(self):
+        form_params = {"applicant_name": _fp("applicant_name", "ABC Imports LLC")}
+        label_params = [_lp("bottler_name", "Cantina Foreign Producer S.r.l.", label_image_id=1)]
+        result = compare_applicant_name(form_params, _app(source="imported"), label_params)
+        assert result.result == "HARD_FAILURE"
+        assert result.label_value is None
+
 
 # ---------------------------------------------------------------------------
 # 7.10 -- Applicant Address (Item 8/8a, FR-103)
@@ -412,6 +440,20 @@ class TestApplicantAddress:
         ]
         result = compare_applicant_address(form_params, _app(source="imported"), label_params)
         assert result.result == "MATCH"
+
+    def test_mismatch_for_imported_product_classified_against_importer_not_bottler(self):
+        # Even when the foreign bottler_address has higher confidence than
+        # importer_address and neither matches exactly, the mismatch must be
+        # classified against the importer's address.
+        form_params = {"applicant_address": _fp("applicant_address", "21 Ridgedale Avenue, Cedar Knolls, NJ 07927")}
+        label_params = [
+            _lp("bottler_address", "A-3495 Rohrendorf, Austria", label_image_id=1, confidence=0.98),
+            _lp("importer_address", "Cedar Knolls, NJ", label_image_id=1, confidence=0.95),
+        ]
+        result = compare_applicant_address(form_params, _app(source="imported"), label_params)
+        assert result.label_value == "Cedar Knolls, NJ"
+        assert result.result == "POSSIBLE_ALLOWABLE"
+        assert result.section_v_ref == "19"
 
     def test_possible_allowable_for_in_state_address_change(self):
         form_params = {"applicant_address": _fp("applicant_address", "200 Brook Avenue, Passaic, NJ 07055")}

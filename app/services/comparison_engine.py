@@ -487,6 +487,13 @@ def compare_product_type(
 # ---------------------------------------------------------------------------
 
 
+def _applicant_label_field(application: Application, suffix: str) -> str:
+    """Item 8 (Applicant Name/Address) names the U.S. importer for imported
+    products -- the foreign bottler/producer is not the COLA applicant and
+    won't match -- and the bottler/producer for domestic products."""
+    return f"importer_{suffix}" if application.source == "imported" else f"bottler_{suffix}"
+
+
 def compare_applicant_name(
     form_params: dict[str, FormParameter], application: Application, label_params: list[LabelParameter]
 ) -> FieldComparison | None:
@@ -494,16 +501,16 @@ def compare_applicant_name(
     if not form_value:
         return None
 
+    field_name = _applicant_label_field(application, "name")
     resolved = resolve_multi_image(
-        label_params,
-        ["bottler_name", "importer_name"],
-        form_value,
-        matches=text_matches,
-        classify_mismatch=classify_text_mismatch,
+        label_params, field_name, form_value, matches=text_matches, classify_mismatch=classify_text_mismatch
     )
-    result, section_v_ref, note = _missing_to_hard_failure(
-        resolved, "No bottler/producer or importer name found on any submitted label image."
+    missing_note = (
+        "No importer name found on any submitted label image, but Item 3 declares this product Imported."
+        if application.source == "imported"
+        else "No bottler/producer name found on any submitted label image."
     )
+    result, section_v_ref, note = _missing_to_hard_failure(resolved, missing_note)
     return FieldComparison("applicant_name", form_value, resolved.label_value, result, section_v_ref, note, resolved.label_image_id)
 
 
@@ -519,16 +526,16 @@ def compare_applicant_address(
     if not form_value:
         return None
 
+    field_name = _applicant_label_field(application, "address")
     resolved = resolve_multi_image(
-        label_params,
-        ["bottler_address", "importer_address"],
-        form_value,
-        matches=address_matches,
-        classify_mismatch=classify_address_mismatch,
+        label_params, field_name, form_value, matches=address_matches, classify_mismatch=classify_address_mismatch
     )
-    result, section_v_ref, note = _missing_to_hard_failure(
-        resolved, "No bottler/producer or importer address found on any submitted label image."
+    missing_note = (
+        "No importer address found on any submitted label image, but Item 3 declares this product Imported."
+        if application.source == "imported"
+        else "No bottler/producer address found on any submitted label image."
     )
+    result, section_v_ref, note = _missing_to_hard_failure(resolved, missing_note)
     return FieldComparison("applicant_address", form_value, resolved.label_value, result, section_v_ref, note, resolved.label_image_id)
 
 

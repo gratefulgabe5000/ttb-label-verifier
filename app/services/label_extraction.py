@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import unicodedata
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -86,6 +87,12 @@ LOCATION_HINTS = {
     "importer_address": "back label, near importer name",
     "other_text": "anywhere on label",
 }
+
+# suppress_glare (FR-039): skip glare inpainting when the >=235 mask covers more
+# than this fraction of the image -- a true glare hot-spot is small and
+# localized, whereas a large fraction usually means a plain white/light label
+# background, and inpainting over that destroys legible text.
+MAX_GLARE_AREA_FRACTION = 0.05
 
 # Tesseract word-confidence floor (0-100) for FR-040 bbox matching — discards
 # background-texture/artwork noise (typically conf < 40) that would otherwise
@@ -167,6 +174,12 @@ null only when `value` itself is null."""
 
 
 def _normalize_for_comparison(text: str) -> str:
+    """Lowercase, collapse whitespace, and fold diacritics (e.g. "Fête Rosé" ->
+    "fete rose") -- TTB application forms are routinely typed without accent
+    marks even when the label itself carries them, so an accent-only
+    difference must not be treated as a mismatch."""
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
     return " ".join(text.split()).strip().lower()
 
 
@@ -240,10 +253,19 @@ def normalize_contrast(img: np.ndarray) -> np.ndarray:
 
 
 def suppress_glare(img: np.ndarray) -> np.ndarray:
-    """Detect blown-out highlights and inpaint them from surrounding pixels (FR-039)."""
+    """Detect blown-out highlights and inpaint them from surrounding pixels (FR-039).
+
+    Real photographic glare is a small, localized hot-spot. Most labels have a
+    plain white/light background, which also reads as >=235 -- inpainting over
+    that (a large fraction of the image) destroys legible text instead of
+    removing glare, so skip suppression entirely when the mask is too large.
+    """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, mask = cv2.threshold(gray, 235, 255, cv2.THRESH_BINARY)
-    if cv2.countNonZero(mask) == 0:
+    nonzero = cv2.countNonZero(mask)
+    if nonzero == 0:
+        return img
+    if nonzero / mask.size > MAX_GLARE_AREA_FRACTION:
         return img
     mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), iterations=1)
     return cv2.inpaint(img, mask, 5, cv2.INPAINT_TELEA)
