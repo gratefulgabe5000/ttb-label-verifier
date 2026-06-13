@@ -633,5 +633,94 @@
 
 ---
 
+### Session 24: Frontend — WBS 14.0 Batch Report View, plus a UI Polish Round (API Key Badge, Reprocess Controls, Zoom Panels, Finalize-Aware Dashboard)
+
+**Context:** With WBS 13.0 complete (Session 23) and the Detail View restructured into a Results Sidebar, this session implemented the last unbuilt frontend view — the Batch Report (WBS 14.0) — then continued with a round of UI polish across the Dashboard and Detail View that had accumulated as "nice to have" items during Sessions 21–23.
+
+**Completed — 14.1-14.5 (Batch Report View, completes WBS 14.0):**
+- New `web/src/pages/BatchReportPage.tsx`: summary stat cards (total/approved/denied/exemption-review) plus a processing indicator while the batch is incomplete (14.1); `most_common_failure` display beneath the cards, showing "None" when absent (14.2).
+- New `web/src/lib/csv.ts` (`toCsv`/`downloadCsv`): "Export CSV" writes one row per application — applicant, serial #, status, recommendation (14.3).
+- "Print / Save as PDF" via `window.print()`, with `print:hidden` added to `AppShell`'s header/API-key banner and the report's action buttons for a clean printout (14.4).
+- `DashboardPage.tsx`: added a "View Report" link in the completed-batch summary, routing to `/batches/{id}`.
+- `web/src/pages/BatchReportPage.test.tsx` (5 new tests) plus one new Dashboard wiring test — 21/21 Vitest passing (14.5).
+- Verified live against the real backend: `GET /batch/{id}/report` returns the exact `BatchReport` shape the page consumes (confirmed via `curl` against batches #9/#11 in the dev DB).
+- `WBS.md` → v2.5 (14.0-14.5 marked complete); `TODO.md` updated.
+
+**Completed — UI polish round (no new WBS items):**
+- New `ApiKeyStatusBadge.tsx` replaces the full-width `ApiKeyStatusBanner` in `AppShell.tsx`'s header, left of the Settings gear.
+- `ResultsSidebar.tsx`: dropped the applicant name from the card title, added a "Reprocess" button (full pipeline re-run) in the card header and a circular reprocess button on the Results card (comparison-only re-run).
+- `DeterminationPanel.tsx`: added a "Recommended action:" label, restructured into a `justify-between` row with the badge left and Override/Finalize (or a "Finalized" badge) right-aligned.
+- `FormPdfPanel.tsx` / `LabelImagesPanel.tsx`: each now owns its own `Card`, scales to container width (`useContainerWidth`), supports mousewheel zoom (`useWheelZoom`), and has a circular reprocess button in the header; `LabelImagesPanel` moved thumbnails into the header as a right-justified `CardAction` and introduced a `LabelImageContent` subcomponent for per-tab zoom.
+- `ApplicationDetailPage.tsx`: removed the redundant outer `Card` wrappers now that the panels own their own cards.
+- Dashboard now reflects finalization: `finalize_determination` (`override_service.py`) sets `application.status = "FINALIZED"`; `TERMINAL_STATUSES` now includes `"FINALIZED"`; `ApplicationOut` gained `recommendation`/`finalized_at` (via a new `_application_out` helper, batch-loading determinations for the list endpoint); `DashboardPage.tsx`'s Status column shows a `RecommendationBadge` once `finalized_at` is set, else the raw status string.
+- New `ApiKeyStatusBadge.test.tsx` plus 5 new `ApplicationDetailPage.test.tsx` tests covering "Recommended action:" and all four reprocess buttons.
+
+**Verification:** backend pytest 204/204; frontend `tsc --noEmit` clean, `npm run lint` clean, `npx vitest run` 28/28, `npm run build` succeeds. Fixed 3 test fixtures (`DashboardPage.test.tsx`, `BatchReportPage.test.tsx`, `ApplicationDetailPage.test.tsx`) missing the new `recommendation`/`finalized_at` fields.
+
+**Outcome:** WBS 14.0 complete in full (`WBS.md` → v2.5), plus a substantial UI polish pass across the Dashboard and Detail View — no new WBS line items. `TODO.md` updated, "Next Session" pointed at WBS 15.0.
+
+---
+
+### Session 25: WBS 15.0 — Integration Audit & Error-State Surfacing — completes WBS 15.0
+
+**Context:** With WBS 11.0-14.0 all complete, this session closed out WBS 15.0 (Integration: Frontend ↔ Backend Wiring) — an audit of whether the Dashboard, Detail View, Batch Report, and auth flow were genuinely wired to the live API (15.1-15.4), plus the remaining plain-English error-handling gaps (15.5, UR-003).
+
+**Completed — 15.1-15.4 (audit, no code changes):**
+- Confirmed the Dashboard (12.0) already calls `GET /applications`, `POST /batch/process`, `GET /batch/{id}/status` as part of 12.4-12.6.
+- Confirmed the Detail View (13.0) already calls `GET /applications/{id}`, `POST /determinations/{id}/override`, `POST /determinations/{id}/finalize` as part of 13.8-13.10.
+- Confirmed the Batch Report (14.0) already calls `GET /batch/{id}/report` as part of 14.1.
+- Confirmed the auth flow (login → JWT storage → authenticated requests) is already wired via `AuthContext`/`apiFetch`/`ProtectedRoute`.
+- All four were already complete because 12.0-14.0 were built directly against the live typed API client rather than mocked data — no changes needed.
+
+**Completed — 15.5 (plain-English error surfacing, UR-003):**
+- `ApplicationDetailPage.tsx` + `ResultsSidebar.tsx` + `ParameterResultsTable.tsx`: a failed comparisons fetch now shows "Failed to load comparison results. Please try again." in both the Results sidebar and the Parameter Results table (previously silently rendered the empty state).
+- `DashboardPage.tsx`: a failed batch-status poll now shows a dismissible error banner ("Failed to load status for batch #{id}...") with Retry and Dismiss buttons, instead of leaving the batch silently stuck "processing" forever.
+- 2 new Vitest tests covering both cases.
+
+**Verification:** `npm run build` clean, `npm run lint` clean, `npx vitest run` → 30/30 passing, backend pytest → 204/204 (untouched, re-run for safety).
+
+**Outcome:** WBS 15.0 complete (`WBS.md` → v2.6, §4 Note 9). `TODO.md` updated, "Next Session" pointed at WBS 16.0 (Integration Testing against synthetic data). Caveat: verified via build/lint/test only — no browser-based UI testing performed for the new error banners.
+
+---
+
+### Session 26: Pending Applications List Rework & Auto-TTB-ID Ingestion, Diacritic/Glare/Importer Comparison Fixes, and DevLog §7 Regulatory Reference (Mandatory Elements, Brand-Name Fallback, Field of Vision, ABV Phrasing)
+
+**Context:** With WBS 1.0-15.0 all complete, this session was a mixed refinement pass driven by Gabe's review of the running application against real data: a Pending Applications List rework surfacing registry-style fields, a simplification of the upload/ingestion flow, two comparison-engine bugs found via real label data (diacritics, glare-suppression eating legible label backgrounds, importer-vs-bottler matching), and — at Gabe's explicit request, citing a dense block of 27 CFR sections — a new DevLog §7 documenting mandatory-label-element requirements plus three new/refined comparison-engine rules implementing them.
+
+**Completed — Pending Applications List rework (refinements within WBS 4.0/5.0/12.0, no new line items):**
+- `app/models/application.py`: added `permit_no` (Item 2) and `fanciful_name` (Item 7) columns.
+- `app/services/form_extraction.py::persist_form_parameters`: now populates `permit_no`, `fanciful_name`, and `ttb_id` (from `application_type.prior_ttb_id`) during Stage 3.
+- `app/services/pipeline.py`: new `_resolve_label_field()` / `_update_registry_fields()`, called from `run_stages_5_6()` on every process/reprocess path, populating `class_type_code` (from the label's `class_type_designation`) and `origin_code` (US state for domestic via `_extract_state`, or the label's `country_of_origin` for imported) as soon as processing completes.
+- `app/db.py`: new `_add_missing_columns()` lightweight SQLite `ALTER TABLE` migration, run from `init_db()`.
+- New `DELETE /applications` endpoint (`application_service.delete_all_applications()`), cascading through `comparisons`/`determinations`/`label_parameters`/`form_parameters`/`label_images`/`applications`/`batches` plus removing uploaded files on disk.
+- Frontend: `DashboardPage.tsx` reworked to 10 columns (TTB ID, Permit No., Serial Number, Upload Date, Completed Date, Fanciful Name, Brand Name, Origin Desc, Class/Type Desc, Status) with a merged Status column (finalized badge → batch-result badge → raw status) and a `formatDate()` helper; `SettingsDialog.tsx` gained a "Danger Zone" section with a two-step-confirm "Delete All Applications" button.
+- Verification: backend 204/204 pytest, frontend build/lint clean, 30/30 Vitest.
+
+**Completed — Ingestion stage update (refinements within WBS 4.0/5.0/12.0):**
+- Upload modal no longer asks for Applicant Name / Serial Number — these now come from Stage 3 form extraction.
+- `POST /applications/upload` now runs Stage 3 immediately (`pipeline.process_new_upload`), so the Pending Applications list is populated right away with TTB ID, Permit No., Serial Number, names, and origin.
+- New `_next_ttb_id`: auto-assigns a 14-digit TTB ID (year + Julian day + "001" + daily sequence) when the form doesn't already have one, applied uniformly across upload, reprocess, and full pipeline runs.
+- All 10 Dashboard columns are now sortable (asc/desc toggle via a new `SortableHead`); the filter input is now a global client-side filter matching any column (TTB ID, permit/serial numbers, names, origin/class-type, status, dates).
+- Verification: backend 206/206 pytest (+3 new TTB-ID auto-assignment tests; fixed a byte-offset bug in the upload test's TTB-ID method-code assertion, `ttb_id[5:8]` not `[8:11]`); frontend 32/32 Vitest, lint clean, build succeeds.
+
+**Completed — Comparison-engine fixes from real-label review (refinements within 6.1/6.8/7.2/7.9/7.10):**
+- **Diacritics (fanciful name HARD_FAILURE → MATCH):** `_normalize_for_comparison()` in `label_extraction.py` now folds diacritics via Unicode NFKD decomposition before lowercasing/whitespace-collapsing, so "Fete Rose" (form) and "Fête Rosé" (label) normalize to the same string. Previously `_strip_punctuation` dropped the accented characters entirely, producing two different strings ("fteros" vs "feterose") and a HARD_FAILURE. Benefits every text comparison (brand name, fanciful name, applicant name/address, OCR fuzzy-matching).
+- **`suppress_glare` area-fraction cap (FR-039, 6.1):** new `MAX_GLARE_AREA_FRACTION = 0.05` — real photographic glare is a small, localized hot-spot, but most labels have a plain white/light background that also reads as ≥235; inpainting over that destroys legible text. `suppress_glare()` now skips inpainting entirely when the ≥235 mask covers more than 5% of the image.
+- **Importer-vs-bottler matching for Item 8 (FR-102/103, 7.9/7.10):** new `_applicant_label_field()` — for `application.source == "imported"`, Applicant Name/Address (Item 8) is now compared only against the label's `importer_name`/`importer_address`, never the foreign `bottler_name`/`bottler_address`. Previously both fields were pooled and `resolve_multi_image` picked whichever had higher OCR/Vision confidence when neither matched exactly, which is why "Niche Import Co." was being compared against "WEINKELLEREI LENZ MOSER AG" (the Austrian bottler, 0.98 confidence) instead of "Niche W. & S." (the actual importer, 0.95 confidence). After the fix, `applicant_name` correctly compares against the importer (still HARD_FAILURE on text content, but now comparing the right two values); `applicant_address` was already resolving correctly by luck of confidence ordering and is now correct by design. **This resolves the open product question from Session 22's §4 Note 8** — Item 8 is now defined to match the importer for imported products.
+- 4 new tests (diacritic match, import-vs-bottler confidence tiebreak for name + address, missing-importer fallback). Full suite: 211/211 passed.
+
+**Completed — DevLog §7 Regulatory Reference & new comparison rules** (per Gabe's direct citation of 27 CFR §§1.A.5.64, 1.A.7.63(a), 1.A.4.32(a)/(b), 1.A.5.63(a)/(b)/5.7, 4.38, 5.63(a), 7.63(a), 5.65/7.65/4.36):
+- New `_DevLog/DevLog.md` §7 (5 subsections, ~70 lines, plus a TOC entry): documents the §1.A.5.64 brand-name fallback, mandatory-label-element tables per product type (malt/wine/spirits) with a coverage/gap analysis against the existing comparison rules, the "same field of vision" requirement (Brand Name/Class-Type/ABV must share a label panel), and the four ABV-approved-phrasing formats.
+- `compare_brand_name` (7.2) now falls back to the bottler/importer name-and-address statement when no `brand_name` is found on the label (27 CFR §1.A.5.64 and analogues) — via new `_brand_name_fallback_matches()` helper reusing `_applicant_label_field()`. **Live-verified against application #1 (Woodford Reserve)**: `brand_name` now resolves MATCH ("Woodford Reserve" found within "THE WOODFORD RESERVE DISTILLERY") instead of HARD_FAILURE — exactly the scenario Gabe described.
+- `compare_abv` (7.13) now validates ABV phrasing against the four approved formats of 27 CFR §§5.65/7.65/4.36 ("X% Alcohol by Volume", "X% alc/vol", "Alc. X percent by vol.", "Alc X% by vol") via new `ABV_APPROVED_PHRASING_RE` + `_abv_phrasing_ok()`; a numerically-correct value in non-conforming phrasing now downgrades to POSSIBLE_ALLOWABLE (Sec. V item 3b) instead of silently passing MATCH. Also fixed `_extract_abv`'s regex to recognize "X percent" in addition to "X%" — a real bug caught by the new parametrized phrasing test.
+- New rule `compare_field_of_vision` checks that Brand Name, Class/Type, and ABV co-occur on at least one label image (27 CFR §§4.38/5.63(a)/7.63(a)) — MATCH if they share an image, POSSIBLE_ALLOWABLE (no Section V ref) if each is present individually but never together, and silent (`None`) if any element is missing entirely (already covered by existing hard-failure rules). Added to `COMPARISON_RULES`.
+- New `label_field_of_vision` entry in `FIELD_LABELS` (`determination_engine.py` + `web/src/lib/field-labels.ts`); `ParameterResultsTable.tsx` and `field-mappings.ts` confirmed to need no changes (generic rendering / graceful fallback for unmapped field names).
+- 11 new tests (3 brand-name fallback, 1 parametrized ×4 ABV phrasings + 1 non-conforming-phrasing, 3 field-of-vision) — full suite **222/222 backend passing**, **32/32 frontend passing**, lint clean.
+- Deliberately did **not** add new PRD.md FR-108/109/110 entries or a new WBS 7.x sub-item for `compare_field_of_vision`, to stay within the explicit scope of "append to DevLog + implement in comparisons" — flagged as an optional follow-up if formal traceability is desired.
+
+**Outcome:** Dashboard now surfaces TTB ID/Permit No./Fanciful Name/registry fields with sortable/filterable columns and a Delete-All admin action; uploads auto-run Stage 3 and auto-assign TTB IDs; three real-data comparison bugs fixed (diacritics, glare-suppression over-eager on light backgrounds, importer-vs-bottler for Item 8 — closing §4 Note 8); new DevLog §7 plus three new/refined comparison rules implementing 27 CFR §§1.A.5.64, 4.38/5.63(a)/7.63(a), and 5.65/7.65/4.36. Backend 222/222 pytest, frontend 32/32 Vitest, lint clean. No new WBS line items — refinements within already-complete 4.0/5.0/6.1/6.8/7.2/7.9/7.10/7.13/12.0; `WBS.md` → v2.7 (new §4 Note 10). `TODO.md` updated. Note: application #1's `alcohol_content`/`net_contents` are still `null` from before the `suppress_glare` fix, so `compare_field_of_vision` returns `None` for it until it is reprocessed.
+
+---
+
 **TTB Label Verification System**
 *Copyright (c) 2026 Matthew Gabriel Sizemore · Assessment submission: IT Specialist (AI) · 26-DO-12891471-DH*
