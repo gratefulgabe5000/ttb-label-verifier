@@ -120,7 +120,6 @@ export const authApi = {
 export interface ApplicationListParams {
   agentId?: number;
   status?: string;
-  applicantName?: string;
   page?: number;
   pageSize?: number;
 }
@@ -139,12 +138,8 @@ function toQueryString(params: object = {}): string {
 export const applicationsApi = {
   // GET /applications returns ApplicationOut (no label_images/form_parameters/etc.),
   // which is what `Application` models — use `get()` for the full detail shape.
-  list: (params?: ApplicationListParams) => {
-    const { applicantName, ...rest } = params ?? {};
-    return apiFetch<Application[]>(
-      `/applications${toQueryString({ ...rest, applicant_name: applicantName })}`
-    );
-  },
+  list: (params?: ApplicationListParams) =>
+    apiFetch<Application[]>(`/applications${toQueryString(params ?? {})}`),
   upload: (formData: FormData) =>
     apiFetch<ApplicationDetail>("/applications/upload", { method: "POST", body: formData }),
   get: (id: number) => apiFetch<ApplicationDetail>(`/applications/${id}`),

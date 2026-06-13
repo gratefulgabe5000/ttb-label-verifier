@@ -92,6 +92,31 @@ def persist_extraction_and_run_stages_5_6(
     return run_stages_5_6(db, application)
 
 
+async def process_new_upload(db: Session, application: Application, *, client: Anthropic | None = None) -> Application:
+    """Run Stage 3 (form assessment) immediately after upload, so the Pending
+    Applications list reflects the form's TTB ID, Permit No., Serial Number,
+    Brand/Fanciful Name, and Origin right away -- without waiting for the
+    agent to run the full Stage 3-6 pipeline."""
+    application.status = "PROCESSING"
+    db.commit()
+
+    try:
+        form_results = await asyncio.to_thread(form_extraction.run_stage3_extraction, application.form_path, client=client)
+    except Exception:
+        application.status = "ERROR"
+        db.commit()
+        db.refresh(application)
+        return application
+
+    form_extraction.persist_form_parameters(db, application, form_results)
+
+    form_parameters = application_service.list_form_parameters(db, application.id)
+    _update_registry_fields(application, form_parameters, [])
+    db.commit()
+    db.refresh(application)
+    return application
+
+
 async def process_application(db: Session, application: Application, *, client: Anthropic | None = None) -> Application:
     """9.1: run Stages 3-6 for one application, reaching a terminal status (FR-074)."""
     application.status = "PROCESSING"

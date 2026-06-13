@@ -111,16 +111,51 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("button", { name: "New Upload" })).toBeInTheDocument();
   });
 
-  it("filters by applicant name (12.2)", async () => {
+  it("filters across all columns by any matching value (12.2)", async () => {
+    renderDashboard();
+    await screen.findByText("25304001000123");
+    expect(screen.getByText("25304001000456")).toBeInTheDocument();
+
+    const input = screen.getByPlaceholderText("Filter applications...");
+    await userEvent.type(input, "Stoll");
+
+    // Matches application 1 (applicant name "Stoll & Wolfe Distillery") and hides application 2.
+    expect(screen.getByText("25304001000123")).toBeInTheDocument();
+    expect(screen.queryByText("25304001000456")).not.toBeInTheDocument();
+  });
+
+  it("shows a 'no applications found' message when the filter matches nothing (12.2)", async () => {
     renderDashboard();
     await screen.findByText("25304001000123");
 
-    const input = screen.getByPlaceholderText("Filter by applicant...");
-    await userEvent.type(input, "Stoll");
+    const input = screen.getByPlaceholderText("Filter applications...");
+    await userEvent.type(input, "nonexistent");
 
-    await waitFor(() => {
-      expect(applicationsApi.list).toHaveBeenLastCalledWith({ applicantName: "Stoll" });
-    });
+    expect(await screen.findByText(/No applications found for "nonexistent"/)).toBeInTheDocument();
+  });
+
+  it("sorts rows when a column header is clicked, toggling direction on repeat clicks", async () => {
+    renderDashboard();
+    await screen.findByText("25304001000123");
+
+    const bodyRowTexts = () =>
+      screen
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => row.textContent ?? "");
+
+    // Default order matches the API response: application 1 (brand "Stoll & Wolfe") first.
+    expect(bodyRowTexts()[0]).toContain("Stoll & Wolfe");
+
+    await userEvent.click(screen.getByRole("button", { name: /Brand Name/ }));
+
+    // Ascending: application 2 (no brand name, sorts as "") comes before "Stoll & Wolfe".
+    expect(bodyRowTexts()[0]).not.toContain("Stoll & Wolfe");
+
+    await userEvent.click(screen.getByRole("button", { name: /Brand Name/ }));
+
+    // Second click toggles to descending, restoring "Stoll & Wolfe" to the first row.
+    expect(bodyRowTexts()[0]).toContain("Stoll & Wolfe");
   });
 
   it("supports batch checkbox selection (12.3)", async () => {

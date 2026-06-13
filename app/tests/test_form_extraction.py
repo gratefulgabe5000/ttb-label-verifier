@@ -1,6 +1,8 @@
 """Stage 3 (Form Assessment, TS-01) tiered extraction tests (WBS 5.7)."""
 
 import json
+from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -417,3 +419,51 @@ class TestPersistFormParameters:
 
         assert application.brand_name == "Upload-Time Brand"
         assert application.status == "FORM_ASSESSED"
+
+    def test_assigns_ttb_id_when_missing_from_form(self, db_session):
+        from models.application import Application
+
+        application = Application(status="PENDING")
+        db_session.add(application)
+        db_session.commit()
+        db_session.refresh(application)
+
+        results = run_stage3_extraction(SCANNED_PDF, client=None)  # form has no prior TTB ID
+        persist_form_parameters(db_session, application, results)
+
+        now = datetime.now()
+        assert application.ttb_id == f"{now:%y}{now:%j}001000001"
+
+    def test_increments_ttb_id_sequence_for_same_day_method_001(self, db_session):
+        from models.application import Application
+
+        first = Application(status="PENDING")
+        second = Application(status="PENDING")
+        db_session.add_all([first, second])
+        db_session.commit()
+        db_session.refresh(first)
+        db_session.refresh(second)
+
+        results = run_stage3_extraction(SCANNED_PDF, client=None)
+        persist_form_parameters(db_session, first, results)
+        persist_form_parameters(db_session, second, results)
+
+        assert first.ttb_id[:8] == second.ttb_id[:8]
+        assert int(second.ttb_id[8:]) == int(first.ttb_id[8:]) + 1
+
+    def test_preserves_form_provided_ttb_id(self, db_session):
+        from models.application import Application
+
+        application = Application(status="PENDING")
+        db_session.add(application)
+        db_session.commit()
+        db_session.refresh(application)
+
+        results = run_stage3_extraction(ACROFORM_PDF, client=None)
+        results["application_type"] = replace(
+            results["application_type"],
+            value={"checked": ["14a"], "prior_ttb_id": "26045002000123"},
+        )
+        persist_form_parameters(db_session, application, results)
+
+        assert application.ttb_id == "26045002000123"

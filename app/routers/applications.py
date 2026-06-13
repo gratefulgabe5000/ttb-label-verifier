@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -59,8 +59,6 @@ async def upload_application(
     form_file: UploadFile = File(...),
     label_images: list[UploadFile] = File(default=[]),
     label_types: list[str] = Form(default=[]),
-    serial_number: str | None = Form(default=None),
-    applicant_name: str | None = Form(default=None),
     agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db),
 ) -> ApplicationDetailOut:
@@ -88,9 +86,8 @@ async def upload_application(
         form_filename=form_file.filename or "form.pdf",
         form_content=form_content,
         label_files=label_files,
-        serial_number=serial_number,
-        applicant_name=applicant_name,
     )
+    await pipeline.process_new_upload(db, application)
     return _to_detail(db, application)
 
 
@@ -106,15 +103,16 @@ def delete_all_applications(
 
 @router.get("", response_model=list[ApplicationOut])
 def list_applications(
-    applicant_name: str | None = Query(default=None),
     agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db),
 ) -> list[ApplicationOut]:
-    """FR-070 (own applications only, SR-002), FR-072 (filter by applicant name)."""
-    query = db.query(Application).filter(Application.assigned_agent_id == agent.id)
-    if applicant_name:
-        query = query.filter(Application.applicant_name.ilike(f"%{applicant_name}%"))
-    applications = query.order_by(Application.created_at.desc()).all()
+    """FR-070 (own applications only, SR-002)."""
+    applications = (
+        db.query(Application)
+        .filter(Application.assigned_agent_id == agent.id)
+        .order_by(Application.created_at.desc())
+        .all()
+    )
     if not applications:
         return []
 

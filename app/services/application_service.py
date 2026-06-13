@@ -63,13 +63,13 @@ def create_application(
     form_filename: str,
     form_content: bytes,
     label_files: list[tuple[str, bytes, str | None]],
-    serial_number: str | None,
-    applicant_name: str | None,
 ) -> Application:
-    """Insert the `applications` row and any `label_images` rows, persisting files to disk."""
+    """Insert the `applications` row and any `label_images` rows, persisting files to disk.
+
+    `applicant_name`, `serial_number`, and the other registry fields are left
+    unset here -- they're populated moments later by the Stage 3 extraction
+    that `process_new_upload` runs against the uploaded form."""
     application = Application(
-        serial_number=serial_number,
-        applicant_name=applicant_name,
         assigned_agent_id=agent_id,
         status="PENDING",
     )

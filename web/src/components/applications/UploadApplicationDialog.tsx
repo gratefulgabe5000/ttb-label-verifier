@@ -34,15 +34,11 @@ function emptyEntry(): LabelImageEntry {
 
 export function UploadApplicationDialog() {
   const [open, setOpen] = useState(false);
-  const [applicantName, setApplicantName] = useState("");
-  const [serialNumber, setSerialNumber] = useState("");
   const [formFile, setFormFile] = useState<File | null>(null);
   const [labelImages, setLabelImages] = useState<LabelImageEntry[]>([emptyEntry()]);
   const queryClient = useQueryClient();
 
   const reset = () => {
-    setApplicantName("");
-    setSerialNumber("");
     setFormFile(null);
     setLabelImages([emptyEntry()]);
   };
@@ -81,8 +77,6 @@ export function UploadApplicationDialog() {
 
     const formData = new FormData();
     formData.append("form_file", formFile);
-    if (applicantName.trim()) formData.append("applicant_name", applicantName.trim());
-    if (serialNumber.trim()) formData.append("serial_number", serialNumber.trim());
 
     for (const entry of labelImages) {
       if (!entry.file) continue;
@@ -100,31 +94,13 @@ export function UploadApplicationDialog() {
         <DialogHeader>
           <DialogTitle>New Application</DialogTitle>
           <DialogDescription>
-            Upload an application form (PDF) and any label images for review.
+            Upload an application form (PDF) and any label images for review. Applicant
+            name, serial number, and other registry details are read from the form
+            automatically.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="applicant-name">Applicant name</Label>
-            <Input
-              id="applicant-name"
-              value={applicantName}
-              onChange={(event) => setApplicantName(event.target.value)}
-              placeholder="Stoll & Wolfe Distillery"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="serial-number">Serial number</Label>
-            <Input
-              id="serial-number"
-              value={serialNumber}
-              onChange={(event) => setSerialNumber(event.target.value)}
-              placeholder="25304001000123"
-            />
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="form-file">Application form (PDF)</Label>
             <Input

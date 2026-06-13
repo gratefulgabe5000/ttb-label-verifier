@@ -18,6 +18,7 @@ import io
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -633,6 +634,21 @@ def run_stage3_extraction(pdf_path: str | Path, *, client: Anthropic | None = No
 # ---------------------------------------------------------------------------
 
 
+def _next_ttb_id(db: Session) -> str:
+    """Auto-assign a 14-digit TTB ID for an application that arrives without
+    one. Digits 1-2 are the 2-digit submission year, 3-5 the Julian day of
+    the year, 6-8 the submission method (always "001" -- e-filed -- for
+    system-assigned IDs), and 9-14 a sequence that resets to 000001 each day
+    for each method code."""
+    now = datetime.now()
+    prefix = f"{now:%y}{now:%j}001"
+
+    existing = db.query(Application.ttb_id).filter(Application.ttb_id.like(f"{prefix}%")).all()
+    max_sequence = max((int(ttb_id[8:]) for (ttb_id,) in existing if ttb_id and len(ttb_id) == 14), default=0)
+
+    return f"{prefix}{max_sequence + 1:06d}"
+
+
 def persist_form_parameters(db: Session, application: Application, results: dict[str, FieldResult]) -> None:
     """Replace `form_parameters` rows for `application` and update its denormalized columns."""
     db.query(FormParameter).filter(FormParameter.application_id == application.id).delete()
@@ -696,6 +712,9 @@ def persist_form_parameters(db: Session, application: Application, results: dict
         prior_ttb_id = app_type.get("prior_ttb_id")
         if prior_ttb_id:
             application.ttb_id = prior_ttb_id
+
+    if not application.ttb_id:
+        application.ttb_id = _next_ttb_id(db)
 
     application.status = "FORM_ASSESSED"
     db.commit()

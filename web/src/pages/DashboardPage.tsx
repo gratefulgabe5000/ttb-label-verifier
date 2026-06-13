@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -18,27 +18,118 @@ import { Button } from "@/components/ui/button";
 import { UploadApplicationDialog } from "@/components/applications/UploadApplicationDialog";
 import { RecommendationBadge } from "@/components/applications/RecommendationBadge";
 import { ApiError, applicationsApi, batchApi } from "@/lib/api-client";
+import type { Application, Recommendation } from "@/lib/types";
 
 function formatDate(value: string | null | undefined): string {
   return value ? new Date(value).toLocaleDateString() : "—";
+}
+
+type SortKey =
+  | "ttb_id"
+  | "permit_no"
+  | "serial_number"
+  | "created_at"
+  | "finalized_at"
+  | "fanciful_name"
+  | "brand_name"
+  | "origin_code"
+  | "class_type_code"
+  | "status";
+
+type SortDirection = "asc" | "desc";
+
+type RecommendationByAppId = Map<number, Recommendation | null | undefined>;
+
+function getStatusValue(application: Application, recommendationByAppId: RecommendationByAppId): string {
+  if (application.finalized_at) {
+    return application.recommendation ?? application.status;
+  }
+  const batchRecommendation = recommendationByAppId.get(application.id);
+  if (batchRecommendation !== undefined) {
+    return batchRecommendation ?? application.status;
+  }
+  return application.status;
+}
+
+function getSortValue(
+  application: Application,
+  key: SortKey,
+  recommendationByAppId: RecommendationByAppId
+): string | number {
+  switch (key) {
+    case "created_at":
+    case "finalized_at":
+      return application[key] ? new Date(application[key] as string).getTime() : 0;
+    case "status":
+      return getStatusValue(application, recommendationByAppId);
+    default:
+      return application[key] ?? "";
+  }
+}
+
+function compareValues(a: string | number, b: string | number): number {
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b));
+}
+
+// 12.2: "Filter by applicant" now matches any column — TTB ID, permit/serial
+// numbers, brand/fanciful names, origin/class-type, status, and dates.
+function matchesFilter(application: Application, filter: string, recommendationByAppId: RecommendationByAppId): boolean {
+  if (!filter) return true;
+  const needle = filter.toLowerCase();
+  const values = [
+    application.ttb_id,
+    application.permit_no,
+    application.serial_number,
+    application.fanciful_name,
+    application.brand_name,
+    application.origin_code,
+    application.class_type_code,
+    application.applicant_name,
+    getStatusValue(application, recommendationByAppId),
+    formatDate(application.created_at),
+    formatDate(application.finalized_at),
+  ];
+  return values.some((value) => value?.toLowerCase().includes(needle));
+}
+
+interface SortableHeadProps {
+  label: string;
+  sortKey: SortKey;
+  activeSortKey: SortKey | null;
+  direction: SortDirection;
+  onSort: (key: SortKey) => void;
+}
+
+function SortableHead({ label, sortKey, activeSortKey, direction, onSort }: SortableHeadProps) {
+  const isActive = activeSortKey === sortKey;
+  const Icon = isActive ? (direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead>
+      <button
+        type="button"
+        className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        <Icon className="h-3.5 w-3.5" />
+      </button>
+    </TableHead>
+  );
 }
 
 export function DashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [applicantFilter, setApplicantFilter] = useState("");
-  const [debouncedFilter, setDebouncedFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [activeBatchId, setActiveBatchId] = useState<number | null>(null);
-
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedFilter(applicantFilter.trim()), 300);
-    return () => clearTimeout(handle);
-  }, [applicantFilter]);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const applicationsQuery = useQuery({
-    queryKey: ["applications", { applicantName: debouncedFilter }],
-    queryFn: () => applicationsApi.list({ applicantName: debouncedFilter || undefined }),
+    queryKey: ["applications"],
+    queryFn: () => applicationsApi.list(),
     retry: false,
   });
 
@@ -65,16 +156,30 @@ export function DashboardPage() {
   });
 
   const applications = applicationsQuery.data ?? [];
-  const allSelected = applications.length > 0 && applications.every((app) => selectedIds.has(app.id));
-  const someSelected = applications.some((app) => selectedIds.has(app.id));
   const batchStatus = batchStatusQuery.data;
   const isBatchProcessing = activeBatchId !== null && batchStatus?.status !== "COMPLETE";
-  const recommendationByAppId = new Map(
+  const recommendationByAppId: RecommendationByAppId = new Map(
     (batchStatus?.applications ?? []).map((entry) => [entry.id, entry.recommendation])
   );
 
+  const filteredApplications = applications.filter((application) =>
+    matchesFilter(application, applicantFilter.trim(), recommendationByAppId)
+  );
+  const sortedApplications = sortKey
+    ? [...filteredApplications].sort((a, b) => {
+        const result = compareValues(
+          getSortValue(a, sortKey, recommendationByAppId),
+          getSortValue(b, sortKey, recommendationByAppId)
+        );
+        return sortDirection === "asc" ? result : -result;
+      })
+    : filteredApplications;
+
+  const allSelected = sortedApplications.length > 0 && sortedApplications.every((app) => selectedIds.has(app.id));
+  const someSelected = sortedApplications.some((app) => selectedIds.has(app.id));
+
   const toggleAll = (checked: boolean) => {
-    setSelectedIds(checked ? new Set(applications.map((app) => app.id)) : new Set());
+    setSelectedIds(checked ? new Set(sortedApplications.map((app) => app.id)) : new Set());
   };
 
   const toggleOne = (id: number, checked: boolean) => {
@@ -89,6 +194,15 @@ export function DashboardPage() {
     });
   };
 
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -98,7 +212,7 @@ export function DashboardPage() {
       <CardContent className="space-y-4">
         <div className="flex items-center gap-3">
           <Input
-            placeholder="Filter by applicant..."
+            placeholder="Filter applications..."
             value={applicantFilter}
             onChange={(event) => setApplicantFilter(event.target.value)}
             className="max-w-xs"
@@ -180,12 +294,15 @@ export function DashboardPage() {
         )}
         {applicationsQuery.data && applications.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            {debouncedFilter
-              ? `No applications found for "${debouncedFilter}".`
-              : 'No applications yet. Use "New Upload" to submit one.'}
+            No applications yet. Use &quot;New Upload&quot; to submit one.
           </p>
         )}
-        {applications.length > 0 && (
+        {applicationsQuery.data && applications.length > 0 && sortedApplications.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No applications found for &quot;{applicantFilter.trim()}&quot;.
+          </p>
+        )}
+        {sortedApplications.length > 0 && (
           <Table>
             <TableHeader>
               <TableRow>
@@ -197,20 +314,20 @@ export function DashboardPage() {
                     aria-label="Select all applications"
                   />
                 </TableHead>
-                <TableHead>TTB ID</TableHead>
-                <TableHead>Permit No.</TableHead>
-                <TableHead>Serial Number</TableHead>
-                <TableHead>Upload Date</TableHead>
-                <TableHead>Completed Date</TableHead>
-                <TableHead>Fanciful Name</TableHead>
-                <TableHead>Brand Name</TableHead>
-                <TableHead>Origin Desc</TableHead>
-                <TableHead>Class/Type Desc</TableHead>
-                <TableHead>Status</TableHead>
+                <SortableHead label="TTB ID" sortKey="ttb_id" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <SortableHead label="Permit No." sortKey="permit_no" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <SortableHead label="Serial Number" sortKey="serial_number" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <SortableHead label="Upload Date" sortKey="created_at" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <SortableHead label="Completed Date" sortKey="finalized_at" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <SortableHead label="Fanciful Name" sortKey="fanciful_name" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <SortableHead label="Brand Name" sortKey="brand_name" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <SortableHead label="Origin Desc" sortKey="origin_code" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <SortableHead label="Class/Type Desc" sortKey="class_type_code" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <SortableHead label="Status" sortKey="status" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {applications.map((application) => (
+              {sortedApplications.map((application) => (
                 <TableRow
                   key={application.id}
                   className="cursor-pointer"

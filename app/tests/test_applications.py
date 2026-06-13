@@ -23,11 +23,7 @@ def test_upload_creates_application_with_label_images(client, auth_headers):
     response = client.post(
         "/applications/upload",
         headers=auth_headers,
-        data={
-            "serial_number": "25304001000123",
-            "applicant_name": "Stoll & Wolfe Distillery",
-            "label_types": ["front"],
-        },
+        data={"label_types": ["front"]},
         files=[
             ("form_file", ("form.pdf", _pdf_bytes(), "application/pdf")),
             ("label_images", ("front.jpg", _jpeg_bytes(), "image/jpeg")),
@@ -38,12 +34,21 @@ def test_upload_creates_application_with_label_images(client, auth_headers):
     body = response.json()
     assert isinstance(body["id"], int)
     assert body["created_at"]
-    assert body["status"] == "PENDING"
-    assert body["serial_number"] == "25304001000123"
-    assert body["applicant_name"] == "Stoll & Wolfe Distillery"
+    # Stage 3 runs immediately on upload (no manual "Process" needed), so the
+    # applicant name/serial number/etc. come from the form itself.
+    assert body["status"] == "FORM_ASSESSED"
+    assert body["serial_number"] == "26-1"
+    assert body["applicant_name"] == "Sample Creek Distillery, LLC"
+    assert body["brand_name"] == "Sample Creek"
+    assert body["fanciful_name"] == "Heritage Reserve"
+    assert body["permit_no"] == "DSP-GA-20123"
+    # The form has no TTB ID, so one is auto-assigned (14-digit, method "001").
+    assert body["ttb_id"] is not None
+    assert len(body["ttb_id"]) == 14
+    assert body["ttb_id"][5:8] == "001"
     assert len(body["label_images"]) == 1
     assert body["label_images"][0]["label_type"] == "front"
-    assert body["form_parameters"] == []
+    assert len(body["form_parameters"]) > 0
     assert body["label_parameters"] == []
     assert body["determination"] is None
 
@@ -105,28 +110,6 @@ def test_batch_upload_creates_separate_applications(client, auth_headers):
     list_response = client.get("/applications", headers=auth_headers)
     assert list_response.status_code == 200
     assert len(list_response.json()) == 5
-
-
-def test_list_applications_filters_by_applicant_name(client, auth_headers):
-    client.post(
-        "/applications/upload",
-        headers=auth_headers,
-        data={"applicant_name": "Stoll & Wolfe Distillery"},
-        files=[("form_file", ("form.pdf", _pdf_bytes(), "application/pdf"))],
-    )
-    client.post(
-        "/applications/upload",
-        headers=auth_headers,
-        data={"applicant_name": "Acme Beverage Co"},
-        files=[("form_file", ("form.pdf", _pdf_bytes(), "application/pdf"))],
-    )
-
-    response = client.get("/applications?applicant_name=Stoll", headers=auth_headers)
-
-    assert response.status_code == 200
-    body = response.json()
-    assert len(body) == 1
-    assert body[0]["applicant_name"] == "Stoll & Wolfe Distillery"
 
 
 def test_list_applications_excludes_other_agents(client, auth_headers, second_auth_headers):
@@ -200,10 +183,9 @@ def test_get_application_returns_persisted_form_parameters(client, auth_headers)
 
     assert response.status_code == 200
     form_parameters = response.json()["form_parameters"]
-    assert len(form_parameters) == 1
-    assert form_parameters[0]["field_name"] == "brand_name"
-    assert form_parameters[0]["field_value"] == "Stoll & Wolfe"
-    assert form_parameters[0]["bbox_json"] == '{"x": 10, "y": 20, "w": 100, "h": 30}'
+    manual_param = next(fp for fp in form_parameters if fp["bbox_json"] == '{"x": 10, "y": 20, "w": 100, "h": 30}')
+    assert manual_param["field_name"] == "brand_name"
+    assert manual_param["field_value"] == "Stoll & Wolfe"
 
 
 def test_get_application_form_returns_pdf_bytes(client, auth_headers):
