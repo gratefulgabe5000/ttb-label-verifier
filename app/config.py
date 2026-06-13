@@ -13,6 +13,12 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5173"
 
+    # When true, the demo agent accounts (seed.py SEED_AGENTS) are created on
+    # startup if missing. Off by default for local dev (README documents
+    # running `python seed.py` manually); set to true on Railway so the
+    # documented demo credentials work on the deployed app without shell access.
+    seed_demo_agents: bool = False
+
     # Optional override for pytesseract's tesseract binary path (Windows dev
     # machines where Tesseract isn't on PATH). Unset on Linux/Railway, where
     # the Tesseract apt package is on PATH (WBS.md Note 7, contingency #1).

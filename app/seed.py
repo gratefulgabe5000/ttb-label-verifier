@@ -17,25 +17,29 @@ SEED_AGENTS = [
 ]
 
 
+def seed_agents(db) -> None:
+    for seed in SEED_AGENTS:
+        if db.query(Agent).filter(Agent.username == seed["username"]).first():
+            print(f"Agent '{seed['username']}' already exists, skipping.")
+            continue
+
+        db.add(
+            Agent(
+                username=seed["username"],
+                display_name=seed["display_name"],
+                password_hash=hash_password(seed["password"]),
+            )
+        )
+        print(f"Created agent '{seed['username']}'.")
+
+    db.commit()
+
+
 def main() -> None:
     init_db()
     db = SessionLocal()
     try:
-        for seed in SEED_AGENTS:
-            if db.query(Agent).filter(Agent.username == seed["username"]).first():
-                print(f"Agent '{seed['username']}' already exists, skipping.")
-                continue
-
-            db.add(
-                Agent(
-                    username=seed["username"],
-                    display_name=seed["display_name"],
-                    password_hash=hash_password(seed["password"]),
-                )
-            )
-            print(f"Created agent '{seed['username']}'.")
-
-        db.commit()
+        seed_agents(db)
     finally:
         db.close()
 

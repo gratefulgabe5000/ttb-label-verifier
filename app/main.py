@@ -5,8 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import get_settings
-from db import init_db
+from db import SessionLocal, init_db
 from routers import applications, auth, batch, determinations, health, settings as settings_router
+from seed import seed_agents
 
 settings = get_settings()
 
@@ -14,6 +15,12 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    if settings.seed_demo_agents:
+        db = SessionLocal()
+        try:
+            seed_agents(db)
+        finally:
+            db.close()
     yield
 
 
