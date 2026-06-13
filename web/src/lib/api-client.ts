@@ -160,6 +160,7 @@ export const applicationsApi = {
     apiFetch<ApplicationDetail>(`/applications/${id}/reprocess/label`, { method: "POST" }),
   reprocessComparison: (id: number) =>
     apiFetch<ApplicationDetail>(`/applications/${id}/reprocess/comparison`, { method: "POST" }),
+  deleteAll: () => apiFetch<void>("/applications", { method: "DELETE" }),
 };
 
 export const batchApi = {

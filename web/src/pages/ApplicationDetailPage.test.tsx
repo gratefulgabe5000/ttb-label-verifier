@@ -40,12 +40,14 @@ vi.mock("react-pdf", () => ({
 
 const APPLICATION: ApplicationDetail = {
   id: 1,
+  permit_no: null,
   serial_number: "25304001000123",
   year: null,
   form_path: "/data/uploads/1/form.pdf",
   product_type: "distilled_spirits",
   source: "domestic",
   brand_name: "Stoll & Wolfe",
+  fanciful_name: null,
   applicant_name: "Stoll & Wolfe Distillery",
   application_type: "14a",
   assigned_agent_id: 1,

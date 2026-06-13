@@ -8,11 +8,13 @@ import { applicationsApi, batchApi } from "@/lib/api-client";
 import type { Application, BatchReport } from "@/lib/types";
 
 const BASE_APPLICATION: Omit<Application, "id" | "applicant_name" | "serial_number"> = {
+  permit_no: null,
   year: null,
   form_path: null,
   product_type: "distilled_spirits",
   source: "domestic",
   brand_name: null,
+  fanciful_name: null,
   application_type: "14a",
   assigned_agent_id: 1,
   status: "COMPLETE",

@@ -39,12 +39,14 @@ export interface Agent {
 
 export interface Application {
   id: number;
+  permit_no: string | null;
   serial_number: string | null;
   year: string | null;
   form_path: string | null;
   product_type: ProductType | null;
   source: Source | null;
   brand_name: string | null;
+  fanciful_name: string | null;
   applicant_name: string | null;
   application_type: ApplicationType | null;
   assigned_agent_id: number | null;

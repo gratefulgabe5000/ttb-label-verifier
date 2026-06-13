@@ -94,6 +94,16 @@ async def upload_application(
     return _to_detail(db, application)
 
 
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+def delete_all_applications(
+    agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+) -> None:
+    """Settings 'Danger Zone' -- remove all of this agent's applications, their
+    cascade-related rows, and uploaded files, to reset test data."""
+    application_service.delete_all_applications(db, agent.id)
+
+
 @router.get("", response_model=list[ApplicationOut])
 def list_applications(
     applicant_name: str | None = Query(default=None),

@@ -15,8 +15,11 @@ from anthropic import Anthropic
 from sqlalchemy.orm import Session
 
 from models.application import Application
+from models.form_parameter import FormParameter
 from models.label_image import LabelImage
+from models.label_parameter import LabelParameter
 from services import application_service, comparison_engine, determination_engine, form_extraction, label_extraction
+from services.comparison_engine import US_STATES, _extract_state
 
 
 async def run_extraction(
@@ -29,11 +32,45 @@ async def run_extraction(
     )
 
 
+def _resolve_label_field(label_parameters: list[LabelParameter], field_name: str) -> str | None:
+    """Highest-confidence non-empty value for `field_name` across label images (IA-18)."""
+    candidates = [lp for lp in label_parameters if lp.field_name == field_name and lp.field_value]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda lp: lp.confidence or 0.0).field_value
+
+
+def _update_registry_fields(
+    application: Application, form_parameters: list[FormParameter], label_parameters: list[LabelParameter]
+) -> None:
+    """Populate the COLA Public Registry display fields (`class_type_code`,
+    `origin_code`) as soon as Stage 3/4 results are available -- even before the
+    determination is finalized."""
+    class_type = _resolve_label_field(label_parameters, "class_type_designation")
+    if class_type:
+        application.class_type_code = class_type
+
+    if application.source == "imported":
+        country = _resolve_label_field(label_parameters, "country_of_origin")
+        if country:
+            application.origin_code = country
+    elif application.source == "domestic":
+        applicant_address = next(
+            (fp.field_value for fp in form_parameters if fp.field_name == "applicant_address" and fp.field_value),
+            None,
+        )
+        state_code = _extract_state(applicant_address)
+        if state_code:
+            application.origin_code = US_STATES.get(state_code, state_code)
+
+
 def run_stages_5_6(db: Session, application: Application) -> Application:
     """Run + persist Stage 5 (comparison) and Stage 6 (determination) against
     whatever Stage 3/4 results are currently persisted for `application`."""
     form_parameters = application_service.list_form_parameters(db, application.id)
     label_parameters = application_service.list_label_parameters(db, application.id)
+
+    _update_registry_fields(application, form_parameters, label_parameters)
 
     comparisons = comparison_engine.run_comparisons(form_parameters, application, label_parameters)
     comparison_engine.persist_comparisons(db, application, comparisons)

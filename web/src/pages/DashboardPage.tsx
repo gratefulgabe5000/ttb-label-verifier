@@ -19,6 +19,10 @@ import { UploadApplicationDialog } from "@/components/applications/UploadApplica
 import { RecommendationBadge } from "@/components/applications/RecommendationBadge";
 import { ApiError, applicationsApi, batchApi } from "@/lib/api-client";
 
+function formatDate(value: string | null | undefined): string {
+  return value ? new Date(value).toLocaleDateString() : "—";
+}
+
 export function DashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -193,11 +197,16 @@ export function DashboardPage() {
                     aria-label="Select all applications"
                   />
                 </TableHead>
-                <TableHead>Applicant</TableHead>
-                <TableHead>Serial #</TableHead>
-                <TableHead>Product Type</TableHead>
+                <TableHead>TTB ID</TableHead>
+                <TableHead>Permit No.</TableHead>
+                <TableHead>Serial Number</TableHead>
+                <TableHead>Upload Date</TableHead>
+                <TableHead>Completed Date</TableHead>
+                <TableHead>Fanciful Name</TableHead>
+                <TableHead>Brand Name</TableHead>
+                <TableHead>Origin Desc</TableHead>
+                <TableHead>Class/Type Desc</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Result</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -214,18 +223,23 @@ export function DashboardPage() {
                       aria-label={`Select application ${application.id}`}
                     />
                   </TableCell>
-                  <TableCell>{application.applicant_name}</TableCell>
-                  <TableCell>{application.serial_number}</TableCell>
-                  <TableCell>{application.product_type}</TableCell>
+                  <TableCell>{application.ttb_id ?? "—"}</TableCell>
+                  <TableCell>{application.permit_no ?? "—"}</TableCell>
+                  <TableCell>{application.serial_number ?? "—"}</TableCell>
+                  <TableCell>{formatDate(application.created_at)}</TableCell>
+                  <TableCell>{formatDate(application.finalized_at)}</TableCell>
+                  <TableCell>{application.fanciful_name ?? "—"}</TableCell>
+                  <TableCell>{application.brand_name ?? "—"}</TableCell>
+                  <TableCell>{application.origin_code ?? "—"}</TableCell>
+                  <TableCell>{application.class_type_code ?? "—"}</TableCell>
                   <TableCell>
                     {application.finalized_at ? (
                       <RecommendationBadge recommendation={application.recommendation} />
+                    ) : recommendationByAppId.has(application.id) ? (
+                      <RecommendationBadge recommendation={recommendationByAppId.get(application.id)} />
                     ) : (
                       application.status
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <RecommendationBadge recommendation={recommendationByAppId.get(application.id)} />
                   </TableCell>
                 </TableRow>
               ))}

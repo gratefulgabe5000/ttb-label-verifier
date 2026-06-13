@@ -12,12 +12,14 @@ class Application(Base):
     __tablename__ = "applications"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    permit_no: Mapped[str | None] = mapped_column(String)  # Item 2 (plant_registry_number)
     serial_number: Mapped[str | None] = mapped_column(String)
     year: Mapped[str | None] = mapped_column(String)
     form_path: Mapped[str | None] = mapped_column(String)
     product_type: Mapped[str | None] = mapped_column(String)  # wine|distilled_spirits|malt_beverages
     source: Mapped[str | None] = mapped_column(String)  # domestic|imported
     brand_name: Mapped[str | None] = mapped_column(String)
+    fanciful_name: Mapped[str | None] = mapped_column(String)  # Item 7
     applicant_name: Mapped[str | None] = mapped_column(String)
     application_type: Mapped[str | None] = mapped_column(String)  # 14a|14b|14c|14d
     assigned_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id"))

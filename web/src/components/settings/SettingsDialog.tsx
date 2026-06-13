@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { API_KEY_QUERY_KEY, ApiError, settingsApi } from "@/lib/api-client";
+import { API_KEY_QUERY_KEY, ApiError, applicationsApi, settingsApi } from "@/lib/api-client";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -20,6 +21,7 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [apiKeyInput, setApiKeyInput] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const queryClient = useQueryClient();
 
   const statusQuery = useQuery({
@@ -40,6 +42,18 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     mutationFn: settingsApi.deleteApiKey,
     onSuccess: (status) => {
       queryClient.setQueryData(API_KEY_QUERY_KEY, status);
+    },
+  });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: applicationsApi.deleteAll,
+    onSuccess: () => {
+      setConfirmingDelete(false);
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      toast.success("All applications deleted.");
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : "Failed to delete applications.");
     },
   });
 
@@ -157,6 +171,46 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 applications.
               </li>
             </ul>
+          </div>
+
+          <div className="space-y-2 border-t pt-4">
+            <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
+            <p className="text-sm text-muted-foreground">
+              Permanently delete every application, its label images, form/label
+              parameters, comparisons, and determinations, plus their uploaded
+              files. Use this to start fresh during testing.
+            </p>
+            {confirmingDelete ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-destructive">
+                  Are you sure? This cannot be undone.
+                </span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteAllMutation.mutate()}
+                  disabled={deleteAllMutation.isPending}
+                >
+                  {deleteAllMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "Yes, delete everything"
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={deleteAllMutation.isPending}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button variant="destructive" size="sm" onClick={() => setConfirmingDelete(true)}>
+                Delete All Applications
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

@@ -110,12 +110,14 @@ class ApplicationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    permit_no: str | None
     serial_number: str | None
     year: str | None
     form_path: str | None
     product_type: str | None
     source: str | None
     brand_name: str | None
+    fanciful_name: str | None
     applicant_name: str | None
     application_type: str | None
     assigned_agent_id: int | None

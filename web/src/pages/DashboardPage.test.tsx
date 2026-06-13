@@ -8,11 +8,13 @@ import { ApiError, applicationsApi, batchApi } from "@/lib/api-client";
 import type { Application, BatchStatus } from "@/lib/types";
 
 const BASE_APPLICATION: Omit<Application, "id" | "applicant_name" | "serial_number"> = {
+  permit_no: null,
   year: null,
   form_path: null,
   product_type: "distilled_spirits",
   source: "domestic",
   brand_name: null,
+  fanciful_name: null,
   application_type: "14a",
   assigned_agent_id: 1,
   status: "PENDING",
@@ -31,7 +33,18 @@ const BASE_APPLICATION: Omit<Application, "id" | "applicant_name" | "serial_numb
 };
 
 const APPLICATIONS: Application[] = [
-  { ...BASE_APPLICATION, id: 1, applicant_name: "Stoll & Wolfe Distillery", serial_number: "25304001000123" },
+  {
+    ...BASE_APPLICATION,
+    id: 1,
+    applicant_name: "Stoll & Wolfe Distillery",
+    serial_number: "25304001000123",
+    ttb_id: "24308001000001",
+    permit_no: "DSP-KY-12345",
+    brand_name: "Stoll & Wolfe",
+    fanciful_name: "Reserve Select",
+    origin_code: "Kentucky",
+    class_type_code: "Kentucky Straight Bourbon Whiskey",
+  },
   { ...BASE_APPLICATION, id: 2, applicant_name: "Acme Beverage Co", serial_number: "25304001000456" },
 ];
 
@@ -87,14 +100,20 @@ describe("DashboardPage", () => {
   it("renders the application list (12.1) and upload action (12.7)", async () => {
     renderDashboard();
 
-    expect(await screen.findByText("Stoll & Wolfe Distillery")).toBeInTheDocument();
-    expect(screen.getByText("Acme Beverage Co")).toBeInTheDocument();
+    expect(await screen.findByText("25304001000123")).toBeInTheDocument();
+    expect(screen.getByText("25304001000456")).toBeInTheDocument();
+    expect(screen.getByText("24308001000001")).toBeInTheDocument();
+    expect(screen.getByText("DSP-KY-12345")).toBeInTheDocument();
+    expect(screen.getByText("Reserve Select")).toBeInTheDocument();
+    expect(screen.getByText("Stoll & Wolfe")).toBeInTheDocument();
+    expect(screen.getByText("Kentucky")).toBeInTheDocument();
+    expect(screen.getByText("Kentucky Straight Bourbon Whiskey")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New Upload" })).toBeInTheDocument();
   });
 
   it("filters by applicant name (12.2)", async () => {
     renderDashboard();
-    await screen.findByText("Stoll & Wolfe Distillery");
+    await screen.findByText("25304001000123");
 
     const input = screen.getByPlaceholderText("Filter by applicant...");
     await userEvent.type(input, "Stoll");
@@ -106,7 +125,7 @@ describe("DashboardPage", () => {
 
   it("supports batch checkbox selection (12.3)", async () => {
     renderDashboard();
-    await screen.findByText("Stoll & Wolfe Distillery");
+    await screen.findByText("25304001000123");
 
     const checkboxes = screen.getAllByRole("checkbox");
     await userEvent.click(checkboxes[1]);
@@ -124,7 +143,7 @@ describe("DashboardPage", () => {
     vi.spyOn(batchApi, "status").mockResolvedValue(BATCH_STATUS);
 
     renderDashboard();
-    await screen.findByText("Stoll & Wolfe Distillery");
+    await screen.findByText("25304001000123");
 
     await userEvent.click(screen.getAllByRole("checkbox")[1]);
     await userEvent.click(screen.getByRole("button", { name: "Process Selected" }));
@@ -154,7 +173,7 @@ describe("DashboardPage", () => {
         </MemoryRouter>
       </QueryClientProvider>
     );
-    await screen.findByText("Stoll & Wolfe Distillery");
+    await screen.findByText("25304001000123");
 
     await userEvent.click(screen.getAllByRole("checkbox")[1]);
     await userEvent.click(screen.getByRole("button", { name: "Process Selected" }));
@@ -168,7 +187,7 @@ describe("DashboardPage", () => {
     vi.spyOn(batchApi, "status").mockRejectedValue(new ApiError(500, "Internal server error"));
 
     renderDashboard();
-    await screen.findByText("Stoll & Wolfe Distillery");
+    await screen.findByText("25304001000123");
 
     await userEvent.click(screen.getAllByRole("checkbox")[1]);
     await userEvent.click(screen.getByRole("button", { name: "Process Selected" }));
@@ -187,7 +206,7 @@ describe("DashboardPage", () => {
     vi.spyOn(batchApi, "status").mockResolvedValue(BATCH_STATUS);
 
     renderDashboard();
-    await screen.findByText("Stoll & Wolfe Distillery");
+    await screen.findByText("25304001000123");
 
     await userEvent.click(screen.getAllByRole("checkbox")[1]);
     await userEvent.click(screen.getByRole("button", { name: "Process Selected" }));

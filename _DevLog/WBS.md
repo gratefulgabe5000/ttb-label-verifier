@@ -60,6 +60,7 @@
 | ✅ | 1.4 | Configure environment variables (`.env`: `ANTHROPIC_API_KEY`, JWT secret, DB path, upload volume path) | 1.1 | SR-001, IA-26 |
 | ✅ | 1.5 | Configure CORS middleware | 1.1 | IR-006 |
 | ✅ | 1.6 | Minimal "hello world" smoke-test deploy to Railway — verify Tesseract install path (Aptfile/`nixpacks.toml`), persistent volume mount, and env vars resolve in the deployed environment before feature code depends on them | 1.1, 1.4 | IA-26, Decision 8 (deployment watch-items) |
+
 | ✅ | **2.0** | **Synthetic Test Data Preparation** *(parallel with 1.0; must complete before the unit/integration tests in 5.7, 6.8, 7.16, 8.5, 9.7, 10.4, 16.x consume it)* | Phase 0 | TS-01, TS-02 |
 | ✅ | 2.1 | Inventory and organize existing `testdata/` into a manifest mapping each set to its expected pass/fail outcome | 2.0 | TS-02 |
 | ✅ | 2.2 | Produce sample F 5100.31 PDFs covering all three TS-01 tiers: (a) filled AcroForm, (b) flattened/text-layer-only, (c) scanned/image-only | 0.3 | TS-01, FR-017 |
@@ -68,11 +69,13 @@
 | ✅ | 2.5 | Build "possible allowable revision" sets (case/punctuation brand differences, in-state address change, color/font differences) | 2.1 | §2.6 Allowable Revisions, FR-057/059 |
 | ✅ | 2.6 | Build a small set of degraded-quality images (angle, glare, low light) for OpenCV preprocessing tests | 2.1 | FR-039 |
 | ✅ | 2.7 | Build a Type 14b ("for sale in one state only") application + matching/non-matching label set | 2.1, 2.2 | FR-056 |
+
 | ✅ | **3.0** | **Backend — Authentication & Authorization** | 1.3 | SR-001, SR-002 |
 | ✅ | 3.1 | `Agent` ORM model + seed script for initial agent accounts (password hashing via passlib) | 1.3 | SR-001, SR-002 |
 | ✅ | 3.2 | `POST /auth/login` (JWT issuance via python-jose) | 3.1 | SR-001, DevLog §3.5 |
 | ✅ | 3.3 | JWT validation dependency (current-agent), applied to all protected routers | 3.2 | SR-002 |
 | ✅ | 3.4 | Unit tests: auth (login success/failure, token validation/expiry) | 3.3 | SR-001, SR-002 |
+
 | ✅ | **4.0** | **Backend — Stage 1–2: Ingestion** | 1.3, 3.3 | DevLog §3.2 Stages 1–2 |
 | ✅ | 4.1 | `POST /applications` — multipart upload (form PDF + N label images), batch grouping | 1.3, 3.3 | FR-001–006 |
 | ✅ | 4.2 | File validation (file types, size limits, required-field presence) | 4.1 | FR-007, IR-002, IR-003 |
@@ -80,6 +83,7 @@
 | ✅ | 4.4 | `GET /applications` (list, filter by applicant) | 4.3 | FR-070–072 |
 | ✅ | 4.5 | `GET /applications/{id}` (full detail incl. associated `label_images`) | 4.3 | DevLog §3.5 |
 | ✅ | 4.6 | Unit tests: ingestion (valid/invalid uploads, batch grouping, listing/filtering) using 2.2 | 4.5, 2.2 | FR-001–007 |
+
 | ✅ | **5.0** | **Backend — Stage 3: Form Assessment (TS-01 Tiered Extraction)** | 4.5 | TS-01, DevLog §3.2 Stage 3 |
 | ✅ | 5.1 | Tier 1 — `pypdf` AcroForm field reader; map field names to Items 1–18; capture `/Rect` → `bbox_json` | 4.5 | TS-01, FR-017, FR-019, IA-23 |
 | ✅ | 5.2 | Tier 2 — `pdfplumber` text-layer fallback; region mapping; word bbox → `bbox_json` | 5.1 | TS-01, FR-017, FR-019, IA-23 |
@@ -88,6 +92,7 @@
 | ✅ | 5.5 | Confidence scoring + `extraction_method` recording (which tier resolved each field) | 5.4 | FR-016, FR-017 |
 | ✅ | 5.6 | Persist to `form_parameters` (incl. `bbox_json`/`location_hint`) | 5.5 | DevLog §3.4 |
 | ✅ | 5.7 | Unit tests: Stage 3 — each tier individually, tiered fallback ordering, field normalization, using 2.2's sample PDFs | 5.6, 2.2 | FR-010–019 |
+
 | ✅ | **6.0** | **Backend — Stage 4: Label Assessment (TS-02)** | 4.5 | TS-02, DevLog §3.2 Stage 4 |
 | ✅ | 6.1 | OpenCV preprocessing pipeline (deskew, contrast/CLAHE, glare suppression) | 4.5 | TS-02, FR-039 |
 | ✅ | 6.2 | Claude Vision label-extraction prompt (mandatory + secondary elements + generic `other_text`) | 6.1 | FR-030–033 |
@@ -97,6 +102,7 @@
 | ✅ | 6.6 | Per-image concurrent execution (`asyncio.gather` across an application's label images; Claude-vs-OCR concurrency within each image) | 6.5 | IA-19, DevLog §3.7 sequence diagram |
 | ✅ | 6.7 | Persist to `label_parameters` (one row per `label_image_id` × field_name, incl. `bbox_json`/`header_height_ratio`) | 6.6 | FR-038, DevLog §3.4 |
 | ✅ | 6.8 | Unit tests: Stage 4 — preprocessing on degraded images (2.6), extraction parsing, OCR fuzzy-match, government warning detection, using 2.1/2.4 | 6.7, 2.1, 2.6 | FR-030–040 |
+
 | ✅ | **7.0** | **Backend — Stage 5: Comparison Engine** *(re-scoped for FR-066, FR-100–107)* | 5.6, 6.7 | DevLog §3.2 Stage 5 |
 | ✅ | 7.1 | Multi-image resolution helper — a form value is "on label" if found on **any** associated label image; shared by every comparison rule below | 5.6, 6.7 | A-10, IA-18, FR-038 |
 | ✅ | 7.2 | Brand Name comparison (case/punctuation-tolerant) | 7.1 | FR-050–052 |
@@ -114,12 +120,14 @@
 | ✅ | 7.14 | Net Contents presence check | 7.1 | FR-107 |
 | ✅ | 7.15 | Persist all results to `comparisons` table | 7.2–7.14 | FR-058, DevLog §3.4 |
 | ✅ | 7.16 | Unit tests: comparison engine — one test per rule (7.2–7.14) covering MATCH/HARD_FAILURE/POSSIBLE_ALLOWABLE outcomes, plus the multi-image resolution helper (7.1), using 2.3/2.4/2.5/2.7 | 7.15, 2.3, 2.4, 2.5, 2.7 | FR-050–059, FR-066, FR-100–107, A-10, IA-18 |
+
 | ✅ | **8.0** | **Backend — Stage 6: Determination & Reporting** | 7.15 | DevLog §3.2 Stage 6 |
 | ✅ | 8.1 | Determination logic — APPROVE / DENY / RECOMMEND_EXEMPTION_REVIEW | 7.15 | FR-060–062 |
 | ✅ | 8.2 | Hard-failure list and allowable-revision list generation per application | 8.1 | FR-063, FR-064 |
 | ✅ | 8.3 | Per-application determination report schema | 8.2 | FR-065 |
 | ✅ | 8.4 | Persist to `determinations` table | 8.3 | DevLog §3.4 |
 | ✅ | 8.5 | Unit tests: Stage 6 — all 3 determination outcomes plus edge cases (e.g., no hard failures but unresolved possible-allowables), using 2.3/2.4 | 8.4, 2.3, 2.4 | FR-060–065 |
+
 | ✅ | **9.0** | **Backend — Pipeline Orchestration & Batch Processing** | 5.6, 6.7, 7.15, 8.4 | DevLog §3.7 sequence/block diagrams |
 | ✅ | 9.1 | Single-application orchestrator — runs Stages 3–6 with concurrent-compute / sequential-persist write pattern | 5.6, 6.7, 7.15, 8.4 | IA-24 |
 | ✅ | 9.2 | `POST /applications/{id}/process` | 9.1 | FR-074 |
@@ -128,11 +136,13 @@
 | ✅ | 9.5 | `GET /batch/{id}/status` (polling) | 9.4 | FR-075 |
 | ✅ | 9.6 | `GET /applications/{id}/comparisons` | 7.15 | DevLog §3.5 |
 | ✅ | 9.7 | Unit/integration tests: orchestration — concurrency bounds (9.3), status transitions (9.5), per-application timing against PR-001, using 2.3 | 9.6, 2.3 | PR-001, A-07, IA-17, IA-19, IA-24 |
+
 | ✅ | **10.0** | **Backend — Overrides, Finalization & Batch Report** | 9.6 | FR-086–097 |
 | ✅ | 10.1 | `POST /determinations/{id}/override` — per-parameter and overall overrides with audit fields (agent, timestamp, reason) | 9.6 | FR-086–089, SR-004 |
 | ✅ | 10.2 | `POST /determinations/{id}/finalize` — overrides do not re-run the AI pipeline (A-15); retention through `finalized_at` (A-16, SR-003) | 10.1 | FR-090, A-15, A-16 |
 | ✅ | 10.3 | `GET /batch/{id}/report` — counts by outcome + most common failure type | 10.2 | FR-095–097 |
 | ✅ | 10.4 | Unit tests: overrides, finalize, batch report, using 2.3/2.4 | 10.3, 2.3, 2.4 | FR-086–090, FR-095–097, SR-004 |
+
 | ✅ | **11.0** | **Frontend Scaffolding & Infrastructure** *(can start in parallel with 1.0)* | Phase 0 | DevLog §4.1 |
 | ✅ | 11.1 | Initialize Vite + React + TS project (`web/`) | 11.0 | DevLog §4.1 |
 | ✅ | 11.2 | Configure Tailwind CSS 4 | 11.1 | DevLog §4.1 |
@@ -141,6 +151,7 @@
 | ✅ | 11.5 | Project structure (`pages/`, `components/`, `hooks/`, `lib/` API client) | 11.1 | — |
 | ✅ | 11.6 | Auth context/hooks + login page | 11.5, 3.2 | SR-001 |
 | ✅ | 11.7 | Typed API client matching backend schemas | 11.5, 4.5, 5.6, 6.7, 7.15, 8.4 | DevLog §3.5 |
+
 | ✅ | **12.0** | **Frontend — Agent Dashboard** *(re-sequenced ahead of 6.0 — §4 Note 7)* | 11.7, 4.4 | FR-070–077 |
 | ✅ | 12.1 | Application list table (serial #, applicant, type, status) | 11.7, 4.4 | FR-070, FR-071 |
 | ✅ | 12.2 | Filter by applicant *(Pass 1)* | 12.1 | FR-072 |
@@ -150,6 +161,7 @@
 | ✅ | 12.6 | Batch summary header *(Pass 2)* | 12.4 | FR-077 |
 | ✅ | 12.7 | Upload-new modal (form PDF + N label images) | 12.1, 4.1 | FR-001–006 |
 | ✅ | 12.8 | Unit tests (Vitest): Dashboard — list/filter/selection/badges/upload modal *(covers 12.1–12.3/12.7 from Pass 1, plus 12.4–12.6 from Pass 2 — 13/13 tests passing)* | 12.7 | FR-070–077 |
+
 | ✅ | **13.0** | **Frontend — Application Detail View** *(re-sequenced ahead of 6.0 — §4 Note 7)* | 11.7, 5.6, 6.7, 7.15 | FR-080–091 |
 | ✅ | 13.1 | Split-view layout (form PDF left / label image(s) right) *(Pass 1)* | 11.7, 4.5 | FR-080, FR-081 |
 | ✅ | 13.2 | react-pdf form renderer *(Pass 1)* | 13.1 | FR-080 |
@@ -163,18 +175,21 @@
 | ✅ | 13.10 | Finalize action *(Pass 2)* | 13.9, 10.2 | FR-090 |
 | ✅ | 13.11 | Auto-tab-switch when an annotation references a specific `label_image_id` *(Pass 2)* | 13.3, 13.6 | FR-091 |
 | ✅ | 13.12 | Unit tests (Vitest): Detail View — annotation rendering, tab switching/auto-switch, cross-highlight, override modal, finalize *(covers 13.1–13.4 from Pass 1, plus 13.5–13.11 from Pass 2 — 13/13 tests passing)* | 13.11 | FR-080–091 |
+
 | ✅ | **14.0** | **Frontend — Batch Report View** — **COMPLETE** (Session 24, `BatchReportPage.tsx`, wired live to `GET /batch/{id}/report`) | 11.7, 10.3 | FR-095–097, UR-003 |
 | ✅ | 14.1 | Report layout — counts by outcome *(summary stat cards: total/approved/denied/exemption review, plus a processing indicator while incomplete)* | 11.7, 10.3 | FR-095, FR-096 |
 | ✅ | 14.2 | Common-failure-type display *(`most_common_failure` shown beneath the summary cards, "None" when absent)* | 14.1 | FR-097 |
 | ✅ | 14.3 | CSV export *(`lib/csv.ts` — `toCsv`/`downloadCsv`; "Export CSV" button writes one row per application incl. applicant, serial #, status, recommendation)* | 14.1 | UR-003 |
 | ✅ | 14.4 | PDF export *(optional / stretch)* — *("Print / Save as PDF" via `window.print()`; `print:hidden` added to AppShell header/API-key banner and the report's action buttons for a clean printout)* | 14.1 | UR-003 |
 | ✅ | 14.5 | Unit tests (Vitest): Batch Report — counts, failure-type display, export *(`BatchReportPage.test.tsx`, 5 tests, plus a Dashboard "View Report" wiring test — 21/21 Vitest passing)* | 14.3 | FR-095–097 |
+
 | ✅ | **15.0** | **Integration — Frontend ↔ Backend Wiring** — **COMPLETE** (Session 25 — 15.1–15.4 confirmed already wired via 12.0–14.0; 15.5 added the two remaining plain-English error states) | 12.8, 13.12, 14.5, 9.5, 10.2, 10.3, 11.6 | — |
 | ✅ | 15.1 | Wire Dashboard (12.0) to `GET /applications`, `POST /batch/process`, `GET /batch/{id}/status` *(already wired as part of 12.4–12.6; confirmed by audit, no changes needed)* | 12.8, 9.5 | — |
 | ✅ | 15.2 | Wire Detail View (13.0) to `GET /applications/{id}`, `POST /determinations/{id}/override`, `POST /determinations/{id}/finalize` *(already wired as part of 13.8–13.10; confirmed by audit, no changes needed)* | 13.12, 10.2 | — |
 | ✅ | 15.3 | Wire Batch Report (14.0) to `GET /batch/{id}/report` *(already wired as part of 14.1; confirmed by audit, no changes needed)* | 14.5, 10.3 | — |
 | ✅ | 15.4 | Wire auth flow — login → JWT storage → authenticated requests on all endpoints *(already wired via `AuthContext`/`apiFetch`/`ProtectedRoute`; confirmed by audit, no changes needed)* | 11.6, 3.3 | SR-001, SR-002 |
 | ✅ | 15.5 | Plain-English error handling/surfacing across all wired views *(audit found two gaps: `comparisonsQuery.isError` was unhandled in `ResultsSidebar`/`ParameterResultsTable` — "Failed to load comparison results. Please try again."; `batchStatusQuery.isError` was unhandled in `DashboardPage` — added a dismissible retry banner "Failed to load status for batch #{id}...". 2 new Vitest tests, 30/30 passing)* | 15.1, 15.2, 15.3, 15.4 | UR-003 |
+
 | ❌ | **16.0** | **Integration Testing** *(localhost, against synthetic data)* | 15.5, 2.0 | PR-001, PR-002, PR-004 |
 | ❌ | 16.1 | End-to-end pipeline test per product type (wine/spirits/malt) using 2.3–2.7 | 15.5, 2.0 | §2.5 Comparison Matrix, FR-050–059, FR-066, FR-100–107 |
 | ❌ | 16.2 | PR-001 timing verification (≤5s/application incl. all label images) | 16.1 | PR-001 |
@@ -182,11 +197,13 @@
 | ❌ | 16.4 | Multi-image resolution test — value present on a non-primary image still satisfies the field | 16.1, 7.1 | A-10, IA-18 |
 | ❌ | 16.5 | Override + finalize flow test — confirm overrides do not re-run the AI pipeline | 16.1, 10.2, 13.10 | A-15 |
 | ❌ | 16.6 | Annotation placement test — `bbox_json` vs `location_hint` fallback on Tier-3/degraded cases | 16.1, 13.4, 13.5, 2.6 | FR-019, FR-036, FR-040 |
+
 | ❌ | **17.0** | **Localhost End-to-End Manual Testing** | 16.6 | DevLog §3.6 |
 | ❌ | 17.1 | Full user-path walkthrough: login → dashboard → batch select → process → detail view → override → finalize → batch report (mirrors §3.6 ideal-scenario path) | 16.6 | DevLog §3.6 |
 | ❌ | 17.2 | Usability checks — UR-001–006 (≤3 interactions to key actions, color/icon distinctness, plain-English errors, load times, no-scroll primary controls) | 17.1 | UR-001–006 |
 | ❌ | 17.3 | Browser compatibility check (Chrome, Edge, Firefox) | 17.1 | IR-006 |
 | ❌ | 17.4 | Edge-case walkthrough — degraded images, Type 14b, blank Item 7/11, missing optional fields | 17.1, 2.6, 2.7 | FR-039, FR-056, FR-104, FR-105 |
+
 | ❌ | **18.0** | **Setup & Deployment** | 17.4, 1.6 | IA-26, Decision 8 |
 | ❌ | 18.1 | Railway: deploy backend to the project smoke-tested in 1.6; attach persistent volume for SQLite DB + uploaded files | 17.4, 1.6 | IA-26 |
 | ❌ | 18.2 | Confirm Tesseract OCR binary available in deployed environment (Aptfile/`nixpacks.toml`) | 18.1 | TS-02, Decision 8 |
@@ -194,10 +211,12 @@
 | ❌ | 18.4 | Netlify: deploy frontend; configure API base URL env var | 17.4 | — |
 | ❌ | 18.5 | Configure CORS for the deployed cross-origin pair (Netlify ↔ Railway) | 18.1, 18.4 | IR-006 |
 | ❌ | 18.6 | Update `README.md` with the live deployed URL and run instructions | 18.5 | CR-005 |
+
 | ❌ | **19.0** | **Post-Deployment End-to-End Testing** | 18.6 | CR-004 |
 | ❌ | 19.1 | Re-run the 17.1 user-path walkthrough against the deployed URL (no VPN/special credentials required) | 18.6 | CR-004 |
 | ❌ | 19.2 | Re-verify PR-001/PR-003 timing on deployed infrastructure (network latency may differ from localhost) | 19.1 | PR-001, PR-003 |
 | ❌ | 19.3 | Cross-browser spot-check on the deployed URL | 19.1 | IR-006 |
+
 | ❌ | **20.0** | **Submission Material Review & Collation** | 19.3 |  |
 | ❌ | 20.1 | Final review of `README.md` (setup/run instructions, live URL, known limitations) | 19.3 | CR-005 |
 | ❌ | 20.2 | Final review of `DevLog.md` — confirm Engineering Log captures all sessions through deployment | 19.3 | DevLog §7 |
@@ -205,6 +224,7 @@
 | ❌ | 20.4 | Export remaining chat session transcripts to `_DevLog/` | 20.3 | NOT REQUIRED — transcripts will not be provided as part of this submission |
 | ❌ | 20.5 | Repository cleanup — verify `.gitignore` covers secrets/`.env`, confirm no exposed API keys in history | 20.4 | — |
 | ❌ | 20.6 | Final lint/format pass on `app/` and `web/` | 20.5 | — |
+
 | ❌ | **21.0** | **Submission** | 20.6 | — |
 | ❌ | 21.1 | Verify Microsoft Forms submission link and required fields (repo URL, deployed URL) | 20.6 | TODO.md submission link |
 | ❌ | 21.2 | Submit via the assessment submission form (https://forms.osi.office365.us/r/xWrQGduMw7) | 21.1 | — |

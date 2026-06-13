@@ -660,9 +660,17 @@ def persist_form_parameters(db: Session, application: Application, results: dict
             )
         )
 
+    permit_no = results["plant_registry_number"].value
+    if permit_no:
+        application.permit_no = permit_no
+
     brand_name = results["brand_name"].value
     if brand_name:
         application.brand_name = brand_name
+
+    fanciful_name = results["fanciful_name"].value
+    if fanciful_name:
+        application.fanciful_name = fanciful_name
 
     applicant_name = results["applicant_name"].value
     if applicant_name:
@@ -682,8 +690,12 @@ def persist_form_parameters(db: Session, application: Application, results: dict
         application.year = serial_number.split("-")[0]
 
     app_type = results["application_type"].value
-    if app_type and app_type.get("checked"):
-        application.application_type = app_type["checked"][0]
+    if app_type:
+        if app_type.get("checked"):
+            application.application_type = app_type["checked"][0]
+        prior_ttb_id = app_type.get("prior_ttb_id")
+        if prior_ttb_id:
+            application.ttb_id = prior_ttb_id
 
     application.status = "FORM_ASSESSED"
     db.commit()

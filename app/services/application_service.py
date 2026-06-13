@@ -1,11 +1,13 @@
 """Application ingestion: file validation and persistence (DevLog Stages 1-2)."""
 
+import shutil
 from pathlib import Path
 
 from sqlalchemy.orm import Session
 
 from config import get_settings
 from models.application import Application
+from models.batch import Batch
 from models.comparison import Comparison
 from models.determination import Determination
 from models.form_parameter import FormParameter
@@ -130,3 +132,38 @@ def list_comparisons(db: Session, application_id: int) -> list[Comparison]:
 
 def get_determination(db: Session, application_id: int) -> Determination | None:
     return db.query(Determination).filter(Determination.application_id == application_id).first()
+
+
+def delete_all_applications(db: Session, agent_id: int) -> int:
+    """Settings 'Danger Zone' -- delete all of `agent_id`'s applications, their
+    cascade-related rows, and their uploaded files, so an agent can reset their
+    test data. Returns the number of applications deleted."""
+    application_ids = [
+        application.id
+        for application in db.query(Application).filter(Application.assigned_agent_id == agent_id).all()
+    ]
+
+    if application_ids:
+        db.query(Comparison).filter(Comparison.application_id.in_(application_ids)).delete(synchronize_session=False)
+        db.query(Determination).filter(Determination.application_id.in_(application_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(LabelParameter).filter(LabelParameter.application_id.in_(application_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(FormParameter).filter(FormParameter.application_id.in_(application_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(LabelImage).filter(LabelImage.application_id.in_(application_ids)).delete(synchronize_session=False)
+
+    db.query(Batch).filter(Batch.created_by == agent_id).delete(synchronize_session=False)
+
+    deleted = (
+        db.query(Application).filter(Application.assigned_agent_id == agent_id).delete(synchronize_session=False)
+    )
+    db.commit()
+
+    for application_id in application_ids:
+        shutil.rmtree(Path(settings.upload_dir) / str(application_id), ignore_errors=True)
+
+    return deleted
