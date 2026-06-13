@@ -20,8 +20,18 @@ An AI-powered web application that automates the review of COLA (Certificate of 
 
 ## Live Demo
 
-> **Deployed Application:** _(link added upon deployment)_  
+> **Deployed Application:** https://ttb-labelverificationsystem.netlify.app  
+> **Backend API:** https://ttb-label-verifier-production-c816.up.railway.app  
 > **Repository:** https://github.com/gratefulgabe5000/ttb-label-verifier
+
+Log in with the demo credentials below, then enter your own Anthropic API
+key in **Settings** (gear icon) to run the AI pipeline — see
+[Settings & API Key](#settings--api-key).
+
+| Username | Password |
+|----------|----------|
+| `agent1` | `password123` |
+| `agent2` | `password123` |
 
 ---
 
@@ -220,22 +230,29 @@ ttb-label-verifier/
 
 ## Deployment
 
+Live at: https://ttb-labelverificationsystem.netlify.app (frontend) ·
+https://ttb-label-verifier-production-c816.up.railway.app (backend API)
+
 **Backend (Railway)** — config lives in `app/nixpacks.toml` and `app/railway.json`:
 - Nixpacks installs `tesseract-ocr` (apt) alongside the Python build (TS-02).
 - Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`; Railway
   health check hits `GET /health`.
-- Set the Railway service's **root directory** to `app/`.
-- Mount a persistent volume (e.g. at `/data`) and set:
+- Service **root directory** set to `app/`.
+- A persistent volume is mounted at `/data`, with:
   - `DATABASE_URL=sqlite:////data/workingfiles.db`
   - `UPLOAD_DIR=/data/uploads`
   - `JWT_SECRET` / `JWT_ALGORITHM` / `JWT_EXPIRE_MINUTES`
-  - `CORS_ORIGINS=<deployed frontend origin>`
+  - `CORS_ORIGINS=https://ttb-labelverificationsystem.netlify.app`
+  - `SEED_DEMO_AGENTS=true` — auto-creates the `agent1`/`agent2` demo
+    accounts on first boot (see [Live Demo](#live-demo))
 - `ANTHROPIC_API_KEY` is intentionally **not** set as a deploy-time env var —
   agents provide it at runtime via Settings (see above).
 
-**Frontend (Netlify)** — `web/`, build command `npm run build`, publish
-directory `web/dist`, with `VITE_API_BASE_URL` pointing at the Railway
-backend URL.
+**Frontend (Netlify)** — config lives in `netlify.toml` (repo root): base
+directory `web/`, build command `npm run build`, publish directory `dist`,
+Node 24. `web/public/_redirects` provides the SPA catch-all for
+`react-router-dom`'s `BrowserRouter`. `VITE_API_BASE_URL` is set to the
+Railway backend URL above.
 
 ---
 

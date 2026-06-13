@@ -722,5 +722,46 @@
 
 ---
 
+## 2026-06-13
+
+### Session 27: WBS 18.0 — Live Deployment to Railway (Backend) + Netlify (Frontend), Executed Ahead of 16.0/17.0
+
+**Context:** With WBS 1.0–15.0 complete (222/222 backend pytest, 32/32 frontend Vitest, both clean builds), Gabe asked to jump WBS 18.0 (Setup & Deployment) ahead of its nominal predecessors 16.0 (Integration Testing) and 17.0 (Localhost E2E Testing) — "get this deployed and live now, we'll come back to 16.0 after." This session walked through the full Railway (backend) and Netlify (frontend) deployment process step by step, since both require dashboard actions only Gabe can perform, then verified the live site end-to-end.
+
+**Completed — Pre-deployment code prep:**
+- New `web/public/_redirects` (`/* /index.html 200`) so Netlify serves `index.html` for all `react-router-dom` `BrowserRouter` routes instead of 404ing on refresh/deep-link.
+- New `netlify.toml` at the repo root: `base = "web"`, `command = "npm run build"`, `publish = "dist"`, `NODE_VERSION = "24"` — lets Netlify auto-configure from the repo without any dashboard build-settings entry.
+- New `SEED_DEMO_AGENTS` boolean setting in `app/config.py` (default `False`); `app/seed.py`'s `main()` logic refactored into a reusable `seed_agents(db)` function; `app/main.py`'s `lifespan` now calls `seed_agents(db)` on startup when the flag is set, so the documented `agent1`/`agent2` demo accounts (`password123`) exist on a fresh Railway deploy without shell access. `app/.env.example` documents the flag and a "Production (Railway, WBS 18.0)" block with the production-shaped values (4-slash absolute `DATABASE_URL`, `/data/uploads`, etc.).
+- Generated a fresh production `JWT_SECRET` (not the dev placeholder) for the Railway environment.
+- Full suite re-confirmed green before touching any dashboards: 222/222 backend pytest, frontend build/lint clean.
+
+**Completed — Railway (backend) walkthrough (18.1–18.3):**
+- Created the Railway service from the GitHub repo, set the service **root directory** to `app/` (the existing `app/railway.json` / `app/nixpacks.toml` from the earlier 1.6 smoke-test deploy were already in place and unchanged).
+- Walked Gabe through adding a **persistent volume** (via canvas right-click / Ctrl+K command palette → Add Volume) mounted at `/data`, so the SQLite DB and uploaded files survive redeploys.
+- Set production environment variables on the service-level **Variables** tab (not Project Settings → Shared Variables, which Gabe had initially found and which is project-wide rather than service-scoped): `DATABASE_URL=sqlite:////data/workingfiles.db`, `UPLOAD_DIR=/data/uploads`, `JWT_SECRET` (new value above), `JWT_ALGORITHM=HS256`, `JWT_EXPIRE_MINUTES=480`, `CORS_ORIGINS` (placeholder, finalized in the CORS step below), and `SEED_DEMO_AGENTS=true`. `ANTHROPIC_API_KEY` was deliberately left unset — agents provide their own key at runtime via Settings.
+- On **Generate Domain**, Railway prompted for the port the app listens on; confirmed this should be left at Railway's auto-assigned default (commonly 8080) since `app/railway.json`'s start command (`uvicorn main:app --host 0.0.0.0 --port $PORT`) already binds to Railway's injected `$PORT`. Generated domain: `ttb-label-verifier-production-c816.up.railway.app`.
+- Build log (Nixpacks v1.41.0) showed `apt-get install -y tesseract-ocr` running alongside the Python build, confirming 18.2 (Tesseract availability) without any Aptfile changes needed.
+- Gabe reported the Build Logs tab didn't show uvicorn/`seed_agents` startup output — explained that Build Logs only cover the Nixpacks image-build phase, while runtime stdout (uvicorn boot, the `seed_agents` print statements) appears in the separate Deploy/Application Logs view, and that the healthcheck (`GET /health` → `{"status":"ok"}`, which Gabe had already confirmed) is itself proof uvicorn started successfully.
+- Independently verified the new `SEED_DEMO_AGENTS` code path was live by `curl`-ing the deployed `/auth/login` endpoint with `agent1`/`password123` — returned a valid JWT, confirming both the seed and the auth stack work in production.
+
+**Completed — Netlify (frontend) walkthrough (18.4):**
+- Connected the Netlify site to the GitHub repo. The dashboard's "Build settings" page showed all fields (base directory, build command, publish directory) blank — confirmed this is correct and intentional: `netlify.toml` (added in pre-deployment prep) takes precedence, and the blank dashboard fields should be left as-is rather than filled in manually.
+- Added `VITE_API_BASE_URL` as a Netlify environment variable, pointed at the Railway backend domain above.
+- Triggered "Clear cache and deploy site" so Vite picks up the new env var at build time. Build succeeded; site live at `ttb-labelverificationsystem.netlify.app`.
+
+**Completed — CORS (18.5) and README live URLs (18.6):**
+- Updated Railway's `CORS_ORIGINS` to `https://ttb-labelverificationsystem.netlify.app`, matching the Netlify site exactly.
+- `README.md`: rewrote the "Live Demo" section (previously a placeholder) with both live URLs, the repo link, a pointer to Settings for the Anthropic API key, and the `agent1`/`agent2` demo credentials table; rewrote the "Deployment" section with the concrete Railway config (Nixpacks/Tesseract, persistent `/data` volume and its env vars including `SEED_DEMO_AGENTS=true`, no deploy-time `ANTHROPIC_API_KEY`) and Netlify config (`netlify.toml`, `_redirects`, `VITE_API_BASE_URL`).
+
+**Verification:**
+- Railway healthcheck: `GET /health` → `{"status":"ok"}`.
+- `curl` login against the live Railway API with `agent1`/`password123` → valid JWT (confirms `SEED_DEMO_AGENTS`, auth, and DB-on-volume all work in production).
+- Netlify build succeeded with `VITE_API_BASE_URL` baked in.
+- **End-to-end**: Gabe logged in on the live Netlify site ("I went to the site, and was able to log in!") — confirms CORS (18.5), the Netlify → Railway → SQLite-on-volume chain, and the full deployed stack all work together.
+
+**Outcome:** WBS 18.0 complete in full (18.1–18.6) — backend live on Railway, frontend live on Netlify, CORS configured, README updated with live URLs and demo credentials. `WBS.md` → v2.8 (new §4 Note 11, documenting this as an intentional execution-order override ahead of 16.0/17.0). `TODO.md` updated (Status at a Glance, Next Session, checklist). **Live URLs** — frontend: https://ttb-labelverificationsystem.netlify.app · backend: https://ttb-label-verifier-production-c816.up.railway.app. Next session resumes the original plan at **WBS 16.0** (Integration Testing against synthetic data).
+
+---
+
 **TTB Label Verification System**
 *Copyright (c) 2026 Matthew Gabriel Sizemore · Assessment submission: IT Specialist (AI) · 26-DO-12891471-DH*

@@ -6,9 +6,9 @@
 | Field | Value |
 |-------|-------|
 | Document ID | TTB-LVS-WBS-001 |
-| Version | 2.7 |
+| Version | 2.8 |
 | Status | Draft |
-| Date | 2026-06-12 |
+| Date | 2026-06-13 |
 | Prepared By | Matthew Gabriel Sizemore |
 | Prepared For | US Department of the Treasury, TTB |
 | Assessment Reference | IT Specialist (AI) · 26-DO-12891471-DH |
@@ -26,6 +26,7 @@
 | 2.5 | 2026-06-12 | M.G. Sizemore | Marked WBS 14.0 (Frontend — Batch Report View, 14.1–14.5) complete |
 | 2.6 | 2026-06-12 | M.G. Sizemore | Marked WBS 15.0 (Integration — Frontend ↔ Backend Wiring, 15.1–15.5) complete |
 | 2.7 | 2026-06-12 | M.G. Sizemore | Session 26 refinements within already-complete 4.0/5.0/6.1/6.8/7.2/7.9/7.10/7.13/12.0 — diacritic-folding text normalization, `suppress_glare` area-fraction cap (FR-039), importer-only Item 8 matching for imports (closes §4 Note 8), §1.A.5.64 brand-name fallback + ABV approved-phrasing check + new `compare_field_of_vision` rule (new DevLog §7), and Dashboard registry-field/auto-TTB-ID/Delete-All updates; no new line items. Added §4 Note 10 |
+| 2.8 | 2026-06-13 | M.G. Sizemore | Marked WBS 18.0 (Setup & Deployment, 18.1–18.6) complete — Session 27. Per Gabe's direction, executed ahead of 16.0/17.0 (§4 Note 11). Backend deployed to Railway (Tesseract via Nixpacks, persistent `/data` volume, `SEED_DEMO_AGENTS` auto-seed); frontend deployed to Netlify (`netlify.toml`, SPA `_redirects`); CORS configured; `README.md` updated with live URLs |
 
 ---
 
@@ -205,13 +206,13 @@
 | ❌ | 17.3 | Browser compatibility check (Chrome, Edge, Firefox) | 17.1 | IR-006 |
 | ❌ | 17.4 | Edge-case walkthrough — degraded images, Type 14b, blank Item 7/11, missing optional fields | 17.1, 2.6, 2.7 | FR-039, FR-056, FR-104, FR-105 |
 
-| ❌ | **18.0** | **Setup & Deployment** | 17.4, 1.6 | IA-26, Decision 8 |
-| ❌ | 18.1 | Railway: deploy backend to the project smoke-tested in 1.6; attach persistent volume for SQLite DB + uploaded files | 17.4, 1.6 | IA-26 |
-| ❌ | 18.2 | Confirm Tesseract OCR binary available in deployed environment (Aptfile/`nixpacks.toml`) | 18.1 | TS-02, Decision 8 |
-| ❌ | 18.3 | Configure production environment variables on Railway | 18.1 | SR-001 |
-| ❌ | 18.4 | Netlify: deploy frontend; configure API base URL env var | 17.4 | — |
-| ❌ | 18.5 | Configure CORS for the deployed cross-origin pair (Netlify ↔ Railway) | 18.1, 18.4 | IR-006 |
-| ❌ | 18.6 | Update `README.md` with the live deployed URL and run instructions | 18.5 | CR-005 |
+| ✅ | **18.0** | **Setup & Deployment** — **COMPLETE** (Session 27, executed ahead of 16.0/17.0 per §4 Note 11) | 17.4, 1.6 | IA-26, Decision 8 |
+| ✅ | 18.1 | Railway: deploy backend to the project smoke-tested in 1.6; attach persistent volume for SQLite DB + uploaded files *(volume mounted at `/data`; live at https://ttb-label-verifier-production-c816.up.railway.app)* | 17.4, 1.6 | IA-26 |
+| ✅ | 18.2 | Confirm Tesseract OCR binary available in deployed environment (Aptfile/`nixpacks.toml`) *(confirmed in Nixpacks build log — `apt-get install -y tesseract-ocr`)* | 18.1 | TS-02, Decision 8 |
+| ✅ | 18.3 | Configure production environment variables on Railway *(DATABASE_URL, UPLOAD_DIR, JWT_SECRET/ALGORITHM/EXPIRE_MINUTES, CORS_ORIGINS, new `SEED_DEMO_AGENTS=true`)* | 18.1 | SR-001 |
+| ✅ | 18.4 | Netlify: deploy frontend; configure API base URL env var *(`netlify.toml` + `web/public/_redirects` added; `VITE_API_BASE_URL` set to the Railway URL; live at https://ttb-labelverificationsystem.netlify.app)* | 17.4 | — |
+| ✅ | 18.5 | Configure CORS for the deployed cross-origin pair (Netlify ↔ Railway) *(`CORS_ORIGINS=https://ttb-labelverificationsystem.netlify.app`; verified end-to-end login)* | 18.1, 18.4 | IR-006 |
+| ✅ | 18.6 | Update `README.md` with the live deployed URL and run instructions *(Live Demo section + Deployment section updated with both URLs and demo credentials)* | 18.5 | CR-005 |
 
 | ❌ | **19.0** | **Post-Deployment End-to-End Testing** | 18.6 | CR-004 |
 | ❌ | 19.1 | Re-run the 17.1 user-path walkthrough against the deployed URL (no VPN/special credentials required) | 18.6 | CR-004 |
@@ -311,6 +312,8 @@ Rationale: front-loading the buildable frontend surfaces lets the user manually 
 9. **(v2.6) 15.0 closeout — 15.1–15.4 required no code changes:** because 12.0–14.0 were built directly against the live typed API client (`lib/api-client.ts`) rather than mocked data, the Dashboard/Detail View/Batch Report/auth wiring was already complete by the time 15.0 started. The Session 25 audit confirmed this against the code (queries/mutations call `applicationsApi`/`batchApi`/`determinationsApi`/`authApi`, `AuthContext` listens for `AUTH_UNAUTHORIZED_EVENT` and `ProtectedRoute` redirects to `/login`) and made no changes for 15.1–15.4. The only substantive 15.0 work was 15.5: two views had query-error states that were silently swallowed (`comparisonsQuery.isError` in the Detail View results panels, `batchStatusQuery.isError` in the Dashboard's batch-status poll) — both now surface a `text-destructive` plain-English message per UR-003, and the Dashboard's also offers Retry/Dismiss so the agent isn't left staring at a stuck "processing" state.
 
 10. **(v2.7) Session 26 — real-data comparison fixes, ingestion/dashboard refinements, and DevLog §7 regulatory reference:** Reviewing the running application against real label data surfaced three comparison-engine fixes, all within already-complete items: (a) `_normalize_for_comparison()` (6.1/6.8, used by every text rule in 7.0) now folds diacritics via Unicode NFKD decomposition before stripping punctuation, so accented label text (e.g., "Fête Rosé") matches its unaccented form on the application form; (b) `suppress_glare()` (6.1, FR-039) now skips inpainting when the ≥235-brightness mask covers more than 5% of the image (`MAX_GLARE_AREA_FRACTION`), since a large bright area is usually a plain light label background rather than a glare hot-spot, and inpainting over it was destroying legible text; (c) for imported products, 7.9/7.10 now compare Item 8 (Applicant Name/Address) only against the label's `importer_name`/`importer_address`, never the foreign `bottler_name`/`bottler_address` — **this resolves the open product question in §4 Note 8** in favor of "importer." Separately, per Gabe's direct citation of 27 CFR §§1.A.5.64, 1.A.7.63(a), 1.A.4.32(a)/(b), 1.A.5.63(a)/(b)/5.7, 4.38, 5.63(a), 7.63(a), and 5.65/7.65/4.36, a new DevLog §7 documents mandatory-label-element coverage per product type, and three rule changes were made within 7.0: 7.2 (`compare_brand_name`) now falls back to the bottler/importer name-and-address statement when no Brand Name is on the label (§1.A.5.64 — live-verified against application #1, Woodford Reserve, MATCH instead of HARD_FAILURE); 7.13 (`compare_abv`) now checks ABV phrasing against the four approved formats of §§5.65/7.65/4.36, downgrading non-conforming phrasing to POSSIBLE_ALLOWABLE (Sec. V item 3b); and a new rule `compare_field_of_vision` (field_name `label_field_of_vision`, added to `COMPARISON_RULES`) checks that Brand Name, Class/Type, and ABV co-occur on one label image per §§4.38/5.63(a)/7.63(a). Outside the comparison engine, 4.0/5.0/12.0 gained `permit_no`/`fanciful_name`/`ttb_id`/`class_type_code`/`origin_code` registry fields (auto-populated on upload via `_resolve_label_field()`/`_update_registry_fields()`, with TTB IDs auto-assigned via `_next_ttb_id`), a sortable/filterable 10-column Dashboard, and a `DELETE /applications` "Delete All" admin action. No new WBS line items or PRD FR numbers were added for `compare_field_of_vision` — flagged as an optional follow-up if formal traceability is desired. 222/222 backend pytest, 32/32 frontend Vitest, lint clean.
+
+11. **(v2.8) Execution-order override — WBS 18.0 completed ahead of 16.0/17.0 (Session 27):** Per Gabe's direction ("get this deployed and live now — we'll come back to 16.0 after"), WBS 18.0 (Setup & Deployment) was executed immediately following 15.0, ahead of its nominal §3 predecessors 16.0 (Integration Testing) and 17.0 (Localhost E2E Testing). This is safe because 18.0's actual prerequisites — a working backend/frontend pair plus the 1.6 Railway smoke-test deploy — were already satisfied by 1.0–15.0; 16.0/17.0 validate *correctness* of the already-built pipeline, not *deployability*. The app is now live end-to-end: **frontend** https://ttb-labelverificationsystem.netlify.app, **backend** https://ttb-label-verifier-production-c816.up.railway.app (Tesseract installed via Nixpacks per 18.2; persistent `/data` volume for SQLite DB + uploads; new `SEED_DEMO_AGENTS=true` env flag auto-creates the `agent1`/`agent2` demo accounts on boot so the documented credentials work without shell access). Login verified end-to-end (Netlify → Railway, JWT issued). 16.0 and 17.0 remain pending and are next up — once complete, 19.0 (Post-Deployment E2E Testing) can run directly against these live URLs without any further deployment work.
 
 ---
 
