@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, applicationsApi } from "@/lib/api-client";
+import { useTutorialAnchor } from "@/hooks/useTutorial";
 import type { LabelType } from "@/lib/types";
 
 const LABEL_TYPES: LabelType[] = ["brand", "back", "neck", "other"];
@@ -37,6 +38,9 @@ export function UploadApplicationDialog() {
   const [formFile, setFormFile] = useState<File | null>(null);
   const [labelImages, setLabelImages] = useState<LabelImageEntry[]>([emptyEntry()]);
   const queryClient = useQueryClient();
+
+  useTutorialAnchor("new-upload", !open);
+  useTutorialAnchor("upload-form", open);
 
   const reset = () => {
     setFormFile(null);
@@ -89,7 +93,7 @@ export function UploadApplicationDialog() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button>New Upload</Button>} />
+      <DialogTrigger render={<Button id="tutorial-new-upload">New Upload</Button>} />
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New Application</DialogTitle>
@@ -100,7 +104,7 @@ export function UploadApplicationDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div id="tutorial-upload-form" className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="form-file">Application form (PDF)</Label>
             <Input

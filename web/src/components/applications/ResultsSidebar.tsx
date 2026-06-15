@@ -22,6 +22,8 @@ import { ComparisonResultBadge } from "@/components/applications/ComparisonResul
 import { DeterminationPanel } from "@/components/applications/DeterminationPanel";
 import { OverrideDialog, type OverrideOption } from "@/components/applications/OverrideDialog";
 import { ApiError, applicationsApi } from "@/lib/api-client";
+import { useApiKeyConfigured } from "@/hooks/useApiKeyStatus";
+import { useTutorialAnchor } from "@/hooks/useTutorial";
 import { fieldLabel } from "@/lib/field-labels";
 import { isFieldHighlighted } from "@/lib/field-mappings";
 import { cn } from "@/lib/utils";
@@ -58,6 +60,9 @@ export function ResultsSidebar({
 }: ResultsSidebarProps) {
   const [overrideTarget, setOverrideTarget] = useState<Comparison | null>(null);
   const queryClient = useQueryClient();
+  const apiKeyConfigured = useApiKeyConfigured();
+
+  useTutorialAnchor("process", application.processed_at === null);
 
   const determinationId = application.determination?.id ?? null;
   const finalized = application.determination?.finalized_at != null;
@@ -91,16 +96,21 @@ export function ResultsSidebar({
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Application #{application.id}</CardTitle>
+          <CardTitle className="text-base">
+            {application.ttb_id ? `TTB ID ${application.ttb_id}` : `Application #${application.id}`}
+          </CardTitle>
           <CardAction>
             <Button
+              id="tutorial-process"
               variant="outline"
               size="sm"
               onClick={() => reprocessMutation.mutate()}
-              disabled={reprocessMutation.isPending}
+              disabled={reprocessMutation.isPending || !apiKeyConfigured}
+              className={cn(!apiKeyConfigured && "border-2 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]")}
+              title={!apiKeyConfigured ? "Configure an Anthropic API key in Settings before processing." : undefined}
             >
               {reprocessMutation.isPending && <Loader2 className="size-4 animate-spin" />}
-              Reprocess
+              {application.processed_at ? "Reprocess" : "Process"}
             </Button>
           </CardAction>
         </CardHeader>

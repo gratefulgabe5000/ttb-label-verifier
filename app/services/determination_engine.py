@@ -211,6 +211,9 @@ def persist_determination(db: Session, application: Application, result: Determi
     determination.recommendation = result.recommendation
     determination.hard_failures_json = json.dumps([asdict(item) for item in result.hard_failures])
     determination.allowable_json = json.dumps([asdict(item) for item in result.allowable_revisions])
+    # A re-run of Stage 5/6 (process/reprocess) recomputes the determination, so any
+    # prior finalization (FR-090) no longer applies -- the agent must finalize again.
+    determination.finalized_at = None
 
     application.status = "DETERMINED"
     application.processed_at = datetime.now(timezone.utc).replace(tzinfo=None)

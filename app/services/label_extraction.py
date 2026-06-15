@@ -173,11 +173,24 @@ to stylized logo/wordmark text that ordinary OCR cannot read. Set `bbox` to \
 null only when `value` itself is null."""
 
 
+_GERMAN_DIGRAPHS = str.maketrans({
+    "ä": "ae", "ö": "oe", "ü": "ue",
+    "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
+    "ß": "ss",
+})
+
+
 def _normalize_for_comparison(text: str) -> str:
     """Lowercase, collapse whitespace, and fold diacritics (e.g. "Fête Rosé" ->
     "fete rose") -- TTB application forms are routinely typed without accent
     marks even when the label itself carries them, so an accent-only
-    difference must not be treated as a mismatch."""
+    difference must not be treated as a mismatch.
+
+    German umlauts/eszett are transliterated to their standard digraph forms
+    (ö -> oe, ä -> ae, ü -> ue, ß -> ss) before diacritics are folded, so
+    "Niederösterreich" and "Niederoesterreich" normalize identically -- forms
+    and labels are inconsistent about which convention they use."""
+    text = text.translate(_GERMAN_DIGRAPHS)
     text = unicodedata.normalize("NFKD", text)
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     return " ".join(text.split()).strip().lower()

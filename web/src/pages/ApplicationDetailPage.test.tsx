@@ -5,7 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ApplicationDetailPage } from "./ApplicationDetailPage";
-import { ApiError, applicationsApi, determinationsApi } from "@/lib/api-client";
+import { TutorialProvider } from "@/contexts/TutorialProvider";
+import { ApiError, applicationsApi, determinationsApi, settingsApi } from "@/lib/api-client";
 import type { ApplicationDetail, Comparison, Determination, LabelParameter } from "@/lib/types";
 
 // react-pdf renders to <canvas> via pdf.js, which jsdom doesn't support —
@@ -248,11 +249,13 @@ function renderDetailPage() {
   const queryClient = new QueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/applications/1"]}>
-        <Routes>
-          <Route path="/applications/:id" element={<ApplicationDetailPage />} />
-        </Routes>
-      </MemoryRouter>
+      <TutorialProvider>
+        <MemoryRouter initialEntries={["/applications/1"]}>
+          <Routes>
+            <Route path="/applications/:id" element={<ApplicationDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </TutorialProvider>
     </QueryClientProvider>
   );
 }
@@ -540,7 +543,17 @@ describe("ApplicationDetailPage", () => {
   });
 
   it("reprocesses the full application via the Application card's Reprocess button", async () => {
-    vi.spyOn(applicationsApi, "get").mockResolvedValue({ ...APPLICATION, determination: null });
+    vi.spyOn(applicationsApi, "get").mockResolvedValue({
+      ...APPLICATION,
+      processed_at: "2026-06-05T00:00:00Z",
+      determination: null,
+    });
+    vi.spyOn(settingsApi, "getApiKeyStatus").mockResolvedValue({
+      configured: true,
+      masked_key: "sk-...abcd",
+      connected: true,
+      message: null,
+    });
     vi.spyOn(applicationsApi, "comparisons").mockResolvedValue([]);
     vi.spyOn(applicationsApi, "getFormBlob").mockResolvedValue(new Blob(["%PDF"], { type: "application/pdf" }));
     vi.spyOn(applicationsApi, "getLabelImageBlob").mockResolvedValue(new Blob(["img"], { type: "image/jpeg" }));

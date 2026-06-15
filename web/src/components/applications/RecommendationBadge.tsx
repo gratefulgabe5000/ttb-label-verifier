@@ -12,20 +12,30 @@ const RECOMMENDATION_CONFIG: Record<Recommendation, { label: string; icon: strin
   },
 };
 
+// Past-tense labels for a *finalized* application (the action has already been
+// taken), vs. the present-tense "Recommended action" shown before finalization.
+const PAST_TENSE_LABELS: Record<Recommendation, string> = {
+  APPROVE: "Approved",
+  DENY: "Denied",
+  RECOMMEND_EXEMPTION_REVIEW: "Recommended for Exemption Review",
+};
+
 interface RecommendationBadgeProps {
   recommendation: Recommendation | null | undefined;
+  tense?: "present" | "past";
 }
 
-export function RecommendationBadge({ recommendation }: RecommendationBadgeProps) {
+export function RecommendationBadge({ recommendation, tense = "present" }: RecommendationBadgeProps) {
   if (!recommendation) {
     return <span className="text-sm text-muted-foreground">&mdash;</span>;
   }
 
   const config = RECOMMENDATION_CONFIG[recommendation];
+  const label = tense === "past" ? PAST_TENSE_LABELS[recommendation] : config.label;
   return (
     <Badge variant="outline" className={cn(config.className)}>
       <span aria-hidden="true">{config.icon}</span>
-      {config.label}
+      {label}
     </Badge>
   );
 }

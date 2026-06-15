@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api-client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTutorialAnchor } from "@/hooks/useTutorial";
 
 export function LoginPage() {
   const { isAuthenticated, login } = useAuth();
@@ -15,6 +16,8 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useTutorialAnchor("login", !isAuthenticated);
 
   if (isAuthenticated) {
     const redirectTo = (location.state as { from?: Location } | null)?.from ?? "/";
@@ -37,7 +40,7 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-svh items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
+      <Card id="tutorial-login" className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>TTB Label Verification System</CardTitle>
           <CardDescription>Sign in with your agent credentials.</CardDescription>

@@ -10,6 +10,7 @@ their results are persisted, and Stage 5 (comparison) and Stage 6
 from __future__ import annotations
 
 import asyncio
+import json
 
 from anthropic import Anthropic
 from sqlalchemy.orm import Session
@@ -83,6 +84,55 @@ def run_stages_5_6(db: Session, application: Application) -> Application:
     return application
 
 
+def _is_blank_label_value(value: object) -> bool:
+    """True for a label field value that the FR-011/IA-02 all-null skeleton
+    (`label_extraction._empty_results`) would produce -- `None`/`""`/`[]`, or
+    the all-`None`/`False` `government_warning` placeholder dict."""
+    if value in (None, "", []):
+        return True
+    if isinstance(value, dict):
+        return all(v in (None, False) for v in value.values())
+    return False
+
+
+def _label_results_are_empty(label_results: dict[int, dict[str, list[label_extraction.LabelFieldResult]]]) -> bool:
+    """True if every field of every label image came back blank -- i.e. Stage 4
+    returned the FR-011/IA-02 all-null skeleton (no API key configured, or the
+    Claude Vision call failed) rather than a real extraction."""
+    return all(
+        _is_blank_label_value(fr.value)
+        for field_results in label_results.values()
+        for results in field_results.values()
+        for fr in results
+    )
+
+
+def _is_blank_label_parameter(lp: LabelParameter) -> bool:
+    """True if a persisted `LabelParameter` row holds the FR-011/IA-02 all-null
+    skeleton value for its field. Most fields are blank when `field_value` is
+    `None`/`""`, but `government_warning` is always persisted as a JSON object
+    (`persist_label_parameters` runs `json.dumps` on dict values), so its
+    skeleton form is the JSON string for `{"text_found": null, "text_present":
+    false, "header_all_caps": null, "header_bold": null, "text_exact_match":
+    null}` rather than `None`."""
+    if lp.field_value in (None, ""):
+        return True
+    if lp.field_name == "government_warning":
+        try:
+            parsed = json.loads(lp.field_value)
+        except (TypeError, ValueError):
+            return False
+        return isinstance(parsed, dict) and all(v in (None, False) for v in parsed.values())
+    return False
+
+
+def _form_results_are_empty(form_results: dict[str, form_extraction.FieldResult]) -> bool:
+    """True if every Part I field came back blank -- i.e. Stage 3 found nothing
+    via AcroForm/pdftext and Tier 3 (ai_vision) also returned nothing (no API
+    key configured, or the call failed)."""
+    return all(fr.value in (None, "", []) for fr in form_results.values())
+
+
 def persist_extraction_and_run_stages_5_6(
     db: Session, application: Application, form_results: dict, label_results: dict
 ) -> Application:
@@ -140,9 +190,23 @@ async def reprocess_form(db: Session, application: Application, *, client: Anthr
     application.status = "PROCESSING"
     db.commit()
 
+    had_data = any(
+        fp.field_value not in (None, "") for fp in application_service.list_form_parameters(db, application.id)
+    )
+
     try:
         form_results = await asyncio.to_thread(form_extraction.run_stage3_extraction, application.form_path, client=client)
     except Exception:
+        application.status = "ERROR"
+        db.commit()
+        db.refresh(application)
+        return application
+
+    if had_data and _form_results_are_empty(form_results):
+        # Stage 3 returned nothing for every field (e.g. the Anthropic API key
+        # is unconfigured and Tier 3 fell back to empty) while existing
+        # extraction data is present. Refuse to overwrite good data with a
+        # blank result -- surface the failure via status instead.
         application.status = "ERROR"
         db.commit()
         db.refresh(application)
@@ -160,9 +224,24 @@ async def reprocess_label(
     application.status = "PROCESSING"
     db.commit()
 
+    had_data = not all(
+        _is_blank_label_parameter(lp) for lp in application_service.list_label_parameters(db, application.id)
+    )
+
     try:
         label_results = await label_extraction.run_stage4_extraction(label_images, client=client)
     except Exception:
+        application.status = "ERROR"
+        db.commit()
+        db.refresh(application)
+        return application
+
+    if had_data and _label_results_are_empty(label_results):
+        # Stage 4 returned the FR-011/IA-02 all-null skeleton for every label
+        # image (e.g. the Anthropic API key is unconfigured, or the Vision
+        # call failed) while existing extraction data is present. Refuse to
+        # overwrite good data with the skeleton -- surface the failure via
+        # status instead.
         application.status = "ERROR"
         db.commit()
         db.refresh(application)

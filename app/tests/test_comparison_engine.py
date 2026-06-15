@@ -193,6 +193,20 @@ class TestBrandName:
         result = compare_brand_name(form_params, _app(source="domestic"), label_params)
         assert result.result == "HARD_FAILURE"
 
+    def test_match_via_fanciful_name_field_swap(self):
+        # Stage 4 sometimes extracts a label's large stylized brand name (e.g. "Duo")
+        # into the fanciful_name field while a separate producer name (e.g. "Enrico
+        # Marcato") lands in brand_name. When the form's declared brand name exactly
+        # matches a label fanciful-name extraction, treat it as the brand name.
+        form_params = {"brand_name": _fp("brand_name", "Duo")}
+        label_params = [
+            _lp("brand_name", "Enrico Marcato", label_image_id=1),
+            _lp("fanciful_name", "Duo", label_image_id=1),
+        ]
+        result = compare_brand_name(form_params, _app(source="imported"), label_params)
+        assert result.result == "MATCH"
+        assert result.label_image_id == 1
+
 
 # ---------------------------------------------------------------------------
 # 7.3 -- Government Warning (FR-053-055)
@@ -472,19 +486,51 @@ class TestApplicantAddress:
         form_params = {"applicant_address": _fp("applicant_address", "21 Ridgedale Avenue, Cedar Knolls, NJ 07927")}
         label_params = [
             _lp("bottler_address", "A-3495 Rohrendorf, Austria", label_image_id=1, confidence=0.98),
-            _lp("importer_address", "Cedar Knolls, NJ", label_image_id=1, confidence=0.95),
+            _lp("importer_address", "456 Distribution Drive, Florham Park, NJ 07932", label_image_id=1, confidence=0.95),
         ]
         result = compare_applicant_address(form_params, _app(source="imported"), label_params)
-        assert result.label_value == "Cedar Knolls, NJ"
+        assert result.label_value == "456 Distribution Drive, Florham Park, NJ 07932"
         assert result.result == "POSSIBLE_ALLOWABLE"
         assert result.section_v_ref == "19"
 
-    def test_possible_allowable_for_in_state_address_change(self):
+    def test_match_when_label_gives_only_city_and_state(self):
+        # The label frequently gives only "City, State" for the importer/bottler
+        # with no street address -- City + State matching is adequate (interim
+        # policy, Settings -> About), so this is a MATCH, not POSSIBLE_ALLOWABLE.
+        form_params = {"applicant_address": _fp("applicant_address", "21 Ridgedale Avenue, Cedar Knolls, NJ 07927")}
+        label_params = [_lp("importer_address", "Cedar Knolls, NJ", label_image_id=1)]
+        result = compare_applicant_address(form_params, _app(source="imported"), label_params)
+        assert result.result == "MATCH"
+        assert result.label_value == "Cedar Knolls, NJ"
+
+    def test_match_for_same_city_and_state_despite_different_street_address(self):
+        # City + State matching is adequate even when the street address differs
+        # entirely (interim policy, Settings -> About).
         form_params = {"applicant_address": _fp("applicant_address", "200 Brook Avenue, Passaic, NJ 07055")}
+        label_params = [_lp("bottler_address", "141 3rd St, Unit #143, Passaic, NJ 07055", label_image_id=1)]
+        result = compare_applicant_address(form_params, _app(), label_params)
+        assert result.result == "MATCH"
+
+    def test_possible_allowable_for_in_state_address_change_with_different_city(self):
+        form_params = {"applicant_address": _fp("applicant_address", "200 Brook Avenue, Newark, NJ 07102")}
         label_params = [_lp("bottler_address", "141 3rd St, Unit #143, Passaic, NJ 07055", label_image_id=1)]
         result = compare_applicant_address(form_params, _app(), label_params)
         assert result.result == "POSSIBLE_ALLOWABLE"
         assert result.section_v_ref == "19"
+
+    def test_match_for_same_city_and_state_with_real_world_ocr_formatting(self):
+        # The form's address is street-newline-city (PDF text extraction), and
+        # the label's is "STREET, UNIT. # NNN City. ST. ZIP-PLUS4" (Vision OCR,
+        # city set off by periods rather than commas) -- City + State matching
+        # must still find "Passaic"/"NJ" on both sides and call this a MATCH.
+        form_params = {
+            "applicant_address": _fp("applicant_address", "200 Brook Avenue\nPassaic, NJ 07055")
+        }
+        label_params = [
+            _lp("bottler_address", "141 3RD ST, UNIT. # 143 Passaic. N.J. 07055-0000", label_image_id=1)
+        ]
+        result = compare_applicant_address(form_params, _app(), label_params)
+        assert result.result == "MATCH"
 
     def test_hard_failure_for_out_of_state_address_change(self):
         form_params = {"applicant_address": _fp("applicant_address", "7855 McCracken Pike, Versailles, IN 47042")}
@@ -548,7 +594,7 @@ class TestWineAppellation:
 
 
 # ---------------------------------------------------------------------------
-# 7.13 -- ABV presence + product-type consistency (FR-106)
+# 7.13 -- ABV presence check (FR-106)
 # ---------------------------------------------------------------------------
 
 
@@ -560,11 +606,6 @@ class TestAbv:
 
     def test_hard_failure_when_absent(self):
         result = compare_abv({}, _app(product_type="wine"), [])
-        assert result.result == "HARD_FAILURE"
-
-    def test_hard_failure_when_inconsistent_with_product_type(self):
-        label_params = [_lp("alcohol_content", "0.0% ALC/VOL", label_image_id=1)]
-        result = compare_abv({}, _app(product_type="wine"), label_params)
         assert result.result == "HARD_FAILURE"
 
     @pytest.mark.parametrize(

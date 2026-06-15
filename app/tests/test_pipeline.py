@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from services.form_extraction import PART_I_FIELDS
+from services import form_extraction, label_extraction, pipeline
+from services.form_extraction import PART_I_FIELDS, FieldResult
 from services.label_extraction import SIMPLE_FIELDS
 
 FIXTURES = Path(__file__).resolve().parent.parent.parent / "testdata"
@@ -155,6 +156,70 @@ def test_reprocess_label_only_runs_stage4_and_refreshes_determination(client, au
     assert body["determination"] is not None
 
 
+def test_reprocess_label_refuses_to_overwrite_with_empty_skeleton(client, auth_headers, monkeypatch):
+    """If Stage 4 comes back as the FR-011/IA-02 all-null skeleton (e.g. the
+    Anthropic API key is unconfigured or the Vision call failed) while good
+    label data already exists, /reprocess/label must not destroy that data --
+    it should mark the application ERROR and leave label_parameters untouched."""
+    application = _upload(client, auth_headers)
+    application_id = application["id"]
+
+    async def fake_real_stage4(label_images, *, client=None):
+        results = {}
+        for li in label_images:
+            fields = label_extraction._empty_results()
+            fields["brand_name"] = [
+                label_extraction.LabelFieldResult("Sample Creek", 0.95, label_extraction.LOCATION_HINTS.get("brand_name"))
+            ]
+            results[li.id] = fields
+        return results
+
+    monkeypatch.setattr(pipeline.label_extraction, "run_stage4_extraction", fake_real_stage4)
+    processed = client.post(f"/applications/{application_id}/process", headers=auth_headers).json()
+    original_label_parameters = processed["label_parameters"]
+    assert any(p["field_name"] == "brand_name" and p["field_value"] == "Sample Creek" for p in original_label_parameters)
+
+    async def fake_empty_stage4(label_images, *, client=None):
+        return {li.id: label_extraction._empty_results() for li in label_images}
+
+    monkeypatch.setattr(pipeline.label_extraction, "run_stage4_extraction", fake_empty_stage4)
+
+    response = client.post(f"/applications/{application_id}/reprocess/label", headers=auth_headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ERROR"
+    assert body["label_parameters"] == original_label_parameters
+
+
+def test_reprocess_form_refuses_to_overwrite_with_empty_skeleton(client, auth_headers, monkeypatch):
+    """If Stage 3 comes back fully blank for every Part I field (e.g. Tier 3
+    fell back to empty with no API key configured) while good form data
+    already exists, /reprocess/form must not destroy that data -- it should
+    mark the application ERROR and leave form_parameters untouched."""
+    application = _upload(client, auth_headers)
+    application_id = application["id"]
+
+    processed = client.post(f"/applications/{application_id}/process", headers=auth_headers).json()
+    original_form_parameters = processed["form_parameters"]
+    assert any(p["field_value"] for p in original_form_parameters)
+
+    def fake_empty_stage3(pdf_path, *, client=None):
+        return {
+            field: FieldResult(None, None, None, None, form_extraction.LOCATION_HINTS.get(field))
+            for field in PART_I_FIELDS
+        }
+
+    monkeypatch.setattr(pipeline.form_extraction, "run_stage3_extraction", fake_empty_stage3)
+
+    response = client.post(f"/applications/{application_id}/reprocess/form", headers=auth_headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ERROR"
+    assert body["form_parameters"] == original_form_parameters
+
+
 def test_reprocess_comparison_only_recomputes_without_reextraction(client, auth_headers):
     application = _upload(client, auth_headers)
     application_id = application["id"]
@@ -174,6 +239,33 @@ def test_reprocess_comparison_only_recomputes_without_reextraction(client, auth_
 
     comparisons = client.get(f"/applications/{application_id}/comparisons", headers=auth_headers).json()
     assert len(comparisons) > 0
+
+
+@pytest.mark.parametrize("stage", ["form", "label", "comparison"])
+def test_reprocess_reverts_finalized_status(client, auth_headers, stage):
+    """Finalizing, then reprocessing via any stage, must revert the application's
+    FINALIZED status and clear determination.finalized_at -- the agent has to
+    finalize again to see the "Finalized" badge."""
+    application = _upload(client, auth_headers)
+    application_id = application["id"]
+
+    processed = client.post(f"/applications/{application_id}/process", headers=auth_headers).json()
+    determination_id = processed["determination"]["id"]
+
+    finalize_response = client.post(f"/determinations/{determination_id}/finalize", headers=auth_headers)
+    assert finalize_response.json()["finalized_at"] is not None
+
+    finalized = client.get(f"/applications/{application_id}", headers=auth_headers).json()
+    assert finalized["status"] == "FINALIZED"
+    assert finalized["finalized_at"] is not None
+
+    response = client.post(f"/applications/{application_id}/reprocess/{stage}", headers=auth_headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "DETERMINED"
+    assert body["finalized_at"] is None
+    assert body["determination"]["finalized_at"] is None
 
 
 @pytest.mark.parametrize("stage", ["form", "label", "comparison"])

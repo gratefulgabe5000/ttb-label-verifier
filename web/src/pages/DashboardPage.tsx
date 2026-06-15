@@ -18,6 +18,9 @@ import { Button } from "@/components/ui/button";
 import { UploadApplicationDialog } from "@/components/applications/UploadApplicationDialog";
 import { RecommendationBadge } from "@/components/applications/RecommendationBadge";
 import { ApiError, applicationsApi, batchApi } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
+import { useApiKeyConfigured } from "@/hooks/useApiKeyStatus";
+import { useTutorialAnchor } from "@/hooks/useTutorial";
 import type { Application, Recommendation } from "@/lib/types";
 
 function formatDate(value: string | null | undefined): string {
@@ -121,6 +124,7 @@ function SortableHead({ label, sortKey, activeSortKey, direction, onSort }: Sort
 export function DashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const apiKeyConfigured = useApiKeyConfigured();
   const [applicantFilter, setApplicantFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [activeBatchId, setActiveBatchId] = useState<number | null>(null);
@@ -175,6 +179,9 @@ export function DashboardPage() {
       })
     : filteredApplications;
 
+  useTutorialAnchor("open-application", sortedApplications.length > 0);
+  useTutorialAnchor("process-selected", sortedApplications.length > 0);
+
   const allSelected = sortedApplications.length > 0 && sortedApplications.every((app) => selectedIds.has(app.id));
   const someSelected = sortedApplications.some((app) => selectedIds.has(app.id));
 
@@ -223,7 +230,9 @@ export function DashboardPage() {
               <Button
                 size="sm"
                 onClick={() => processMutation.mutate(Array.from(selectedIds))}
-                disabled={processMutation.isPending || isBatchProcessing}
+                disabled={processMutation.isPending || isBatchProcessing || !apiKeyConfigured}
+                className={cn(!apiKeyConfigured && "border-2 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]")}
+                title={!apiKeyConfigured ? "Configure an Anthropic API key in Settings before processing." : undefined}
               >
                 {processMutation.isPending || isBatchProcessing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -306,7 +315,7 @@ export function DashboardPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10">
+                <TableHead id="tutorial-process-selected" className="w-10">
                   <Checkbox
                     checked={allSelected}
                     indeterminate={someSelected && !allSelected}
@@ -316,20 +325,17 @@ export function DashboardPage() {
                 </TableHead>
                 <SortableHead label="TTB ID" sortKey="ttb_id" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
                 <SortableHead label="Permit No." sortKey="permit_no" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
-                <SortableHead label="Serial Number" sortKey="serial_number" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
-                <SortableHead label="Upload Date" sortKey="created_at" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
-                <SortableHead label="Completed Date" sortKey="finalized_at" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
-                <SortableHead label="Fanciful Name" sortKey="fanciful_name" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
                 <SortableHead label="Brand Name" sortKey="brand_name" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
-                <SortableHead label="Origin Desc" sortKey="origin_code" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <SortableHead label="Fanciful Name" sortKey="fanciful_name" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
                 <SortableHead label="Class/Type Desc" sortKey="class_type_code" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
                 <SortableHead label="Status" sortKey="status" activeSortKey={sortKey} direction={sortDirection} onSort={handleSort} />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedApplications.map((application) => (
+              {sortedApplications.map((application, index) => (
                 <TableRow
                   key={application.id}
+                  id={index === 0 ? "tutorial-open-application" : undefined}
                   className="cursor-pointer"
                   onClick={() => navigate(`/applications/${application.id}`)}
                 >
@@ -342,16 +348,12 @@ export function DashboardPage() {
                   </TableCell>
                   <TableCell>{application.ttb_id ?? "—"}</TableCell>
                   <TableCell>{application.permit_no ?? "—"}</TableCell>
-                  <TableCell>{application.serial_number ?? "—"}</TableCell>
-                  <TableCell>{formatDate(application.created_at)}</TableCell>
-                  <TableCell>{formatDate(application.finalized_at)}</TableCell>
-                  <TableCell>{application.fanciful_name ?? "—"}</TableCell>
                   <TableCell>{application.brand_name ?? "—"}</TableCell>
-                  <TableCell>{application.origin_code ?? "—"}</TableCell>
+                  <TableCell>{application.fanciful_name ?? "—"}</TableCell>
                   <TableCell>{application.class_type_code ?? "—"}</TableCell>
                   <TableCell>
                     {application.finalized_at ? (
-                      <RecommendationBadge recommendation={application.recommendation} />
+                      <RecommendationBadge recommendation={application.recommendation} tense="past" />
                     ) : recommendationByAppId.has(application.id) ? (
                       <RecommendationBadge recommendation={recommendationByAppId.get(application.id)} />
                     ) : (

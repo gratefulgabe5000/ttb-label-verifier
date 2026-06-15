@@ -66,19 +66,18 @@ US_STATES = {
 # Keywords that indicate a label's class/type designation (7.8) is consistent with
 # the form's declared Item 5 product type.
 PRODUCT_TYPE_KEYWORDS = {
-    "wine": ["wine", "vino", "vin", "wein", "champagne", "cava", "sparkling"],
+    "wine": [
+        "wine", "vino", "vin", "wein", "champagne", "cava", "sparkling",
+        # EU wine-designation terms (e.g. "Rosso Veneto Indicazione Geografica Tipica")
+        "rosso", "bianco", "rosato", "igt", "doc", "docg",
+        "indicazione geografica tipica", "denominazione di origine controllata",
+        "appellation", "riserva",
+    ],
     "distilled_spirits": [
         "whiskey", "whisky", "bourbon", "vodka", "gin", "rum", "tequila", "brandy",
         "liqueur", "spirit", "scotch", "cognac", "mezcal",
     ],
     "malt_beverages": ["beer", "cerveza", "ale", "lager", "malt", "stout", "porter", "bier"],
-}
-
-# Plausible ABV ranges per product type (7.13).
-ABV_RANGES = {
-    "wine": (0.5, 24.0),
-    "distilled_spirits": (20.0, 80.0),
-    "malt_beverages": (0.5, 16.0),
 }
 
 # ABV statements must use one of the formats approved by 27 CFR 5.65, 7.65, and 4.36
@@ -176,6 +175,38 @@ def text_matches(form_value: str | None, label_value: str) -> bool:
     return _normalize_for_comparison(form_value) == _normalize_for_comparison(label_value)
 
 
+def _collapse_german_digraphs(text: str) -> str:
+    """Collapse "oe"/"ae"/"ue" digraphs to a single vowel, e.g.
+    "niederoesterreich" -> "niederosterreich". Used to reconcile a form value
+    whose umlaut was dropped entirely during PDF text extraction (Niederösterreich
+    -> Niederosterreich) against a label value whose umlaut was transliterated to
+    the digraph form by Vision OCR (Niederösterreich -> Niederoesterreich) --
+    after this collapse, both reduce to the same string."""
+    return re.sub(r"([aou])e", r"\1", text)
+
+
+def _german_transliteration_matches(form_value: str | None, label_value: str | None) -> bool:
+    if not form_value or not label_value:
+        return False
+    normalized_form = _collapse_german_digraphs(_normalize_for_comparison(form_value))
+    normalized_label = _collapse_german_digraphs(_normalize_for_comparison(label_value))
+    return normalized_form == normalized_label
+
+
+def _contains_match(form_value: str | None, label_value: str | None) -> bool:
+    """True if the form value appears as a substring of the label value once
+    case, spacing, and punctuation are stripped from both -- e.g. form "Stoll &
+    Wolfe" is contained in label "Stoll & Wolfe Distillery", and form "Due
+    Fratelli Imports, LLC" is contained in label "DUE FRATELLI IMPORTS, LLC
+    PORTLAND MAINE". Used where the label carries the form's declared value plus
+    additional descriptive text (bottler/distiller designation, brand name
+    prefix, city/state, etc.)."""
+    if not form_value or not label_value:
+        return False
+    normalized_form = _strip_punctuation(form_value)
+    return bool(normalized_form) and normalized_form in _strip_punctuation(label_value)
+
+
 def classify_text_mismatch(form_value: str | None, label_value: str) -> tuple[str, str | None, str | None]:
     """A spacing/punctuation/case-only difference is POSSIBLE_ALLOWABLE under Sec. V
     item 3b (FR-052/057/059); any other difference is HARD_FAILURE."""
@@ -209,16 +240,21 @@ def _extract_state(address: str | None) -> str | None:
     for code, name in US_STATES.items():
         if _normalize_for_comparison(name) in normalized:
             return code
-    for token in re.findall(r"\b[A-Z]{2}\b", address):
-        if token in US_STATES:
-            return token
+    for first, second in re.findall(r"\b([A-Z])\.?([A-Z])\b\.?", address):
+        code = first + second
+        if code in US_STATES:
+            return code
     return None
 
 
 def classify_address_mismatch(form_value: str | None, label_value: str) -> tuple[str, str | None, str | None]:
     """An address mismatch limited to an in-state change is POSSIBLE_ALLOWABLE under
     Sec. V item 19 (FR-103); any other mismatch (including a different state) is
-    HARD_FAILURE."""
+    HARD_FAILURE.
+
+    A City + State match is treated as a full MATCH by `address_matches` and never
+    reaches this function -- this only classifies mismatches where the city, state,
+    or both differ from the label."""
     form_state = _extract_state(form_value)
     label_state = _extract_state(label_value)
     if form_state and label_state and form_state == label_state:
@@ -239,29 +275,82 @@ def _normalize_address_for_match(address: str) -> str:
     return _strip_punctuation(_ZIP_PLUS4_RE.sub(r"\1", address))
 
 
+_TRAILING_CITY_RE = re.compile(r"[A-Za-z][A-Za-z\s'-]*$")
+
+
+def _find_state_span(address: str) -> tuple[int, int, str] | None:
+    """Return (start, end, state-code) for the right-most US-state token (a
+    two-letter abbreviation like "NJ"/"N.J.", or a full state name) in
+    `address`, or None if no US state is found. Abbreviations take priority
+    over full names since they're far more common in addresses and a full
+    state name appearing earlier (e.g. as part of a street name) shouldn't
+    shadow a real abbreviation near the ZIP code."""
+    best: tuple[int, int, str] | None = None
+    for match in re.finditer(r"\b([A-Z])\.?([A-Z])\b\.?", address):
+        code = match.group(1) + match.group(2)
+        if code in US_STATES:
+            best = (match.start(), match.end(), code)  # finditer is left-to-right; keep the last
+
+    if best is not None:
+        return best
+
+    for code, name in US_STATES.items():
+        for match in re.finditer(re.escape(name), address, re.IGNORECASE):
+            if best is None or match.start() > best[0]:
+                best = (match.start(), match.end(), code)
+
+    return best
+
+
+def _extract_city_state(address: str | None) -> tuple[str | None, str | None]:
+    """Extract a normalized (city, state-code) pair from `address` by finding
+    the right-most US-state token and taking the trailing run of letters from
+    the comma/period/newline-delimited segment immediately before it, e.g.
+    "200 Brook Avenue, Passaic, NJ 07055" -> ("passaic", "NJ") and "141 3RD ST,
+    UNIT. # 143 Passaic. N.J. 07055-0000" -> ("passaic", "NJ"). Returns
+    (None, None) if no US state is found, or (None, state-code) if a state is
+    found but no city precedes it."""
+    if not address:
+        return None, None
+
+    state_span = _find_state_span(address)
+    if state_span is None:
+        return None, None
+
+    before = address[: state_span[0]]
+    segments = [segment.strip() for segment in re.split(r"[,.\n]", before) if segment.strip()]
+    if not segments:
+        return None, state_span[2]
+
+    city_match = _TRAILING_CITY_RE.search(segments[-1])
+    if not city_match:
+        return None, state_span[2]
+
+    return _normalize_for_comparison(city_match.group(0)), state_span[2]
+
+
 def address_matches(form_value: str | None, label_value: str) -> bool:
     """Case/punctuation-insensitive address match (FR-103) that also treats a
     ZIP+4 as equivalent to its 5-digit ZIP -- e.g. "123 Main St. Unit. 5,
-    Anytown, NJ 07055-0000" matches "123 Main St Unit 5, Anytown, NJ 07055"."""
+    Anytown, NJ 07055-0000" matches "123 Main St Unit 5, Anytown, NJ 07055".
+
+    A City + State match is also treated as adequate (interim policy, see Settings
+    -> About): the label frequently gives only a City/State for the importer or
+    bottler with no full street address, so requiring an exact street-level match
+    produces a false "address mismatch" that routes the application to Exemption
+    Review."""
     if not form_value:
         return False
-    return _normalize_address_for_match(form_value) == _normalize_address_for_match(label_value)
+    if _normalize_address_for_match(form_value) == _normalize_address_for_match(label_value):
+        return True
+    form_city, form_state = _extract_city_state(form_value)
+    label_city, label_state = _extract_city_state(label_value)
+    return bool(form_city) and form_city == label_city and form_state == label_state
 
 
 # ---------------------------------------------------------------------------
 # 7.2 -- Brand Name comparison (FR-050-052)
 # ---------------------------------------------------------------------------
-
-
-def _brand_name_fallback_matches(form_value: str, label_value: str) -> bool:
-    """27 CFR 1.A.5.64 (and analogous wine/malt-beverage provisions, DevLog 7.1):
-    when no Brand Name appears on the label, the name of the bottler, distiller,
-    or importer in the mandatory name-and-address statement is treated as the
-    brand name. That statement is typically a longer legal/trade name (e.g. "THE
-    WOODFORD RESERVE DISTILLERY") that *contains* the form's declared brand name
-    ("Woodford Reserve") rather than matching it exactly."""
-    normalized_form = _strip_punctuation(form_value)
-    return bool(normalized_form) and normalized_form in _strip_punctuation(label_value)
 
 
 def compare_brand_name(
@@ -275,13 +364,53 @@ def compare_brand_name(
         label_params, "brand_name", form_value, matches=text_matches, classify_mismatch=classify_text_mismatch
     )
 
+    if resolved.result == "HARD_FAILURE" and _contains_match(form_value, resolved.label_value):
+        # 27 CFR 1.A.5.64 fallback (DevLog 7.1): the label's Brand Name field is a
+        # longer legal/trade name (e.g. "Stoll & Wolfe Distillery") that *contains*
+        # the form's declared brand name ("Stoll & Wolfe") -- this is still the
+        # brand name, just with the bottler/distiller designation appended.
+        return FieldComparison(
+            "brand_name",
+            form_value,
+            resolved.label_value,
+            "MATCH",
+            None,
+            f'"{form_value}" appears within the label\'s declared brand name '
+            f'("{resolved.label_value}"), which 27 CFR 1.A.5.64 treats as the brand '
+            "name even though it includes the bottler/distiller designation.",
+            resolved.label_image_id,
+        )
+
+    if resolved.result == "HARD_FAILURE":
+        for lp in label_params:
+            if lp.field_name == "fanciful_name" and lp.field_value and text_matches(form_value, lp.field_value):
+                # Some labels render the brand name as the most visually prominent
+                # text on the image (e.g. a large stylized "DUO"), with a separate
+                # producer/winemaker name (e.g. "ENRICO MARCATO") elsewhere on the
+                # same image. Stage 4 can swap these two fields, extracting the
+                # producer's name as brand_name and the brand name itself as
+                # fanciful_name. When the form's declared brand name exactly matches
+                # a label fanciful-name extraction, the brand name IS present on the
+                # label -- just under the wrong field.
+                return FieldComparison(
+                    "brand_name",
+                    form_value,
+                    lp.field_value,
+                    "MATCH",
+                    None,
+                    f'"{form_value}" appears on the label (extracted as the fanciful '
+                    f'name on image {lp.label_image_id}); "{resolved.label_value}" is a '
+                    "separate producer/winemaker name, not the brand name.",
+                    lp.label_image_id,
+                )
+
     if resolved.result == "MISSING_FROM_LABEL":
         # 27 CFR 1.A.5.64 fallback (DevLog 7.1): no Brand Name field on the label --
         # check whether the bottler/importer name-and-address statement (Item 8)
         # contains the form's brand name.
         applicant_field = _applicant_label_field(application, "name")
         for lp in label_params:
-            if lp.field_name == applicant_field and lp.field_value and _brand_name_fallback_matches(form_value, lp.field_value):
+            if lp.field_name == applicant_field and lp.field_value and _contains_match(form_value, lp.field_value):
                 return FieldComparison(
                     "brand_name",
                     form_value,
@@ -489,6 +618,22 @@ def compare_fanciful_name(
     resolved = resolve_multi_image(
         label_params, "fanciful_name", form_value, matches=text_matches, classify_mismatch=classify_text_mismatch
     )
+
+    if resolved.result == "HARD_FAILURE" and _contains_match(form_value, resolved.label_value):
+        # The label's fanciful name is often rendered together with the brand name
+        # (e.g. '"DUO" APPASSIMENTO PROJECT' for form value "Appassimento Project")
+        # -- the form's fanciful name is still present in full, so this is a match.
+        return FieldComparison(
+            "fanciful_name",
+            form_value,
+            resolved.label_value,
+            "MATCH",
+            None,
+            f'"{form_value}" appears within the label\'s fanciful name '
+            f'("{resolved.label_value}").',
+            resolved.label_image_id,
+        )
+
     result, section_v_ref, note = _missing_to_hard_failure(
         resolved, "Fanciful name not found on any submitted label image."
     )
@@ -553,6 +698,25 @@ def compare_applicant_name(
     resolved = resolve_multi_image(
         label_params, field_name, form_value, matches=text_matches, classify_mismatch=classify_text_mismatch
     )
+
+    if resolved.result == "HARD_FAILURE" and _contains_match(form_value, resolved.label_value):
+        # The label's name-and-address statement often appends a city/state (e.g.
+        # "DUE FRATELLI IMPORTS, LLC PORTLAND MAINE") to the bottler/importer name
+        # declared on the form ("Due Fratelli Imports, LLC") -- the form's name is
+        # still present in full, so this is a match (27 CFR 1.A.5.64 and analogues
+        # treat the mandatory name-and-address statement as a single field that may
+        # carry additional descriptive text beyond the bare name).
+        return FieldComparison(
+            "applicant_name",
+            form_value,
+            resolved.label_value,
+            "MATCH",
+            None,
+            f'"{form_value}" appears within the label\'s name-and-address statement '
+            f'("{resolved.label_value}").',
+            resolved.label_image_id,
+        )
+
     missing_note = (
         "No importer name found on any submitted label image, but Item 3 declares this product Imported."
         if application.source == "imported"
@@ -653,6 +817,19 @@ def compare_wine_appellation(
     resolved = resolve_multi_image(
         label_params, "wine_appellation", form_value, matches=text_matches, classify_mismatch=classify_text_mismatch
     )
+
+    if resolved.result == "HARD_FAILURE" and _german_transliteration_matches(form_value, resolved.label_value):
+        return FieldComparison(
+            "wine_appellation",
+            form_value,
+            resolved.label_value,
+            "MATCH",
+            None,
+            f'"{form_value}" and "{resolved.label_value}" refer to the same appellation; '
+            'they differ only in how an umlaut was transliterated (e.g. "o" vs "oe").',
+            resolved.label_image_id,
+        )
+
     result, section_v_ref, note = _missing_to_hard_failure(
         resolved, "No wine appellation found on any submitted label image."
     )
@@ -660,7 +837,7 @@ def compare_wine_appellation(
 
 
 # ---------------------------------------------------------------------------
-# 7.13 -- ABV presence + product-type consistency check (FR-106)
+# 7.13 -- ABV presence check (FR-106)
 # ---------------------------------------------------------------------------
 
 
@@ -688,10 +865,8 @@ def compare_abv(
             "No Alcohol by Volume (ABV) value found on any submitted label image.", None,
         )
 
-    abv_range = ABV_RANGES.get(application.product_type)
     for lp in candidates:
-        abv = _extract_abv(lp.field_value)
-        if abv is not None and (abv_range is None or abv_range[0] <= abv <= abv_range[1]):
+        if _extract_abv(lp.field_value) is not None:
             if _abv_phrasing_ok(lp.field_value):
                 return FieldComparison("alcohol_content", None, lp.field_value, "MATCH", None, None, lp.label_image_id)
             return FieldComparison(
@@ -700,22 +875,18 @@ def compare_abv(
                 lp.field_value,
                 "POSSIBLE_ALLOWABLE",
                 SECTION_V_SPELLING_CASE_PUNCTUATION,
-                f'ABV value ("{lp.field_value}") is correct, but its phrasing does not use one of the '
+                f'ABV value ("{lp.field_value}") is present, but its phrasing does not use one of the '
                 'formats prescribed by 27 CFR 5.65/7.65/4.36 (e.g. "X% Alcohol by Volume", "X% alc/vol", '
                 '"Alc. X percent by vol.", or "Alc X% by vol").',
                 lp.label_image_id,
             )
 
     best = max(candidates, key=lambda lp: lp.confidence or 0.0)
-    abv = _extract_abv(best.field_value)
-    if abv is None:
-        note = f'Could not parse an ABV percentage from the label value ("{best.field_value}").'
-    else:
-        note = (
-            f"ABV value ({best.field_value}) is inconsistent with the declared product type "
-            f"({(application.product_type or 'unknown').replace('_', ' ')})."
-        )
-    return FieldComparison("alcohol_content", None, best.field_value, "HARD_FAILURE", None, note, best.label_image_id)
+    return FieldComparison(
+        "alcohol_content", None, best.field_value, "HARD_FAILURE", None,
+        f'Could not parse an ABV percentage from the label value ("{best.field_value}").',
+        best.label_image_id,
+    )
 
 
 # ---------------------------------------------------------------------------

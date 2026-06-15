@@ -7,6 +7,7 @@ import { LabelImagesPanel } from "@/components/applications/LabelImagesPanel";
 import { ParameterResultsTable } from "@/components/applications/ParameterResultsTable";
 import { ResultsSidebar } from "@/components/applications/ResultsSidebar";
 import { applicationsApi } from "@/lib/api-client";
+import { useTutorialAnchor } from "@/hooks/useTutorial";
 
 export function ApplicationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -44,6 +45,8 @@ export function ApplicationDetailPage() {
     (c) => c.field_name === activeField && c.label_image_id !== null
   );
   const effectiveLabelImageId = activeComparison?.label_image_id ?? activeLabelImageId;
+
+  useTutorialAnchor("review-parameters", applicationQuery.data?.determination != null);
 
   if (applicationQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Loading application...</p>;
@@ -91,7 +94,7 @@ export function ApplicationDetailPage() {
         />
       </div>
 
-      <Card>
+      <Card id="tutorial-review-parameters">
         <CardHeader>
           <CardTitle className="text-base">Parameter Results</CardTitle>
         </CardHeader>

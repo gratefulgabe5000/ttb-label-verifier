@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { API_KEY_QUERY_KEY, ApiError, applicationsApi, settingsApi } from "@/lib/api-client";
+import { useTutorial } from "@/hooks/useTutorial";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -23,6 +24,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const queryClient = useQueryClient();
+  const { reset: resetTutorial } = useTutorial();
 
   const statusQuery = useQuery({
     queryKey: API_KEY_QUERY_KEY,
@@ -169,8 +171,35 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 whether Item 8 should always be expected to match the
                 importer, the manufacturer, or either for imported-item
                 applications.
+                <br />
+                <span className="font-medium text-foreground">
+                  Interim behavior:
+                </span>{" "}
+                until this is resolved, Item 8 address comparisons treat a
+                City + State match as adequate even if the full street
+                address differs (<code>address_matches</code> in{" "}
+                <code>comparison_engine.py</code>), since the label often
+                gives only a City/State for the importer or bottler with no
+                street address.
               </li>
             </ul>
+          </div>
+
+          <div className="space-y-2 border-t pt-4">
+            <h3 className="text-sm font-semibold">Tutorial</h3>
+            <p className="text-sm text-muted-foreground">
+              Replay the guided walkthrough of the application from the start.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                resetTutorial();
+                toast.success("Tutorial reset.");
+              }}
+            >
+              Reset Tutorial
+            </Button>
           </div>
 
           <div className="space-y-2 border-t pt-4">

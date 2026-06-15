@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RecommendationBadge } from "@/components/applications/RecommendationBadge";
 import { OverrideDialog, type OverrideOption } from "@/components/applications/OverrideDialog";
 import { ApiError, determinationsApi } from "@/lib/api-client";
+import { useTutorialAnchor } from "@/hooks/useTutorial";
 import type { ApplicationDetail, Recommendation } from "@/lib/types";
 
 const RECOMMENDATION_OPTIONS: OverrideOption[] = [
@@ -42,6 +43,8 @@ export function DeterminationPanel({ application }: DeterminationPanelProps) {
     },
   });
 
+  useTutorialAnchor("review-recommendation", determination !== null && determination.finalized_at === null);
+
   if (!determination) {
     return null;
   }
@@ -60,7 +63,7 @@ export function DeterminationPanel({ application }: DeterminationPanelProps) {
           </span>
         )}
       </div>
-      <div className="ml-auto flex items-center gap-2">
+      <div id="tutorial-review-recommendation" className="ml-auto flex items-center gap-2">
         {isFinalized ? (
           <Badge variant="secondary">Finalized</Badge>
         ) : (
